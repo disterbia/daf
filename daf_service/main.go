@@ -29,6 +29,7 @@ func main() {
 	svc := core.NewDafService(database)
 	setUserEndpoint := core.SetUserEndpoint(svc)
 	getUserEndpoint := core.GetUserEndpoint(svc)
+	getRecommendEndpoint := core.GetRecommendEndpoint(svc)
 	fmt.Printf("svc: %v\n", svc)
 
 	router := gin.Default()
@@ -37,6 +38,7 @@ func main() {
 
 	router.POST("/set-user-daf", core.SetUserHandler(setUserEndpoint))
 	router.GET("/get-user-daf", core.GetUserHandler(getUserEndpoint))
+	router.GET("/get-recommend", core.GetRecommendHandler(getRecommendEndpoint))
 
 	router.Run(":44409")
 }

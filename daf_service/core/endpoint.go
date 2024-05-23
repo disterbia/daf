@@ -27,3 +27,14 @@ func GetUserEndpoint(s DafService) endpoint.Endpoint {
 		return res, nil
 	}
 }
+
+func GetRecommendEndpoint(s DafService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		id := request.(uint)
+		res, err := s.getRecommend(id)
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return res, nil
+	}
+}

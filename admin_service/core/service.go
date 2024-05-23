@@ -21,7 +21,7 @@ import (
 type AdminService interface {
 	sendAuthCode(number string) (string, error)
 	login(request LoginRequest) (string, error)
-	verifyAuthCode(number, code string) (string, error)
+	verifyAuthCode(verify VerifyRequest) (string, error)
 	signIn(request SignInRequest) (string, error)
 }
 
@@ -59,7 +59,7 @@ func (service *adminService) login(request LoginRequest) (string, error) {
 }
 
 func (service *adminService) sendAuthCode(email string) (string, error) {
-
+	log.Println(email)
 	err := validateEmail(email)
 	if err != nil {
 		return "", err
@@ -80,26 +80,30 @@ func (service *adminService) sendAuthCode(email string) (string, error) {
 	}
 
 	go func() {
-		reponse, err := service.emailClient.SendEmail(context.Background(), &pb.EmailRequest{
+		response, err := service.emailClient.SendEmail(context.Background(), &pb.EmailRequest{
 			Email: email, // 받는 사람의 이메일
 			Code:  sb.String(),
 		})
 		if err != nil {
-			log.Printf("Failed to send email: %v", err)
+			log.Println(err)
 		}
-		log.Printf(" send email: %v", reponse)
+		if response.Status == "Success" {
+			if err := service.db.Create(&model.AuthCode{Email: email, Code: sb.String()}).Error; err != nil {
+				log.Println(err)
+			}
+		}
 	}()
 
 	return "200", nil
 }
 
-func (service *adminService) verifyAuthCode(email, code string) (string, error) {
+func (service *adminService) verifyAuthCode(verify VerifyRequest) (string, error) {
 	var authCode model.AuthCode
 
-	if err := service.db.Where("email = ? ", email).Last(&authCode).Error; err != nil {
+	if err := service.db.Where("email = ? ", verify.Email).Last(&authCode).Error; err != nil {
 		return "", errors.New("db error")
 	}
-	if authCode.Code != code {
+	if authCode.Code != verify.Code {
 		return "", errors.New("-1")
 	}
 	if err := service.db.Create(&model.VerifiedEmail{Email: authCode.Email}).Error; err != nil {
@@ -115,8 +119,8 @@ func (service *adminService) signIn(request SignInRequest) (string, error) {
 	if result.Error != nil {
 		return "", errors.New("db error")
 
-	} else if result.RowsAffected > 0 {
-		// 레코드가 존재할 때
+	} else if result.RowsAffected == 0 {
+		// 인증안함
 		return "", errors.New("-1")
 	}
 

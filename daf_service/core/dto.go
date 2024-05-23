@@ -53,6 +53,16 @@ type UserJointActionResponse struct {
 	TR string
 }
 
+type ExerciseResponse struct {
+	ID       uint
+	Name     string
+	Category CategoryResponse
+}
+
+type CategoryResponse struct {
+	ID   uint
+	Name string
+}
 type BasicResponse struct {
 	Code string `json:"code"`
 }

@@ -31,7 +31,7 @@ func SendCodeEndpoint(s AdminService) endpoint.Endpoint {
 func VerifyEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		veri := request.(VerifyRequest)
-		code, err := s.verifyAuthCode(veri.Email, veri.Code)
+		code, err := s.verifyAuthCode(veri)
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 type DafService interface {
 	setUser(userRequest UserJointActionRequest) (string, error)
 	getUser(id uint) (UserJointActionResponse, error)
+	getRecommend(id uint) ([]ExerciseResponse, error)
 }
 
 type dafService struct {
@@ -179,4 +181,145 @@ func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
 		fmt.Printf("BodyCompositionId: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %s\n", bodyCompId, romAver, degreeAver, clinicAver)
 	}
 	return responseValue.Interface().(UserJointActionResponse), nil
+}
+
+func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
+
+	var userJointActions []model.UserJointAction
+	if err := service.db.Debug().Where("uid = ?", id).Preload("JointAction").Preload("ClinicalFeature").Find(&userJointActions).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
+	type GroupData struct {
+		romList    uint
+		clinicList []uint
+		degreeList uint
+		count      uint
+	}
+	groupData := make(map[uint]GroupData)
+
+	type SearchData struct {
+		rom    uint
+		clinic uint
+		degree uint
+	}
+	var ulav, urav, llav, lrav, tr SearchData
+	for _, userJointAction := range userJointActions {
+
+		// BodyCompositionId를 키로 사용하는 그룹에 데이터 추가
+		bodyCompId := userJointAction.JointAction.BodyCompositionId
+		data := groupData[bodyCompId]
+		data.romList += userJointAction.RomId
+		data.clinicList = append(data.clinicList, userJointAction.ClinicalFeature.ID)
+		data.degreeList += userJointAction.DegreeId
+		data.count++
+		groupData[bodyCompId] = data
+	}
+
+	// 그룹별 평균 계산
+	for bodyCompId, data := range groupData {
+		romAver := data.romList / data.count
+		degreeAver := data.degreeList / data.count
+		var clinicAver uint
+
+		// 빈도 수를 기록하기 위한 해시맵
+		frequency := make(map[uint]int)
+		// 가장 많은 문자열과 그 빈도 수를 추적
+		maxCount := 0
+
+		// 각 문자열의 빈도 수를 해시맵에 기록하고 가장 많은 문자열을 찾기
+		for _, str := range data.clinicList {
+			frequency[str]++
+			if frequency[str] > maxCount {
+				clinicAver = str
+				maxCount = frequency[str]
+			}
+		}
+		switch bodyCompId {
+		// responseValue
+		case uint(UL):
+			ulav = SearchData{rom: romAver, clinic: clinicAver, degree: degreeAver}
+		case uint(UR):
+			urav = SearchData{rom: romAver, clinic: clinicAver, degree: degreeAver}
+		case uint(LL):
+			llav = SearchData{rom: romAver, clinic: clinicAver, degree: degreeAver}
+		case uint(LR):
+			lrav = SearchData{rom: romAver, clinic: clinicAver, degree: degreeAver}
+		case uint(TR):
+			tr = SearchData{rom: romAver, clinic: clinicAver, degree: degreeAver}
+		}
+		fmt.Printf("BodyCompositionId: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %d\n", bodyCompId, romAver, degreeAver, clinicAver)
+	}
+
+	var recommends []model.Recommended
+	if err := service.db.Where(`
+		(body_composition_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR 
+		(body_composition_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
+		(body_composition_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
+		(body_composition_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
+		(body_composition_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?)`,
+		UL, ulav.clinic, ulav.rom, ulav.degree,
+		UR, urav.clinic, urav.rom, urav.degree,
+		LL, llav.clinic, llav.rom, llav.degree,
+		LR, lrav.clinic, lrav.rom, lrav.degree,
+		TR, tr.clinic, tr.rom, tr.degree).
+		Debug().Preload("Exercise.Category").Find(&recommends).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
+	// 운동들의 등장 횟수를 세기 위한 맵
+	exerciseFrequency := make(map[uint]map[uint]int) // categoryID -> exerciseID -> count
+	for _, recommend := range recommends {
+		categoryID := recommend.Exercise.CategoryId
+		exerciseID := recommend.Exercise.ID
+
+		if _, exists := exerciseFrequency[categoryID]; !exists {
+			exerciseFrequency[categoryID] = make(map[uint]int)
+		}
+		exerciseFrequency[categoryID][exerciseID]++
+	}
+
+	type ExerciseRank struct {
+		ID       uint
+		Name     string
+		Category CategoryResponse
+		Count    int
+	}
+
+	var rankedExercises []ExerciseRank
+	for categoryID, exercises := range exerciseFrequency {
+		for exerciseID, count := range exercises {
+			for _, recommend := range recommends {
+				if recommend.Exercise.ID == exerciseID {
+					rankedExercises = append(rankedExercises, ExerciseRank{
+						ID:       exerciseID,
+						Name:     recommend.Exercise.Name,
+						Category: CategoryResponse{ID: categoryID, Name: recommend.Exercise.Category.Name},
+						Count:    count,
+					})
+				}
+			}
+		}
+	}
+
+	// 등장 횟수 기준으로 정렬
+	sort.Slice(rankedExercises, func(i, j int) bool {
+		return rankedExercises[i].Count > rankedExercises[j].Count
+	})
+
+	// 상위 3개의 운동만 선택
+	if len(rankedExercises) > 3 {
+		rankedExercises = rankedExercises[:3]
+	}
+
+	var response []ExerciseResponse
+	for _, rank := range rankedExercises {
+		response = append(response, ExerciseResponse{
+			ID:       rank.ID,
+			Name:     rank.Name,
+			Category: rank.Category,
+		})
+	}
+
+	return response, nil
 }

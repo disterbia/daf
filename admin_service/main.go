@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// gRPC 클라이언트 연결 생성
-	conn, err := grpc.Dial("email:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to email service: %v", err)
 	}
@@ -104,5 +104,5 @@ func main() {
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	router.Run(":44409")
+	router.Run(":44400")
 }
