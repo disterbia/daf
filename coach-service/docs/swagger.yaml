@@ -1,0 +1,437 @@
+definitions:
+  core.BasicResponse:
+    properties:
+      msg:
+        type: string
+    type: object
+  core.CategoryRequest:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.CategoryResponse:
+    properties:
+      exercises:
+        items:
+          $ref: '#/definitions/core.ExerciseResponse'
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.ErrorResponse:
+    properties:
+      err:
+        type: string
+    type: object
+  core.ExerciseRequest:
+    properties:
+      category_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.ExerciseResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.MachineDto:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.PurposeDto:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.RecommendRequest:
+    properties:
+      asymmetric:
+        description: 비대칭 여부
+        type: boolean
+      body_rom_clinic_degree:
+        additionalProperties:
+          additionalProperties:
+            additionalProperties:
+              type: integer
+            type: object
+          type: object
+        description: '증상id : 정도'
+        type: object
+      exercise_id:
+        description: 운동아이디
+        type: integer
+      machine_ids:
+        description: 기구아이디
+        items:
+          type: integer
+        type: array
+      purpose_ids:
+        description: 목적아이디
+        items:
+          type: integer
+        type: array
+    type: object
+  core.RecommendResponse:
+    properties:
+      asymmetric:
+        type: boolean
+      bodyRomClinicDegree:
+        additionalProperties:
+          additionalProperties:
+            additionalProperties:
+              type: integer
+            type: object
+          type: object
+        type: object
+      exercise:
+        $ref: '#/definitions/core.ExerciseResponse'
+      machines:
+        items:
+          $ref: '#/definitions/core.MachineDto'
+        type: array
+      purposes:
+        items:
+          $ref: '#/definitions/core.PurposeDto'
+        type: array
+    type: object
+  core.SuccessResponse:
+    properties:
+      jwt:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /get-categoris:
+    get:
+      description: 카테고리 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 카테고리 정보
+          schema:
+            items:
+              $ref: '#/definitions/core.CategoryResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 카테고리 조회
+      tags:
+      - 코치 /coach
+  /get-exercise/{exercise_id}:
+    get:
+      description: 운동 상세 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: exercise_id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 운동 정보
+          schema:
+            $ref: '#/definitions/core.RecommendResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동 상세조회
+      tags:
+      - 코치 /coach
+  /get-machines:
+    get:
+      description: 기구 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 기구 정보
+          schema:
+            items:
+              $ref: '#/definitions/core.MachineDto'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 기구 조회
+      tags:
+      - 코치 /coach
+  /get-purposes:
+    get:
+      description: 운동목적 리스트 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 운동목적 리스트
+          schema:
+            items:
+              $ref: '#/definitions/core.PurposeDto'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동목적 조회
+      tags:
+      - 코치 /coach
+  /get-recommends:
+    get:
+      description: 최초 운동리스트 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 페이지 번호 default 0 30개씩
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 운동 리스트
+          schema:
+            items:
+              $ref: '#/definitions/core.RecommendResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 추천 운동 전체 조회
+      tags:
+      - 코치 /coach
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 로그인시 호출
+      parameters:
+      - description: email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 JWT 토큰 반환
+          schema:
+            $ref: '#/definitions/core.SuccessResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      security:
+      - jwt: []
+      summary: 로그인
+      tags:
+      - 코치로그인 /coach
+  /save-category:
+    post:
+      description: 최상위 운동 카테고리 생성/수정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO - 생성시 id 생략
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.CategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 카테고리 생성/수정
+      tags:
+      - 코치 /coach
+  /save-exercise:
+    post:
+      description: 운동 생성/수정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO - 생성시 id 생략
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.ExerciseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동 생성/수정
+      tags:
+      - 코치 /coach
+  /save-machine:
+    post:
+      description: 기구 생성/수정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO - 생성시 id 생략
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.MachineDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 기구 생성/수정
+      tags:
+      - 코치 /coach
+  /save-recommend:
+    post:
+      description: 추천 운동 생성/수정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.RecommendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 추천 운동 생성/수정
+      tags:
+      - 코치 /coach
+swagger: "2.0"
