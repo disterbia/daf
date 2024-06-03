@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  gateway:
+    image: disterbia94/daf-gateway:latest
+    environment:
+      - TZ=Asia/Seoul
+    ports:
+      - "40000:40000"
+    depends_on:
+      - coach
+      - admin
+      - daf
+      - email
+      - user
+  admin:
+    image: disterbia94/daf-admin-service:latest
+    environment:
+      - TZ=Asia/Seoul
+  coach:
+    image: disterbia94/daf-coach-service:latest
+    environment:
+      - TZ=Asia/Seoul
+  daf:
+    image: disterbia94/daf-daf-service:latest
+    environment:
+      - TZ=Asia/Seoul
+  email:
+    image: disterbia94/daf-email-service:latest
+    environment:
+      - TZ=Asia/Seoul
+  user:
+    image: disterbia94/daf-user-service:latest
+    environment:
+      - TZ=Asia/Seoul
+
+networks:
+  default:
+    name: my-network

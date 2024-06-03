@@ -27,8 +27,9 @@ type ExerciseRequest struct {
 	CategoryId uint   `json:"category_id"`
 }
 type ExerciseResponse struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	BodyType uint   `json:body_type`
 }
 
 type MachineDto struct {
@@ -50,6 +51,7 @@ type RecommendRequest struct {
 }
 
 type RecommendResponse struct {
+	Category            CategoryRequest  `json:"category"`
 	Exercise            ExerciseResponse `json:"exercise"`
 	Machines            []MachineDto     `json:"machines"`
 	Purposes            []PurposeDto     `json:"purposes"`

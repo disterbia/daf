@@ -6,6 +6,7 @@ import (
 	"coach-service/model"
 	"errors"
 	"log"
+	"sort"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -355,7 +356,7 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 
 	// 전체 추천운동 데이터 가져오기
 	var recommends []model.Recommended
-	if err := tx.Where("body_type_id = body_filter").Offset(offset).Limit(pageSize).Order("id DESC").Preload("Exercise").Find(&recommends).Error; err != nil {
+	if err := tx.Where("body_type_id = body_filter").Offset(offset).Limit(pageSize).Order("id DESC").Preload("Exercise.Category").Find(&recommends).Error; err != nil {
 		tx.Rollback()
 		return responses, errors.New("db error")
 	}
@@ -394,7 +395,8 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 	for _, recommend := range recommends {
 		if _, exists := exerciseIDToRecommend[recommend.ExerciseID]; !exists {
 			exerciseIDToRecommend[recommend.ExerciseID] = &RecommendResponse{
-				Exercise:            ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name},
+				Category:            CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
+				Exercise:            ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, BodyType: recommend.BodyFilter},
 				Asymmetric:          recommend.Asymmetric,
 				BodyRomClinicDegree: make(map[uint]map[uint]map[uint]uint),
 			}
@@ -420,7 +422,19 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 		}
 	}
 
+	// map을 slice로 변환하여 정렬
+	var sortedResponses []*RecommendResponse
 	for _, response := range exerciseIDToRecommend {
+		sortedResponses = append(sortedResponses, response)
+	}
+
+	// 예시로 ExerciseID를 기준으로 정렬
+	sort.Slice(sortedResponses, func(i, j int) bool {
+		return sortedResponses[i].Exercise.ID < sortedResponses[j].Exercise.ID
+	})
+
+	// 최종 응답에 추가
+	for _, response := range sortedResponses {
 		responses = append(responses, *response)
 	}
 

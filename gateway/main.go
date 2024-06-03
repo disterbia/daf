@@ -79,7 +79,7 @@ func main() {
 		adminProxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-	coachServiceURL, _ := url.Parse("http://localhost:44401")
+	coachServiceURL, _ := url.Parse("http://coach:44401")
 	coachProxy := httputil.NewSingleHostReverseProxy(coachServiceURL)
 	router.Any("/coach/*path", func(c *gin.Context) {
 		c.Request.URL.Path = c.Param("path")
@@ -101,7 +101,7 @@ func main() {
 	})
 
 	setupSwaggerUIProxy(router, "/admin-service/swagger/*proxyPath", "http://admin:44400/swagger/")
-	setupSwaggerUIProxy(router, "/coach-service/swagger/*proxyPath", "http://localhost:44401/swagger/")
+	setupSwaggerUIProxy(router, "/coach-service/swagger/*proxyPath", "http://coach:44401/swagger/")
 	setupSwaggerUIProxy(router, "/daf-service/swagger/*proxyPath", "http://daf:44402/swagger/")
 	setupSwaggerUIProxy(router, "/user-service/swagger/*proxyPath", "http://user:44403/swagger/")
 

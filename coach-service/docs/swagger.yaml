@@ -97,6 +97,8 @@ definitions:
             type: object
           type: object
         type: object
+      category:
+        $ref: '#/definitions/core.CategoryRequest'
       exercise:
         $ref: '#/definitions/core.ExerciseResponse'
       machines:

@@ -651,6 +651,9 @@ const docTemplate = `{
                         }
                     }
                 },
+                "category": {
+                    "$ref": "#/definitions/core.CategoryRequest"
+                },
                 "exercise": {
                     "$ref": "#/definitions/core.ExerciseResponse"
                 },
