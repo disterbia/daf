@@ -23,5 +23,44 @@ func NewDB(dataSourceName string) (*gorm.DB, error) {
 
 	db.AutoMigrate(&BodyComposition{}, &Category{}, &ClinicalFeature{}, &Degree{}, &Exercise{}, &History{}, &JointAction{}, &Recommended{}, &Rom{}, &UserJointAction{},
 		&Machine{}, &ExerciseMachine{}, &Purpose{}, &ExercisePurpose{}, &BodyType{}, &Admin{}, &Agency{})
+	// createHangulFunctions(db)
 	return db, nil
+
 }
+
+// func createHangulFunctions(db *gorm.DB) {
+// 	functionSQL := `
+// 	CREATE OR REPLACE FUNCTION get_chosung(input_str TEXT)
+// 	RETURNS TEXT AS $$
+// 	DECLARE
+// 		result TEXT = '';
+// 		char_code INT;
+// 		chosung CHAR(1);
+// 	BEGIN
+// 		FOR i IN 1..char_length(input_str) LOOP
+// 			char_code := get_byte(convert_to(substr(input_str, i, 1), 'UTF8'), 0);
+// 			IF char_code BETWEEN 0 AND 127 THEN
+// 				-- ASCII 문자
+// 				result := result || substr(input_str, i, 1);
+// 			ELSE
+// 				-- 한글 문자
+// 				char_code := ((char_code - 224) * 4096) + ((get_byte(convert_to(substr(input_str, i, 1), 'UTF8'), 1) - 128) * 64) + (get_byte(convert_to(substr(input_str, i, 1), 'UTF8'), 2) - 128);
+// 				IF char_code BETWEEN 44032 AND 55203 THEN
+// 					chosung := chr(((char_code - 44032) / 588) + 4352);
+// 					result := result || chosung;
+// 				ELSE
+// 					result := result || substr(input_str, i, 1);
+// 				END IF;
+// 			END IF;
+// 		END LOOP;
+// 		RETURN result;
+// 	END;
+// 	$$ LANGUAGE plpgsql;
+//     `
+
+// 	if err := db.Exec(functionSQL).Error; err != nil {
+// 		log.Fatalf("Failed to create function: %v", err)
+// 	} else {
+// 		log.Println("Function get_chosung created successfully")
+// 	}
+// }

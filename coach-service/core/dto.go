@@ -43,10 +43,11 @@ type PurposeDto struct {
 }
 
 type RecommendRequest struct {
-	ExerciseID          uint                            `json:"exercise_id"`            // 운동아이디
-	MachineIDs          []uint                          `json:"machine_ids"`            // 기구아이디
-	PurposeIDs          []uint                          `json:"purpose_ids"`            // 목적아이디
-	Asymmetric          bool                            `json:"asymmetric"`             // 비대칭 여부
+	ExerciseID          uint                            `json:"exercise_id"` // 운동아이디
+	MachineIDs          []uint                          `json:"machine_ids"` // 기구아이디
+	PurposeIDs          []uint                          `json:"purpose_ids"` // 목적아이디
+	Asymmetric          bool                            `json:"asymmetric"`  // 비대칭 여부
+	BodyType            uint                            `json:"body_type"`
 	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
 }
 
@@ -59,6 +60,10 @@ type RecommendResponse struct {
 	BodyRomClinicDegree map[uint]map[uint]map[uint]uint
 }
 
+type SearchRequest struct {
+	Page uint   `form:"page"`
+	Name string `form:"name"`
+}
 type BasicResponse struct {
 	Msg string `json:"msg"`
 }

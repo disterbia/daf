@@ -563,6 +563,9 @@ const docTemplate = `{
         "core.ExerciseResponse": {
             "type": "object",
             "properties": {
+                "bodyType": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -612,6 +615,9 @@ const docTemplate = `{
                             }
                         }
                     }
+                },
+                "body_type": {
+                    "type": "integer"
                 },
                 "exercise_id": {
                     "description": "운동아이디",

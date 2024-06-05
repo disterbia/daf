@@ -76,3 +76,21 @@ func validateRecommendRequest(request RecommendRequest) error {
 	}
 	return nil
 }
+func getChosung(input string) string {
+	var result []rune
+	for _, r := range input {
+		if r >= 0xAC00 && r <= 0xD7A3 {
+			// 음절을 초성으로 변환
+			initial := (r - 0xAC00) / 588
+			initialChar := rune(0x1100 + initial)
+			result = append(result, initialChar)
+		} else if r >= 0x3131 && r <= 0x318E {
+			// 자모 문자 처리
+			result = append(result, r)
+		} else {
+			// 기타 문자 처리
+			result = append(result, r)
+		}
+	}
+	return string(result)
+}

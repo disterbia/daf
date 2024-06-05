@@ -111,3 +111,14 @@ func GetRecommendsEndpoint(s CoachService) endpoint.Endpoint {
 		return recommends, nil
 	}
 }
+
+func SearchRecommendsEndpoint(s CoachService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		dto := request.(SearchRequest)
+		recommends, err := s.searchRecommend(dto.Page, dto.Name)
+		if err != nil {
+			return BasicResponse{Msg: err.Error()}, err
+		}
+		return recommends, nil
+	}
+}

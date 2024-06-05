@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -38,18 +37,9 @@ func main() {
 	saveMachineEndpoint := core.SaveMachineEndpoint(svc)
 	getPurposesEndpoint := core.GetPurposesEndpoint(svc)
 	saveRecommendEndpint := core.SaveRecommendEndpoint(svc)
+	searchRecommendsEndpoint := core.SearchRecommendsEndpoint(svc)
 
 	router := gin.Default()
-
-	config := cors.Config{
-		AllowAllOrigins:  true, // 모든 출처 허용
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}
-
-	router.Use(cors.New(config))
 
 	router.POST("/login", core.LoginHandler(loginEndpoint))
 	router.GET("/get-categories", core.GetCategorisHandler(getCategorisEndpoint))
@@ -60,8 +50,9 @@ func main() {
 	router.GET("/get-purposes", core.GetPurposesHandler(getPurposesEndpoint))
 
 	router.POST("/save-recommend", core.SaveRecommendHandler(saveRecommendEndpint))
-	router.GET("/get-recommend/:exercise_id", core.GetRecommendHandler(getRecommendEndpoint))
+	router.GET("/get-exercise/:exercise_id", core.GetRecommendHandler(getRecommendEndpoint))
 	router.GET("/get-recommends", core.GetRecommendsHandler(getRecommendsEndpoint))
+	router.GET("/search-recommends", core.SearchRecommendsHandler(searchRecommendsEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

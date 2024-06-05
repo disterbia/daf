@@ -314,7 +314,12 @@ func GetRecommendHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 		exerciseId := c.Param("exercise_id")
-		response, err := getEndpoint(c.Request.Context(), exerciseId)
+		id, err := strconv.Atoi(exerciseId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		response, err := getEndpoint(c.Request.Context(), uint(id))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -355,6 +360,42 @@ func GetRecommendsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		}
 
 		response, err := getEndpoint(c.Request.Context(), page)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]RecommendResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 코치 /coach
+// @Summary 추천 운동 검색
+// @Description 검색시 호출
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []RecommendResponse "운동 리스트"
+// @Param  page  query uint false  "페이지 번호 default 0 30개씩"
+// @Param  name  query string false "검색명"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /search-recommends [get]
+func SearchRecommendsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var queryParams SearchRequest
+		if err := c.ShouldBindQuery(&queryParams); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := getEndpoint(c.Request.Context(), queryParams)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
