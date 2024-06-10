@@ -4,14 +4,14 @@ import "gorm.io/gorm"
 
 type History struct {
 	gorm.Model
-	Exercise          Exercise `gorm:"foreignKey:ExerciseID"`
-	ExerciseID        uint
-	JointAction       JointAction `gorm:"foreignKey:JointActionID"`
-	JointActionID     uint
-	Rom               Rom `gorm:"foreignKey:RomID"`
-	RomID             uint
+	Exercise          Exercise        `gorm:"foreignKey:ExerciseID"`
+	ExerciseID        uint            `gorm:"index"`
+	JointAction       JointAction     `gorm:"foreignKey:JointActionID"`
+	JointActionID     uint            `gorm:"index"`
+	Rom               Rom             `gorm:"foreignKey:RomID"`
+	RomID             uint            `gorm:"index"`
 	ClinicalFeature   ClinicalFeature `gorm:"foreignKey:ClinicalFeatureID"`
-	ClinicalFeatureID uint
-	Degree            Degree `gorm:"foreignKey:DegreeID"`
-	DegreeID          uint
+	ClinicalFeatureID uint            `gorm:"index"`
+	Degree            Degree          `gorm:"foreignKey:DegreeID"`
+	DegreeID          uint            `gorm:"index"`
 }

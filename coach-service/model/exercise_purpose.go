@@ -7,7 +7,7 @@ import (
 type ExercisePurpose struct {
 	gorm.Model
 	Exercise   Exercise `gorm:"foreignKey:ExerciseID"`
-	ExerciseID uint
-	Purpose    Purpose `gorm:"foreignKey:PurposeID"`
-	PurposeID  uint
+	ExerciseID uint     `gorm:"index"`
+	Purpose    Purpose  `gorm:"foreignKey:PurposeID"`
+	PurposeID  uint     `gorm:"index"`
 }

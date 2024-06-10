@@ -189,7 +189,7 @@ func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
 func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 
 	var userJointActions []model.UserJointAction
-	if err := service.db.Debug().Where("uid = ?", id).Preload("JointAction").Preload("ClinicalFeature").Find(&userJointActions).Error; err != nil {
+	if err := service.db.Where("uid = ?", id).Preload("JointAction").Preload("ClinicalFeature").Find(&userJointActions).Error; err != nil {
 		return nil, errors.New("db error")
 	}
 
@@ -278,6 +278,47 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 		Find(&recommends).Error
 	if err != nil {
 		return nil, errors.New("db error")
+	}
+
+	var recommendsTR, recommendsLoco, recommendsUlav, recommendsUrav, recommendsLlav, recommendsLrav []model.Recommended
+
+	for _, rec := range recommends {
+		switch {
+		case rec.BodyTypeID == tr.bodyType && rec.RomID <= tr.rom:
+			recommendsTR = append(recommendsTR, rec)
+		case rec.BodyTypeID == loco.bodyType && rec.RomID <= loco.rom:
+			recommendsLoco = append(recommendsLoco, rec)
+		case rec.BodyTypeID == ulav.bodyType && rec.ClinicalFeatureID == ulav.clinic && rec.RomID <= ulav.rom && rec.DegreeID <= ulav.degree:
+			recommendsUlav = append(recommendsUlav, rec)
+		case rec.BodyTypeID == urav.bodyType && rec.ClinicalFeatureID == urav.clinic && rec.RomID <= urav.rom && rec.DegreeID <= urav.degree:
+			recommendsUrav = append(recommendsUrav, rec)
+		case rec.BodyTypeID == llav.bodyType && rec.ClinicalFeatureID == llav.clinic && rec.RomID <= llav.rom && rec.DegreeID <= llav.degree:
+			recommendsLlav = append(recommendsLlav, rec)
+		case rec.BodyTypeID == lrav.bodyType && rec.ClinicalFeatureID == lrav.clinic && rec.RomID <= lrav.rom && rec.DegreeID <= lrav.degree:
+			recommendsLrav = append(recommendsLrav, rec)
+		}
+	}
+
+	exerciseIDMap := make(map[uint]int)
+
+	countExerciseID := func(recommends []model.Recommended) {
+		for _, rec := range recommends {
+			exerciseIDMap[rec.ExerciseID]++
+		}
+	}
+
+	countExerciseID(recommendsTR)
+	countExerciseID(recommendsLoco)
+	countExerciseID(recommendsUlav)
+	countExerciseID(recommendsUrav)
+	countExerciseID(recommendsLlav)
+	countExerciseID(recommendsLrav)
+
+	var commonExerciseIDs []uint
+	for id, count := range exerciseIDMap {
+		if count == 6 { // 모든 슬라이스에 포함된 ExerciseID
+			commonExerciseIDs = append(commonExerciseIDs, id)
+		}
 	}
 
 	sqlQuery := getQuery(1)

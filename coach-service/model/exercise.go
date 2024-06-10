@@ -6,9 +6,9 @@ import (
 
 type Exercise struct {
 	gorm.Model
-	Name             string   `gorm:"unique"`
-	Category         Category `gorm:"foreignKey:CategoryID"`
-	CategoryID       uint
+	Name             string            `gorm:"unique"`
+	Category         Category          `gorm:"foreignKey:CategoryID"`
+	CategoryID       uint              `gorm:"index"`
 	ExerciseMachines []ExerciseMachine `gorm:"foreignKey:ExerciseID"`
 	Recommendeds     []Recommended     `gorm:"foreignKey:ExerciseID"`
 	Historys         []History         `gorm:"foreignKey:ExerciseID"`

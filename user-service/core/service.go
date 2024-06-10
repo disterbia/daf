@@ -117,7 +117,7 @@ func (service *userService) autoLogin(request AutoLoginRequest) (string, error) 
 
 func (service *userService) getUser(id uint) (UserResponse, error) {
 	var user model.User
-	result := service.db.Debug().Preload("Images", "type = ?", profileImageType).First(&user, id)
+	result := service.db.Preload("Images", "type = ?", profileImageType).First(&user, id)
 	if result.Error != nil {
 		return UserResponse{}, errors.New("db error")
 	}

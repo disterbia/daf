@@ -94,3 +94,7 @@ func getChosung(input string) string {
 	}
 	return string(result)
 }
+
+func uintPointer(u uint) *uint {
+	return &u
+}

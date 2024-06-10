@@ -42,7 +42,7 @@ func (service *adminService) login(request LoginRequest) (string, error) {
 	}
 
 	// 이메일로 사용자 조회
-	if err := service.db.Debug().Where("email = ?", request.Email).First(&u).Error; err != nil {
+	if err := service.db.Where("email = ?", request.Email).First(&u).Error; err != nil {
 		return "", err
 	}
 
@@ -67,7 +67,7 @@ func (service *adminService) sendAuthCode(email string) (string, error) {
 		return "", err
 	}
 
-	result := service.db.Debug().Where("email=?", email).Find(&model.Admin{})
+	result := service.db.Where("email=?", email).Find(&model.Admin{})
 	if result.Error != nil {
 		return "", errors.New("db error")
 
@@ -117,7 +117,7 @@ func (service *adminService) verifyAuthCode(verify VerifyRequest) (string, error
 
 func (service *adminService) signIn(request SignInRequest) (string, error) {
 
-	result := service.db.Debug().Where("email=?", request.Email).Find(&model.VerifiedEmail{})
+	result := service.db.Where("email=?", request.Email).Find(&model.VerifiedEmail{})
 	if result.Error != nil {
 		return "", errors.New("db error")
 

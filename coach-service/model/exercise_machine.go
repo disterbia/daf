@@ -7,7 +7,7 @@ import (
 type ExerciseMachine struct {
 	gorm.Model
 	Exercise   Exercise `gorm:"foreignKey:ExerciseID"`
-	ExerciseID uint
-	Machine    Machine `gorm:"foreignKey:MachineID"`
-	MachineID  uint
+	ExerciseID uint     `gorm:"index"`
+	Machine    Machine  `gorm:"foreignKey:MachineID"`
+	MachineID  uint     `gorm:"index"`
 }
