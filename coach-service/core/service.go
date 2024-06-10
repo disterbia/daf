@@ -237,6 +237,8 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		RomID:      request.Locomotion,
 	})
 
+	log.Println(request.BodyRomClinicDegree)
+
 	for bodyType, romClinicDegree := range request.BodyRomClinicDegree {
 		if bodyType == uint(UBODY) || bodyType == uint(LBODY) {
 			for rom, clinicDegree := range romClinicDegree {
@@ -251,9 +253,10 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 						BodyFilter:        request.BodyType,
 						BodyTypeID:        bodyType,
 						RomID:             rom,
-						ClinicalFeatureID: &clinic,
-						DegreeID:          &degree,
+						ClinicalFeatureID: uintPointer(clinic),
+						DegreeID:          uintPointer(degree),
 					})
+					checkClinic[clinic] = true
 				}
 			}
 		}
