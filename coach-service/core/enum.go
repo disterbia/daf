@@ -6,6 +6,7 @@ const (
 	TBODY level = iota + 1
 	UBODY
 	LBODY
+	LOCOBODY
 )
 
 const (
@@ -13,12 +14,11 @@ const (
 	PC
 	CC
 	SC
-	WC
 	AC
 	TC
 )
 
-var CLINIC = [7]level{NC, PC, CC, SC, WC, AC, TC}
+var CLINIC = [6]level{NC, PC, CC, SC, AC, TC}
 
 // const (
 // 	ULS level = iota + 1

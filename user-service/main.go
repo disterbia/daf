@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"time"
 	"user-service/core"
 	"user-service/model"
 
@@ -21,13 +20,13 @@ import (
 
 func main() {
 	err := godotenv.Load(".env")
-	currentTime := time.Now()
-	log.Println(currentTime)
 	if err != nil {
 		log.Println("Error loading .env file")
 	}
+	log.Println("aaa")
 	dbPath := os.Getenv("DB_PATH")
 	database, err := model.NewDB(dbPath)
+	log.Println("bbb")
 	if err != nil {
 		log.Println("Database connection error:", err)
 	}
@@ -40,6 +39,7 @@ func main() {
 		Region:      aws.String("ap-northeast-2"),
 		Credentials: credentials.NewStaticCredentials(accessKey, secretKey, ""),
 	})
+	log.Println("ccc")
 	if err != nil {
 		log.Println("aws connection error:", err)
 	}
@@ -56,7 +56,6 @@ func main() {
 	getversionEndpoint := core.GetVersionEndpoint(usvc)
 
 	router := gin.Default()
-
 	router.POST("/sns-login", core.SnsLoginHandler(snsLoginEndpoint))
 	router.POST("/auto-login", core.AutoLoginHandler(autoLoginEndpoint))
 	router.POST("/set-user", core.SetUserHandler(setUserEndpoint))

@@ -1,0 +1,290 @@
+definitions:
+  core.AppVersionResponse:
+    properties:
+      android_link:
+        type: string
+      ios_link:
+        type: string
+      latest_version:
+        type: string
+    type: object
+  core.AutoLoginRequest:
+    properties:
+      device_id:
+        type: string
+      fcm_token:
+        type: string
+    type: object
+  core.BasicResponse:
+    properties:
+      code:
+        type: string
+    type: object
+  core.ErrorResponse:
+    properties:
+      err:
+        type: string
+    type: object
+  core.ImageResponse:
+    properties:
+      thumbnail_url:
+        type: string
+      url:
+        type: string
+    type: object
+  core.LoginRequest:
+    properties:
+      device_id:
+        type: string
+      fcm_token:
+        type: string
+      id_token:
+        type: string
+    type: object
+  core.SuccessResponse:
+    properties:
+      jwt:
+        type: string
+    type: object
+  core.UserRequest:
+    properties:
+      nickname:
+        type: string
+      profile_image:
+        example: base64string
+        type: string
+    type: object
+  core.UserResponse:
+    properties:
+      birthday:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      gender:
+        description: 'true:남 false: 여'
+        type: boolean
+      name:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+      profile_image:
+        $ref: '#/definitions/core.ImageResponse'
+      sns_type:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /auto-login:
+    post:
+      consumes:
+      - application/json
+      description: 최초 로그인 이후 앱 실행시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.AutoLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 JWT 토큰 반환
+          schema:
+            $ref: '#/definitions/core.SuccessResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      security:
+      - jwt: []
+      summary: 자동로그인
+      tags:
+      - 로그인 /user
+  /get-user:
+    post:
+      consumes:
+      - application/json
+      description: 내 정보 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 유저 객체 반환
+          schema:
+            $ref: '#/definitions/core.UserResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 유저 조회
+      tags:
+      - 회원조회(본인)  /user
+  /get-version:
+    get:
+      consumes:
+      - application/json
+      description: 최신버전 조회시 호출
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 최신 버전 정보
+          schema:
+            $ref: '#/definitions/core.AppVersionResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 최신버전 조회
+      tags:
+      - 공통 /user
+  /remove-profile:
+    post:
+      consumes:
+      - application/json
+      description: 기본이미지로 변경시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      security:
+      - jwt: []
+      summary: 프로필 사진 삭제
+      tags:
+      - 회원상태 변경(본인)  /user
+  /remvoe-user:
+    post:
+      consumes:
+      - application/json
+      description: 회원탈퇴시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원탈퇴
+      tags:
+      - 회원탈퇴 /user
+  /set-user:
+    post:
+      consumes:
+      - application/json
+      description: 유저 상태영구변경시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO - 업데이트 할 데이터
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.UserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 유저 데이터 변경
+      tags:
+      - 회원상태 변경(본인)  /user
+  /sns-login:
+    post:
+      consumes:
+      - application/json
+      description: sns 로그인 성공시 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 JWT 토큰 반환
+          schema:
+            $ref: '#/definitions/core.SuccessResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: '요청 처리 실패시 오류 메시지 반환: 오류메시지 "-1" = 인증필요 , "-2" = 이미 가입한 번호'
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: sns 로그인
+      tags:
+      - 로그인 /user
+swagger: "2.0"

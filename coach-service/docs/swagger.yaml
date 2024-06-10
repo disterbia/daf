@@ -78,6 +78,8 @@ definitions:
       exercise_id:
         description: 운동아이디
         type: integer
+      locomotion:
+        type: integer
       machine_ids:
         description: 기구아이디
         items:
@@ -88,6 +90,8 @@ definitions:
         items:
           type: integer
         type: array
+      tr_rom:
+        type: integer
     type: object
   core.RecommendResponse:
     properties:
@@ -105,6 +109,8 @@ definitions:
         $ref: '#/definitions/core.CategoryRequest'
       exercise:
         $ref: '#/definitions/core.ExerciseResponse'
+      locomotion:
+        type: integer
       machines:
         items:
           $ref: '#/definitions/core.MachineDto'
@@ -113,6 +119,8 @@ definitions:
         items:
           $ref: '#/definitions/core.PurposeDto'
         type: array
+      tr_rom:
+        type: integer
     type: object
   core.SuccessResponse:
     properties:
@@ -438,6 +446,43 @@ paths:
           schema:
             $ref: '#/definitions/core.ErrorResponse'
       summary: 추천 운동 생성/수정
+      tags:
+      - 코치 /coach
+  /search-recommends:
+    get:
+      description: 검색시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 페이지 번호 default 0 30개씩
+        in: query
+        name: page
+        type: integer
+      - description: 검색명
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 운동 리스트
+          schema:
+            items:
+              $ref: '#/definitions/core.RecommendResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 추천 운동 검색
       tags:
       - 코치 /coach
 swagger: "2.0"

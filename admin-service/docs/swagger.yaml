@@ -1,0 +1,160 @@
+definitions:
+  core.BasicResponse:
+    properties:
+      code:
+        type: string
+    type: object
+  core.ErrorResponse:
+    properties:
+      err:
+        type: string
+    type: object
+  core.SignInRequest:
+    properties:
+      agency_id:
+        type: integer
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  core.SuccessResponse:
+    properties:
+      jwt:
+        type: string
+    type: object
+  core.VerifyRequest:
+    properties:
+      code:
+        example: 인증번호 6자리
+        type: string
+      email:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 관리자 로그인시 호출
+      parameters:
+      - description: email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 JWT 토큰 반환
+          schema:
+            $ref: '#/definitions/core.SuccessResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      security:
+      - jwt: []
+      summary: 관리자 로그인
+      tags:
+      - 관리자 로그인 /admin
+  /send-code/{email}:
+    post:
+      consumes:
+      - application/json
+      description: 인증번호 발송시 호출
+      parameters:
+      - description: 이메일
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 인증번호 발송
+      tags:
+      - 인증번호 /admin
+  /sign-in:
+    post:
+      consumes:
+      - application/json
+      description: 회원 가입시 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원가입
+      tags:
+      - 관리자 회원가입 /admin
+  /verify-code:
+    post:
+      consumes:
+      - application/json
+      description: 인증번호 입력 후 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.VerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 번호 인증
+      tags:
+      - 인증번호 /admin
+swagger: "2.0"

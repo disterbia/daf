@@ -49,6 +49,8 @@ type RecommendRequest struct {
 	Asymmetric          bool                            `json:"asymmetric"`  // 비대칭 여부
 	BodyType            uint                            `json:"body_type"`
 	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
+	TrRom               uint                            `json:"tr_rom"`
+	Locomotion          uint                            `json:"locomotion"`
 }
 
 type RecommendResponse struct {
@@ -57,6 +59,8 @@ type RecommendResponse struct {
 	Machines            []MachineDto     `json:"machines"`
 	Purposes            []PurposeDto     `json:"purposes"`
 	Asymmetric          bool             `json:"asymmetric"`
+	TrRom               uint             `json:"tr_rom"`
+	Locomotion          uint             `json:"locomotion"`
 	BodyRomClinicDegree map[uint]map[uint]map[uint]uint
 }
 

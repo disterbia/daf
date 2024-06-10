@@ -6,10 +6,13 @@ import (
 	"daf-service/model"
 	"errors"
 	"fmt"
+	"log"
+	"math/rand"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -204,7 +207,7 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 		clinic   uint
 		degree   uint
 	}
-	var ulav, urav, llav, lrav, tr SearchData
+	var ulav, urav, llav, lrav, tr, loco SearchData
 	for _, userJointAction := range userJointActions {
 
 		// BodyCompositionId를 키로 사용하는 그룹에 데이터 추가
@@ -248,18 +251,26 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 			lrav = SearchData{bodyType: uint(LBODY), rom: romAver, clinic: clinicAver, degree: degreeAver}
 		case uint(TR):
 			tr = SearchData{bodyType: uint(TBODY), rom: romAver, clinic: clinicAver, degree: degreeAver}
+		case uint(LOCO):
+			loco = SearchData{bodyType: uint(LOCOBODY), rom: romAver, clinic: clinicAver, degree: degreeAver}
 		}
+
 		fmt.Printf("BodyCompositionId: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %d\n", bodyCompId, romAver, degreeAver, clinicAver)
 	}
 
+	// var recommends []model.Recommended
+
 	var recommends []model.Recommended
+	var result RecomendResponse
 	err := service.db.Where(`
-	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR 
+	(body_type_id = ? AND rom_id <= ?) OR
+	(body_type_id = ? AND rom_id <= ?) OR
 	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
 	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
 	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
 	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?)`,
-		tr.bodyType, tr.clinic, tr.rom, tr.degree,
+		tr.bodyType, tr.rom,
+		loco.bodyType, loco.rom,
 		ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
 		urav.bodyType, urav.clinic, urav.rom, urav.degree,
 		llav.bodyType, llav.clinic, llav.rom, llav.degree,
@@ -267,6 +278,83 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 		Find(&recommends).Error
 	if err != nil {
 		return nil, errors.New("db error")
+	}
+
+	sqlQuery := getQuery(1)
+	log.Println("최초 쿼리실행")
+	if err := service.db.Raw(sqlQuery,
+		tr.bodyType, tr.rom,
+		ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
+		urav.bodyType, urav.clinic, urav.rom, urav.degree,
+		llav.bodyType, llav.clinic, llav.rom, llav.degree,
+		lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
+		Scan(&recommends).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
+	if len(recommends) > DafCount {
+		log.Println("추천운동이 많음")
+		sqlQuery := getQuery(2)
+		log.Println("부위별로 rom이 이하가 아닌 rom이 같은 운동 조회")
+		if err := service.db.Raw(sqlQuery,
+			tr.bodyType, tr.rom,
+			ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
+			urav.bodyType, urav.clinic, urav.rom, urav.degree,
+			llav.bodyType, llav.clinic, llav.rom, llav.degree,
+			lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
+			Scan(&recommends).Error; err != nil {
+			return nil, errors.New("db error")
+		}
+
+		if len(recommends) > DafCount {
+			log.Println("rom을 정확히해도 추천운동이 많음")
+			sqlQuery = getQuery(3)
+			log.Println("부위별로 rom도 같고 degree도 같은운동 조회")
+			if err := service.db.Raw(sqlQuery,
+				tr.bodyType, tr.rom,
+				ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
+				urav.bodyType, urav.clinic, urav.rom, urav.degree,
+				llav.bodyType, llav.clinic, llav.rom, llav.degree,
+				lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
+				Scan(&recommends).Error; err != nil {
+				return nil, errors.New("db error")
+			}
+		} else if len(recommends) == 0 {
+			log.Println("rom을 정확히하니 추천운동이 없음")
+
+		} else {
+			log.Println("rom을 정확히하니 개수가 작음")
+
+		}
+
+		if len(recommends) > DafCount {
+			log.Println("rom과 degree를 정확히해도 추천운동이 많음")
+			// 랜덤 생성기 생성
+			source := rand.NewSource(time.Now().UnixNano())
+			rng := rand.New(source)
+
+			// 슬라이스를 랜덤하게 섞기
+			rng.Shuffle(len(recommends), func(i, j int) {
+				recommends[i], recommends[j] = recommends[j], recommends[i]
+			})
+
+			// 슬라이스의 처음 5개 요소를 가져오기
+			recommends = recommends[:5]
+			for _, v := range recommends {
+				temp := ExerciseResponse{ID: v.ExerciseID, Name: v.Exercise.Name, Category: CategoryResponse{ID: v.Exercise.CategoryId, Name: v.Exercise.Category.Name}}
+				result.First = append(result.First, temp)
+			}
+
+		} else if len(recommends) == 0 {
+			log.Println("rom과 degree를 정확히하니 추천운동이 없음")
+		} else {
+			log.Println("rom과 degree를 정확히하니 추천운동이 작음")
+		}
+
+	} else if len(recommends) == 0 {
+		log.Println("처음부터 추천운동이 없음")
+	} else {
+		log.Println("추천운동이 작음")
 	}
 
 	// Initial ROM values
@@ -296,53 +384,6 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 		if allConditionsMet {
 			break
 		}
-	}
-
-	// Final SQL query to get the recommended exercises with adjusted ROM values
-	sqlQuery := `
-SELECT *
-FROM recommendeds r
-WHERE 
-	EXISTS (
-		SELECT 1
-		FROM recommendeds
-		WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?
-		  AND r.exercise_id = exercise_id
-	) AND
-	EXISTS (
-		SELECT 1
-		FROM recommendeds
-		WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?
-		  AND r.exercise_id = exercise_id
-	) AND
-	EXISTS (
-		SELECT 1
-		FROM recommendeds
-		WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?
-		  AND r.exercise_id = exercise_id
-	) AND
-	EXISTS (
-		SELECT 1
-		FROM recommendeds
-		WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?
-		  AND r.exercise_id = exercise_id
-	) AND
-	EXISTS (
-		SELECT 1
-		FROM recommendeds
-		WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?
-		  AND r.exercise_id = exercise_id
-	)
-`
-
-	if err := service.db.Raw(sqlQuery,
-		tr.bodyType, tr.clinic, roms[0], tr.degree,
-		ulav.bodyType, ulav.clinic, roms[1], ulav.degree,
-		urav.bodyType, urav.clinic, roms[2], urav.degree,
-		llav.bodyType, llav.clinic, roms[3], llav.degree,
-		lrav.bodyType, lrav.clinic, roms[4], lrav.degree).
-		Scan(&recommends).Error; err != nil {
-		return nil, errors.New("db error")
 	}
 
 	// 운동들의 등장 횟수를 세기 위한 맵

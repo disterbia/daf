@@ -210,35 +210,44 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		return "", errors.New("db error")
 	}
 	var recommends []model.Recommended
-	recommend := model.Recommended{ExerciseID: request.ExerciseID, Asymmetric: request.Asymmetric}
+	recommend := model.Recommended{ExerciseID: request.ExerciseID, Asymmetric: request.Asymmetric, BodyFilter: request.BodyType, BodyTypeID: uint(TBODY), RomID: request.TrRom}
+	recommends = append(recommends, recommend)
+	recommend2 := model.Recommended{ExerciseID: request.ExerciseID, Asymmetric: request.Asymmetric, BodyFilter: request.BodyType, BodyTypeID: uint(LOCOBODY), RomID: request.Locomotion}
+	recommends = append(recommends, recommend2)
 	for bodyType, romClinicDegree := range request.BodyRomClinicDegree {
-		recommend.BodyTypeID = bodyType
-		for rom, clinicDegree := range romClinicDegree {
-			for clinic, degree := range clinicDegree {
-				recommend.RomID = rom
-				recommend.ClinicalFeatureID = clinic
-				recommend.DegreeID = degree
-				recommend.BodyFilter = request.BodyType
-				recommends = append(recommends, recommend)
+		if bodyType == uint(UBODY) || bodyType == uint(LBODY) {
+			recommend.BodyTypeID = bodyType
+			for rom, clinicDegree := range romClinicDegree {
+				for clinic, degree := range clinicDegree {
+					recommend.RomID = rom
+					recommend.ClinicalFeatureID = &clinic
+					recommend.DegreeID = &degree
+					recommend.BodyFilter = request.BodyType
+					recommends = append(recommends, recommend)
+				}
 			}
 		}
 	}
+
 	if err := tx.Create(recommends).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error1")
 	}
 	var extras []model.Recommended
-	extra := model.Recommended{ExerciseID: request.ExerciseID, Asymmetric: request.Asymmetric, RomID: 1, DegreeID: 1, BodyFilter: 0}
+	degreePointer := uint(1)
+	extra := model.Recommended{ExerciseID: request.ExerciseID, Asymmetric: request.Asymmetric, RomID: 1, DegreeID: &degreePointer, BodyFilter: 0}
 	if request.BodyType == uint(UBODY) {
 		for _, v := range CLINIC {
 			extra.BodyTypeID = uint(LBODY)
-			extra.ClinicalFeatureID = uint(v)
+			clinicPointer := uint(v)
+			extra.ClinicalFeatureID = &clinicPointer
 			extras = append(extras, extra)
 		}
 	} else if request.BodyType == uint(LBODY) {
 		for _, v := range CLINIC {
 			extra.BodyTypeID = uint(UBODY)
-			extra.ClinicalFeatureID = uint(v)
+			clinicPointer := uint(v)
+			extra.ClinicalFeatureID = &clinicPointer
 			extras = append(extras, extra)
 		}
 	}
@@ -303,13 +312,22 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 		for _, rec := range recommends {
 			response.Category = CategoryRequest{ID: rec.Exercise.CategoryID, Name: rec.Exercise.Category.Name}
 			response.Exercise = ExerciseResponse{ID: rec.Exercise.ID, Name: rec.Exercise.Name, BodyType: rec.BodyTypeID}
+			if rec.BodyTypeID == uint(TBODY) {
+				response.TrRom = rec.RomID
+				continue
+			}
+			if rec.BodyTypeID == uint(LOCOBODY) {
+				response.Locomotion = rec.RomID
+				continue
+			}
 			if response.BodyRomClinicDegree[rec.BodyTypeID] == nil {
 				response.BodyRomClinicDegree[rec.BodyTypeID] = make(map[uint]map[uint]uint)
 			}
 			if response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] == nil {
 				response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] = make(map[uint]uint)
 			}
-			response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID][rec.ClinicalFeatureID] = rec.DegreeID
+			response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID][*rec.ClinicalFeatureID] = *rec.DegreeID
+
 		}
 	}
 
@@ -395,13 +413,22 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 				BodyRomClinicDegree: make(map[uint]map[uint]map[uint]uint),
 			}
 		}
+		if recommend.BodyTypeID == uint(TBODY) {
+			exerciseIDToRecommend[recommend.ExerciseID].TrRom = recommend.RomID
+			continue
+		}
+		if recommend.BodyTypeID == uint(LOCOBODY) {
+			exerciseIDToRecommend[recommend.ExerciseID].Locomotion = recommend.RomID
+			continue
+		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] == nil {
 			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[uint]map[uint]uint)
 		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
 			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[uint]uint)
 		}
-		exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][recommend.ClinicalFeatureID] = recommend.DegreeID
+		exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][*recommend.ClinicalFeatureID] = *recommend.DegreeID
+
 	}
 
 	for _, machine := range exerciseMachines {
@@ -509,13 +536,23 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 			exerciseIDToRecommend[recommend.ExerciseID] = response
 			sortedResponses = append(sortedResponses, response)
 		}
+
+		if recommend.BodyTypeID == uint(TBODY) {
+			exerciseIDToRecommend[recommend.ExerciseID].TrRom = recommend.RomID
+			continue
+		}
+		if recommend.BodyTypeID == uint(LOCOBODY) {
+			exerciseIDToRecommend[recommend.ExerciseID].Locomotion = recommend.RomID
+			continue
+		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] == nil {
 			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[uint]map[uint]uint)
 		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
 			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[uint]uint)
 		}
-		exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][recommend.ClinicalFeatureID] = recommend.DegreeID
+		exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][*recommend.ClinicalFeatureID] = *recommend.DegreeID
+
 	}
 
 	for _, machine := range exerciseMachines {

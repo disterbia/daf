@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )
@@ -69,6 +70,16 @@ func IPRateLimitMiddleware() gin.HandlerFunc {
 }
 func main() {
 	router := gin.Default()
+	// CORS 설정 추가
+	config := cors.Config{
+		AllowAllOrigins:  true, // 모든 출처 허용
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}
+	router.Use(cors.New(config))
+
 	router.Use(IPRateLimitMiddleware())
 
 	//서비스로의 리버스 프록시 설정

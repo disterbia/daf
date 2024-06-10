@@ -12,8 +12,8 @@ type Recommended struct {
 	Rom               Rom `gorm:"foreignKey:RomID"`
 	RomID             uint
 	ClinicalFeature   ClinicalFeature `gorm:"foreignKey:ClinicalFeatureID"`
-	ClinicalFeatureID uint
+	ClinicalFeatureID *uint
 	Degree            Degree `gorm:"foreignKey:DegreeID"`
-	DegreeID          uint
+	DegreeID          *uint
 	Asymmetric        bool
 }

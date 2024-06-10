@@ -53,6 +53,10 @@ type UserJointActionResponse struct {
 	TR string
 }
 
+type RecomendResponse struct {
+	First  []ExerciseResponse
+	Second []ExerciseResponse
+}
 type ExerciseResponse struct {
 	ID       uint
 	Name     string

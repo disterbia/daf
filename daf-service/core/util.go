@@ -73,3 +73,120 @@ func validateRequest(request UserJointActionRequest) error {
 
 	return nil
 }
+
+func getQuery(level uint) string {
+	switch level {
+	case 1:
+		return `
+		SELECT *
+		FROM recommendeds r
+		WHERE asymmetric = false AND 
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND rom_id <= ? AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			)
+		`
+	case 2:
+		return `
+		SELECT *
+		FROM recommendeds r
+		WHERE asymmetric = false AND 
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND rom_id = ? AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id >= ?
+				  AND r.exercise_id = exercise_id
+			)
+		`
+	case 3:
+		return `
+		SELECT *
+		FROM recommendeds r
+		WHERE asymmetric = false AND 
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND rom_id <= ? AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id = ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id = ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id = ?
+				  AND r.exercise_id = exercise_id
+			) AND
+			EXISTS (
+				SELECT 1
+				FROM recommendeds
+				WHERE body_type_id = ? AND clinical_feature_id = ? AND rom_id = ? AND degree_id = ?
+				  AND r.exercise_id = exercise_id
+			)
+		`
+	}
+
+	return `asymmetric = false AND 
+	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR 
+	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?)` //전체데이터
+}

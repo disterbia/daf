@@ -8,13 +8,17 @@ const (
 	LL
 	LR
 	TR
+	LOCO
 )
 
 const (
 	TBODY level = iota + 1
 	UBODY
 	LBODY
+	LOCOBODY
 )
+
+const DafCount = 5
 
 // const (
 // 	ULS level = iota + 1

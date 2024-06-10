@@ -499,6 +499,62 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/search-recommends": {
+            "get": {
+                "description": "검색시 호출",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "코치 /coach"
+                ],
+                "summary": "추천 운동 검색",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "페이지 번호 default 0 30개씩",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "검색명",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "운동 리스트",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.RecommendResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -623,6 +679,9 @@ const docTemplate = `{
                     "description": "운동아이디",
                     "type": "integer"
                 },
+                "locomotion": {
+                    "type": "integer"
+                },
                 "machine_ids": {
                     "description": "기구아이디",
                     "type": "array",
@@ -636,6 +695,9 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                },
+                "tr_rom": {
+                    "type": "integer"
                 }
             }
         },
@@ -663,6 +725,9 @@ const docTemplate = `{
                 "exercise": {
                     "$ref": "#/definitions/core.ExerciseResponse"
                 },
+                "locomotion": {
+                    "type": "integer"
+                },
                 "machines": {
                     "type": "array",
                     "items": {
@@ -674,6 +739,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/core.PurposeDto"
                     }
+                },
+                "tr_rom": {
+                    "type": "integer"
                 }
             }
         },
