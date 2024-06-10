@@ -114,7 +114,7 @@ func main() {
 	setupSwaggerUIProxy(router, "/admin-service/swagger/*proxyPath", "http://admin:44400/swagger/")
 	setupSwaggerUIProxy(router, "/coach-service/swagger/*proxyPath", "http://coach:44401/swagger/")
 	setupSwaggerUIProxy(router, "/daf-service/swagger/*proxyPath", "http://daf:44402/swagger/")
-	setupSwaggerUIProxy(router, "/user-service/swagger/*proxyPath", "http://localhost:44403/swagger/")
+	setupSwaggerUIProxy(router, "/user-service/swagger/*proxyPath", "http://user:44403/swagger/")
 
 	// API 게이트웨이 서버 시작
 	router.Run(":40000")
