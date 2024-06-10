@@ -32,9 +32,9 @@ RUN apt-get update && apt-get install -y tzdata ca-certificates && update-ca-cer
 WORKDIR /daf
 
 # 빌더 스테이지에서 생성된 실행 파일 복사
-COPY --from=builder /admin/user-service .
+COPY --from=builder /daf/admin-service .
 # .env 파일 복사 추가
-COPY --from=builder /admin/.env .
+COPY --from=builder /daf/.env .
 
 # 애플리케이션 실행
 CMD ["./admin-service"]
