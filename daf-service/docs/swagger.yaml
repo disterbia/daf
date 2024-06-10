@@ -1,0 +1,208 @@
+definitions:
+  core.BasicResponse:
+    properties:
+      code:
+        type: string
+    type: object
+  core.CategoryResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.ErrorResponse:
+    properties:
+      err:
+        type: string
+    type: object
+  core.ExerciseResponse:
+    properties:
+      category:
+        $ref: '#/definitions/core.CategoryResponse'
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.UserJointActionRequest:
+    properties:
+      lla:
+        type: string
+      llh:
+        type: string
+      llk:
+        type: string
+      llt:
+        type: string
+      lra:
+        type: string
+      lrh:
+        type: string
+      lrk:
+        type: string
+      lrt:
+        type: string
+      tr:
+        type: string
+      ule:
+        type: string
+      ulf:
+        type: string
+      uls:
+        type: string
+      ulw:
+        type: string
+      ure:
+        type: string
+      urf:
+        type: string
+      urs:
+        type: string
+      urw:
+        type: string
+    type: object
+  core.UserJointActionResponse:
+    properties:
+      lla:
+        type: string
+      llav:
+        type: string
+      llh:
+        type: string
+      llk:
+        type: string
+      llt:
+        type: string
+      lra:
+        type: string
+      lrav:
+        type: string
+      lrh:
+        type: string
+      lrk:
+        type: string
+      lrt:
+        type: string
+      tr:
+        type: string
+      ulav:
+        type: string
+      ule:
+        type: string
+      ulf:
+        type: string
+      uls:
+        type: string
+      ulw:
+        type: string
+      urav:
+        type: string
+      ure:
+        type: string
+      urf:
+        type: string
+      urs:
+        type: string
+      urw:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /get-recommend:
+    get:
+      consumes:
+      - application/json
+      description: 회원별 추천운동 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 추천운동
+          schema:
+            items:
+              $ref: '#/definitions/core.ExerciseResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원별 운동추천
+      tags:
+      - 회원별 운동추천  /daf
+  /get-user-daf:
+    get:
+      consumes:
+      - application/json
+      description: 회원 신체능력 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 신체능력 정보
+          schema:
+            $ref: '#/definitions/core.UserJointActionResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 신체능력 조회
+      tags:
+      - 회원 신체능력 조회  /daf
+  /set-user-daf:
+    post:
+      consumes:
+      - application/json
+      description: 회원 신체능력 설정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO - 업데이트 할 데이터
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.UserJointActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 신체능력 설정
+      tags:
+      - 회원 신체능력 설정  /daf
+swagger: "2.0"

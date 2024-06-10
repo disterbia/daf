@@ -2,6 +2,7 @@ package main
 
 import (
 	"admin-service/core"
+	_ "admin-service/docs"
 	"admin-service/model"
 	"log"
 	"net/http"

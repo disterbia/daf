@@ -2,6 +2,7 @@ package main
 
 import (
 	"daf-service/core"
+	_ "daf-service/docs"
 	"daf-service/model"
 	"fmt"
 	"log"
