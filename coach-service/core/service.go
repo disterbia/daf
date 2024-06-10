@@ -241,24 +241,27 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 
 	for bodyType, romClinicDegree := range request.BodyRomClinicDegree {
 		if bodyType == uint(UBODY) || bodyType == uint(LBODY) {
-			for rom, clinicDegree := range romClinicDegree {
-				var checkClinic = make(map[uint]bool)
-				for clinic, degree := range clinicDegree {
-					if _, exists := checkClinic[clinic]; exists {
-						continue // 중복된 clinic인 경우 처리하지 않음
+			if request.BodyType == bodyType {
+				for rom, clinicDegree := range romClinicDegree {
+					var checkClinic = make(map[uint]bool)
+					for clinic, degree := range clinicDegree {
+						if _, exists := checkClinic[clinic]; exists {
+							continue // 중복된 clinic인 경우 처리하지 않음
+						}
+						recommends = append(recommends, model.Recommended{
+							ExerciseID:        request.ExerciseID,
+							Asymmetric:        request.Asymmetric,
+							BodyFilter:        request.BodyType,
+							BodyTypeID:        bodyType,
+							RomID:             rom,
+							ClinicalFeatureID: uintPointer(clinic),
+							DegreeID:          uintPointer(degree),
+						})
+						checkClinic[clinic] = true
 					}
-					recommends = append(recommends, model.Recommended{
-						ExerciseID:        request.ExerciseID,
-						Asymmetric:        request.Asymmetric,
-						BodyFilter:        request.BodyType,
-						BodyTypeID:        bodyType,
-						RomID:             rom,
-						ClinicalFeatureID: uintPointer(clinic),
-						DegreeID:          uintPointer(degree),
-					})
-					checkClinic[clinic] = true
 				}
 			}
+
 		}
 	}
 	if err := tx.Create(recommends).Error; err != nil {
