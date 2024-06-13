@@ -6,7 +6,5 @@ import (
 
 type BodyType struct {
 	gorm.Model
-	Name             string
-	BodyCompositions []BodyComposition `gorm:"foreignKey:BodyTypeID"`
-	Recommendeds     []Recommended     `gorm:"foreignKey:BodyTypeID"`
+	Name string
 }

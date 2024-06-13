@@ -4,13 +4,6 @@ definitions:
       code:
         type: string
     type: object
-  core.CategoryResponse:
-    properties:
-      id:
-        type: integer
-      name:
-        type: string
-    type: object
   core.ErrorResponse:
     properties:
       err:
@@ -18,12 +11,21 @@ definitions:
     type: object
   core.ExerciseResponse:
     properties:
-      category:
-        $ref: '#/definitions/core.CategoryResponse'
       id:
         type: integer
       name:
         type: string
+    type: object
+  core.RecomendResponse:
+    properties:
+      first:
+        items:
+          $ref: '#/definitions/core.ExerciseResponse'
+        type: array
+      second:
+        items:
+          $ref: '#/definitions/core.ExerciseResponse'
+        type: array
     type: object
   core.UserJointActionRequest:
     properties:
@@ -127,9 +129,9 @@ paths:
         "200":
           description: 추천운동
           schema:
-            items:
-              $ref: '#/definitions/core.ExerciseResponse'
-            type: array
+            additionalProperties:
+              $ref: '#/definitions/core.RecomendResponse'
+            type: object
         "400":
           description: 요청 처리 실패시 오류 메시지 반환
           schema:

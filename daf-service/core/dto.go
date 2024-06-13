@@ -58,9 +58,8 @@ type RecomendResponse struct {
 	Second []ExerciseResponse
 }
 type ExerciseResponse struct {
-	ID       uint
-	Name     string
-	Category CategoryResponse
+	ID   uint
+	Name string
 }
 
 type CategoryResponse struct {

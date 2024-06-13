@@ -42,9 +42,9 @@ const docTemplate = `{
                     "200": {
                         "description": "추천운동",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/core.ExerciseResponse"
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/core.RecomendResponse"
                             }
                         }
                     },
@@ -170,17 +170,6 @@ const docTemplate = `{
                 }
             }
         },
-        "core.CategoryResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "core.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -192,14 +181,28 @@ const docTemplate = `{
         "core.ExerciseResponse": {
             "type": "object",
             "properties": {
-                "category": {
-                    "$ref": "#/definitions/core.CategoryResponse"
-                },
                 "id": {
                     "type": "integer"
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "core.RecomendResponse": {
+            "type": "object",
+            "properties": {
+                "first": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.ExerciseResponse"
+                    }
+                },
+                "second": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.ExerciseResponse"
+                    }
                 }
             }
         },

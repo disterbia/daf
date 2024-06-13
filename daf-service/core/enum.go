@@ -1,13 +1,13 @@
 package core
 
-type level int
+type level uint
 
 const (
-	UL level = iota + 1
+	TR level = iota + 1
+	UL
 	UR
 	LL
 	LR
-	TR
 	LOCO
 )
 
@@ -18,7 +18,7 @@ const (
 	LOCOBODY
 )
 
-const DafCount = 5
+const RECOMMENDCOUNT = 3
 
 // const (
 // 	ULS level = iota + 1

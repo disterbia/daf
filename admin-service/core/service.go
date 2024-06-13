@@ -37,7 +37,9 @@ func NewAdminService(db *gorm.DB, conn *grpc.ClientConn) AdminService {
 
 func (service *adminService) login(request LoginRequest) (string, error) {
 	var u model.Admin
-	if request.Password == "" {
+	password := strings.TrimSpace(request.Password)
+
+	if password == "" {
 		return "", errors.New("empty")
 	}
 
@@ -116,6 +118,12 @@ func (service *adminService) verifyAuthCode(verify VerifyRequest) (string, error
 }
 
 func (service *adminService) signIn(request SignInRequest) (string, error) {
+	// 비밀번호 공백 제거
+	password := strings.TrimSpace(request.Password)
+
+	if password == "" {
+		return "", errors.New("empty")
+	}
 
 	result := service.db.Where("email=?", request.Email).Find(&model.VerifiedEmail{})
 	if result.Error != nil {

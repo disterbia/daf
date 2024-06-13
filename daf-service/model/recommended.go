@@ -4,16 +4,16 @@ import "gorm.io/gorm"
 
 type Recommended struct {
 	gorm.Model
-	Exercise          Exercise `gorm:"foreignKey:ExerciseID"`
-	ExerciseID        uint
-	BodyFilter        uint
-	BodyType          BodyType `gorm:"foreignKey:BodyTypeID"`
-	BodyTypeID        uint
-	Rom               Rom `gorm:"foreignKey:RomID"`
-	RomID             uint
-	ClinicalFeature   ClinicalFeature `gorm:"foreignKey:ClinicalFeatureID"`
+	Exercise   Exercise `gorm:"foreignKey:ExerciseID"`
+	ExerciseID uint
+	BodyFilter uint
+
+	BodyTypeID uint
+
+	RomID uint
+
 	ClinicalFeatureID uint
-	Degree            Degree `gorm:"foreignKey:DegreeID"`
-	DegreeID          uint
-	Asymmetric        bool
+
+	DegreeID   uint
+	Asymmetric bool
 }

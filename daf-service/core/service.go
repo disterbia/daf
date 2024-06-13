@@ -7,12 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -20,7 +18,7 @@ import (
 type DafService interface {
 	setUser(userRequest UserJointActionRequest) (string, error)
 	getUser(id uint) (UserJointActionResponse, error)
-	getRecommend(id uint) ([]ExerciseResponse, error)
+	getRecommend(id uint) (map[uint]RecomendResponse, error)
 }
 
 type dafService struct {
@@ -186,8 +184,9 @@ func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
 	return responseValue.Interface().(UserJointActionResponse), nil
 }
 
-func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
+func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, error) {
 
+	//유저 부위별 코드 가져오기
 	var userJointActions []model.UserJointAction
 	if err := service.db.Where("uid = ?", id).Preload("JointAction").Preload("ClinicalFeature").Find(&userJointActions).Error; err != nil {
 		return nil, errors.New("db error")
@@ -259,60 +258,99 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 	}
 
 	// var recommends []model.Recommended
-
+	log.Println(tr)
 	var recommends []model.Recommended
-	var result RecomendResponse
 	err := service.db.Where(`
-	(body_type_id = ? AND rom_id <= ?) OR
-	(body_type_id = ? AND rom_id <= ?) OR
-	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
-	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
-	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?) OR
-	(body_type_id = ? AND clinical_feature_id = ? AND rom_id <= ? AND degree_id <= ?)`,
-		tr.bodyType, tr.rom,
-		loco.bodyType, loco.rom,
-		ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
-		urav.bodyType, urav.clinic, urav.rom, urav.degree,
-		llav.bodyType, llav.clinic, llav.rom, llav.degree,
-		lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
+	(body_type_id = ? ) OR
+	(body_type_id = ? ) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ?) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ?) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ?) OR
+	(body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ?)`,
+		tr.bodyType,
+		loco.bodyType,
+		ulav.bodyType, ulav.clinic, ulav.degree,
+		urav.bodyType, urav.clinic, urav.degree,
+		llav.bodyType, llav.clinic, llav.degree,
+		lrav.bodyType, lrav.clinic, lrav.degree).
 		Find(&recommends).Error
 	if err != nil {
 		return nil, errors.New("db error")
 	}
 
-	var recommendsTR, recommendsLoco, recommendsUlav, recommendsUrav, recommendsLlav, recommendsLrav []model.Recommended
+	var recommendsTr, recommendsLoco, recommendsUl, recommendsUr, recommendsLl, recommendsLr []model.Recommended
 
+	var originMap = make(map[uint][]model.Recommended)
+	var recommendMap = make(map[uint][]model.Recommended)
+	var searchMap = make(map[uint]SearchData)
 	for _, rec := range recommends {
 		switch {
-		case rec.BodyTypeID == tr.bodyType && rec.RomID <= tr.rom:
-			recommendsTR = append(recommendsTR, rec)
-		case rec.BodyTypeID == loco.bodyType && rec.RomID <= loco.rom:
-			recommendsLoco = append(recommendsLoco, rec)
-		case rec.BodyTypeID == ulav.bodyType && rec.ClinicalFeatureID == ulav.clinic && rec.RomID <= ulav.rom && rec.DegreeID <= ulav.degree:
-			recommendsUlav = append(recommendsUlav, rec)
-		case rec.BodyTypeID == urav.bodyType && rec.ClinicalFeatureID == urav.clinic && rec.RomID <= urav.rom && rec.DegreeID <= urav.degree:
-			recommendsUrav = append(recommendsUrav, rec)
-		case rec.BodyTypeID == llav.bodyType && rec.ClinicalFeatureID == llav.clinic && rec.RomID <= llav.rom && rec.DegreeID <= llav.degree:
-			recommendsLlav = append(recommendsLlav, rec)
-		case rec.BodyTypeID == lrav.bodyType && rec.ClinicalFeatureID == lrav.clinic && rec.RomID <= lrav.rom && rec.DegreeID <= lrav.degree:
-			recommendsLrav = append(recommendsLrav, rec)
+		case rec.BodyTypeID == tr.bodyType:
+			originMap[uint(TR)] = append(originMap[uint(TR)], rec)
+			if rec.RomID <= tr.rom {
+				recommendsTr = append(recommendsTr, rec)
+				recommendMap[uint(TR)] = recommendsTr
+			}
+
+		case rec.BodyTypeID == loco.bodyType:
+			originMap[uint(LOCO)] = append(originMap[uint(LOCO)], rec)
+			if rec.RomID <= loco.rom {
+				recommendsLoco = append(recommendsLoco, rec)
+				recommendMap[uint(LOCO)] = recommendsLoco
+			}
+
+		case rec.BodyTypeID == ulav.bodyType:
+			originMap[uint(UL)] = append(originMap[uint(UL)], rec)
+			if rec.ClinicalFeatureID == ulav.clinic && rec.RomID <= ulav.rom && rec.DegreeID <= ulav.degree {
+				recommendsUl = append(recommendsUl, rec)
+				recommendMap[uint(UL)] = recommendsUl
+				searchMap[uint(UL)] = SearchData{bodyType: ulav.bodyType, rom: ulav.rom, clinic: ulav.clinic, degree: ulav.degree}
+			}
+
+		case rec.BodyTypeID == urav.bodyType:
+			originMap[uint(UR)] = append(originMap[uint(UR)], rec)
+			if rec.ClinicalFeatureID == urav.clinic && rec.RomID <= urav.rom && rec.DegreeID <= urav.degree {
+				recommendsUr = append(recommendsUr, rec)
+				recommendMap[uint(UR)] = recommendsUr
+				searchMap[uint(UR)] = SearchData{bodyType: urav.bodyType, rom: urav.rom, clinic: urav.clinic, degree: urav.degree}
+			}
+
+		case rec.BodyTypeID == llav.bodyType:
+			originMap[uint(LL)] = append(originMap[uint(LL)], rec)
+			if rec.ClinicalFeatureID == llav.clinic && rec.RomID <= llav.rom && rec.DegreeID <= llav.degree {
+				recommendsLl = append(recommendsLl, rec)
+				recommendMap[uint(LL)] = recommendsLl
+				searchMap[uint(LL)] = SearchData{bodyType: llav.bodyType, rom: llav.rom, clinic: llav.clinic, degree: llav.degree}
+			}
+
+		case rec.BodyTypeID == lrav.bodyType:
+			originMap[uint(LR)] = append(originMap[uint(LR)], rec)
+			if rec.ClinicalFeatureID == lrav.clinic && rec.RomID <= lrav.rom && rec.DegreeID <= lrav.degree {
+				recommendsLr = append(recommendsLr, rec)
+				recommendMap[uint(LR)] = recommendsLr
+				searchMap[uint(LR)] = SearchData{bodyType: lrav.bodyType, rom: lrav.rom, clinic: lrav.clinic, degree: lrav.degree}
+			}
+		}
+	}
+
+	for key, value := range recommendMap {
+		if len(value) == 0 {
+			if len(originMap[key]) == 0 {
+				log.Println("최종적으로 할수있는 운동 없음.")
+				return nil, nil
+			}
+			log.Println("적합한 운동이 없어서 ", key, "번 bodycomposition rom 조건 포함안함.")
+			recommendMap[key] = append(recommendMap[key], originMap[key]...)
 		}
 	}
 
 	exerciseIDMap := make(map[uint]int)
 
-	countExerciseID := func(recommends []model.Recommended) {
-		for _, rec := range recommends {
-			exerciseIDMap[rec.ExerciseID]++
+	for _, value := range recommendMap {
+		for _, v := range value {
+			exerciseIDMap[v.ExerciseID]++
 		}
 	}
-
-	countExerciseID(recommendsTR)
-	countExerciseID(recommendsLoco)
-	countExerciseID(recommendsUlav)
-	countExerciseID(recommendsUrav)
-	countExerciseID(recommendsLlav)
-	countExerciseID(recommendsLrav)
 
 	var commonExerciseIDs []uint
 	for id, count := range exerciseIDMap {
@@ -321,165 +359,74 @@ func (service *dafService) getRecommend(id uint) ([]ExerciseResponse, error) {
 		}
 	}
 
-	sqlQuery := getQuery(1)
-	log.Println("최초 쿼리실행")
-	if err := service.db.Raw(sqlQuery,
-		tr.bodyType, tr.rom,
-		ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
-		urav.bodyType, urav.clinic, urav.rom, urav.degree,
-		llav.bodyType, llav.clinic, llav.rom, llav.degree,
-		lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
-		Scan(&recommends).Error; err != nil {
-		return nil, errors.New("db error")
-	}
+	tempCategories := []int{1, 2, 3} // daily 운동 카테고리 선별 정책 필요. 그에따른 테이블 생성 필요
 
-	if len(recommends) > DafCount {
-		log.Println("추천운동이 많음")
-		sqlQuery := getQuery(2)
-		log.Println("부위별로 rom이 이하가 아닌 rom이 같은 운동 조회")
-		if err := service.db.Raw(sqlQuery,
-			tr.bodyType, tr.rom,
-			ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
-			urav.bodyType, urav.clinic, urav.rom, urav.degree,
-			llav.bodyType, llav.clinic, llav.rom, llav.degree,
-			lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
-			Scan(&recommends).Error; err != nil {
-			return nil, errors.New("db error")
+	result := make(map[uint]RecomendResponse)
+	if len(commonExerciseIDs) == 0 {
+		log.Println("교집합이 없어서 최종적으로 할수있는 운동 없음")
+		return nil, nil
+	} else if len(commonExerciseIDs) <= RECOMMENDCOUNT {
+		log.Println("운동 추천완료")
+		var exercises []model.Exercise
+		if err := service.db.Where("id IN ? ", commonExerciseIDs).Find(&exercises).Error; err != nil {
+			return nil, errors.New("db error2")
 		}
 
-		if len(recommends) > DafCount {
-			log.Println("rom을 정확히해도 추천운동이 많음")
-			sqlQuery = getQuery(3)
-			log.Println("부위별로 rom도 같고 degree도 같은운동 조회")
-			if err := service.db.Raw(sqlQuery,
-				tr.bodyType, tr.rom,
-				ulav.bodyType, ulav.clinic, ulav.rom, ulav.degree,
-				urav.bodyType, urav.clinic, urav.rom, urav.degree,
-				llav.bodyType, llav.clinic, llav.rom, llav.degree,
-				lrav.bodyType, lrav.clinic, lrav.rom, lrav.degree).
-				Scan(&recommends).Error; err != nil {
-				return nil, errors.New("db error")
-			}
-		} else if len(recommends) == 0 {
-			log.Println("rom을 정확히하니 추천운동이 없음")
-
-		} else {
-			log.Println("rom을 정확히하니 개수가 작음")
-
-		}
-
-		if len(recommends) > DafCount {
-			log.Println("rom과 degree를 정확히해도 추천운동이 많음")
-			// 랜덤 생성기 생성
-			source := rand.NewSource(time.Now().UnixNano())
-			rng := rand.New(source)
-
-			// 슬라이스를 랜덤하게 섞기
-			rng.Shuffle(len(recommends), func(i, j int) {
-				recommends[i], recommends[j] = recommends[j], recommends[i]
-			})
-
-			// 슬라이스의 처음 5개 요소를 가져오기
-			recommends = recommends[:5]
-			for _, v := range recommends {
-				temp := ExerciseResponse{ID: v.ExerciseID, Name: v.Exercise.Name, Category: CategoryResponse{ID: v.Exercise.CategoryId, Name: v.Exercise.Category.Name}}
-				result.First = append(result.First, temp)
-			}
-
-		} else if len(recommends) == 0 {
-			log.Println("rom과 degree를 정확히하니 추천운동이 없음")
-		} else {
-			log.Println("rom과 degree를 정확히하니 추천운동이 작음")
-		}
-
-	} else if len(recommends) == 0 {
-		log.Println("처음부터 추천운동이 없음")
-	} else {
-		log.Println("추천운동이 작음")
-	}
-
-	// Initial ROM values
-	roms := []uint{tr.rom, ulav.rom, urav.rom, llav.rom, lrav.rom}
-	conditions := []SearchData{tr, ulav, urav, llav, lrav}
-
-	// Function to check if a specific condition is met
-	checkCondition := func(recommends []model.Recommended, bodyTypeID, clinicalFeatureID, romID, degreeID uint) bool {
-		for _, r := range recommends {
-			if r.BodyTypeID == bodyTypeID && r.ClinicalFeatureID == clinicalFeatureID && r.RomID <= romID && r.DegreeID <= degreeID {
-				return true
-			}
-		}
-		return false
-	}
-
-	// Loop until all conditions are met
-	for {
-		allConditionsMet := true
-		for i, cond := range conditions {
-			if !checkCondition(recommends, cond.bodyType, cond.clinic, roms[i], cond.degree) {
-				roms[i]++
-				allConditionsMet = false
-			}
-		}
-
-		if allConditionsMet {
-			break
-		}
-	}
-
-	// 운동들의 등장 횟수를 세기 위한 맵
-	exerciseFrequency := make(map[uint]map[uint]int) // categoryID -> exerciseID -> count
-	for _, recommend := range recommends {
-		categoryID := recommend.Exercise.CategoryId
-		exerciseID := recommend.Exercise.ID
-
-		if _, exists := exerciseFrequency[categoryID]; !exists {
-			exerciseFrequency[categoryID] = make(map[uint]int)
-		}
-		exerciseFrequency[categoryID][exerciseID]++
-	}
-
-	type ExerciseRank struct {
-		ID       uint
-		Name     string
-		Category CategoryResponse
-		Count    int
-	}
-
-	var rankedExercises []ExerciseRank
-	for categoryID, exercises := range exerciseFrequency {
-		for exerciseID, count := range exercises {
-			for _, recommend := range recommends {
-				if recommend.Exercise.ID == exerciseID {
-					rankedExercises = append(rankedExercises, ExerciseRank{
-						ID:       exerciseID,
-						Name:     recommend.Exercise.Name,
-						Category: CategoryResponse{ID: categoryID, Name: recommend.Exercise.Category.Name},
-						Count:    count,
-					})
+		for _, id := range tempCategories {
+			for _, exercise := range exercises {
+				if exercise.CategoryId == uint(id) {
+					ex := ExerciseResponse{ID: exercise.ID, Name: exercise.Name}
+					r := result[uint(id)]
+					r.First = append(r.First, ex)
+					result[uint(id)] = r
 				}
 			}
 		}
+
+	} else {
+		log.Println("교집합이 많음")
+		var exercises []model.Exercise
+		var histories []model.History
+		if err := service.db.Where("id IN ? ", commonExerciseIDs).Find(&exercises).Error; err != nil {
+			return nil, errors.New("db error2")
+		}
+		if err := service.db.Where("exercise_id IN ? ", commonExerciseIDs).Find(&histories).Error; err != nil {
+			return nil, errors.New("db error3")
+		}
+		exerciseCount := make(map[uint]int)
+		for _, history := range histories {
+			exerciseCount[history.ExerciseId]++
+		}
+
+		for _, id := range tempCategories {
+			for _, exercise := range exercises {
+				if exercise.CategoryId == uint(id) {
+					log.Println("데일리 카테고리에 해당하는지 분류")
+					ex := ExerciseResponse{ID: exercise.ID, Name: exercise.Name}
+					r := result[uint(id)]
+					r.First = append(r.First, ex)
+					result[uint(id)] = r
+				}
+			}
+		}
+
+		//history 반영
+		for key, value := range result {
+			if len(value.First) > RECOMMENDCOUNT {
+				log.Println("history 반영")
+				sort.Slice(value.First, func(i, j int) bool {
+					countI := exerciseCount[value.First[i].ID]
+					countJ := exerciseCount[value.First[j].ID]
+					return countI > countJ
+				})
+				value.First = value.First[:RECOMMENDCOUNT]
+				value.Second = value.First[RECOMMENDCOUNT:]
+
+				result[key] = value
+			}
+		}
+
 	}
 
-	// 등장 횟수 기준으로 정렬
-	sort.Slice(rankedExercises, func(i, j int) bool {
-		return rankedExercises[i].Count > rankedExercises[j].Count
-	})
-
-	// 상위 3개의 운동만 선택
-	if len(rankedExercises) > 3 {
-		rankedExercises = rankedExercises[:3]
-	}
-
-	var response []ExerciseResponse
-	for _, rank := range rankedExercises {
-		response = append(response, ExerciseResponse{
-			ID:       rank.ID,
-			Name:     rank.Name,
-			Category: rank.Category,
-		})
-	}
-
-	return response, nil
+	return result, nil
 }

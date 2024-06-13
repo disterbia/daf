@@ -83,7 +83,7 @@ func GetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
-// @Success 200 {object} []ExerciseResponse "추천운동"
+// @Success 200 {object} map[uint]RecomendResponse "카테고리아이디:추천운동"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /get-recommend [get]
@@ -102,7 +102,7 @@ func GetRecommendHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
-		resp := response.([]ExerciseResponse)
+		resp := response.(map[uint]RecomendResponse)
 		c.JSON(http.StatusOK, resp)
 	}
 }

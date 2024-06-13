@@ -97,7 +97,7 @@ func main() {
 		coachProxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-	dafServiceURL, _ := url.Parse("http://daf:44402")
+	dafServiceURL, _ := url.Parse("http://localhost:44402")
 	dafProxy := httputil.NewSingleHostReverseProxy(dafServiceURL)
 	router.Any("/daf/*path", func(c *gin.Context) {
 		c.Request.URL.Path = c.Param("path")

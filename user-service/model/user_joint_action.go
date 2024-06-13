@@ -6,15 +6,15 @@ import (
 
 type UserJointAction struct {
 	gorm.Model
-	Name              string
-	User              User `gorm:"foreignKey:Uid"`
-	Uid               uint
-	JointActions      JointAction `gorm:"foreignKey:JointActionId"`
-	JointActionId     JointAction
-	Rom               Rom `gorm:"foreignKey:RomId"`
-	RomId             uint
-	ClinicalFeature   ClinicalFeature `gorm:"foreignKey:ClinicalFeatureId"`
+	Name          string
+	User          User `gorm:"foreignKey:Uid"`
+	Uid           uint
+	JointActions  JointAction `gorm:"foreignKey:JointActionId"`
+	JointActionId JointAction
+
+	RomId uint
+
 	ClinicalFeatureId uint
-	Degree            Degree `gorm:"foreignKey:DegreeId"`
-	DegreeId          uint
+
+	DegreeId uint
 }
