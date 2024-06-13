@@ -23,6 +23,7 @@ type AdminService interface {
 	login(request LoginRequest) (string, error)
 	verifyAuthCode(verify VerifyRequest) (string, error)
 	signIn(request SignInRequest) (string, error)
+	resetPassword(request LoginRequest) (string, error)
 }
 
 type adminService struct {
@@ -69,14 +70,14 @@ func (service *adminService) sendAuthCode(email string) (string, error) {
 		return "", err
 	}
 
-	result := service.db.Where("email=?", email).Find(&model.Admin{})
-	if result.Error != nil {
-		return "", errors.New("db error")
+	// result := service.db.Where("email=?", email).Find(&model.Admin{})
+	// if result.Error != nil {
+	// 	return "", errors.New("db error")
 
-	} else if result.RowsAffected > 0 {
-		// 레코드가 존재할 때
-		return "", errors.New("-1")
-	}
+	// } else if result.RowsAffected > 0 {
+	// 	// 레코드가 존재할 때
+	// 	return "", errors.New("-1")
+	// }
 
 	var sb strings.Builder
 	for i := 0; i < 6; i++ {
@@ -84,6 +85,11 @@ func (service *adminService) sendAuthCode(email string) (string, error) {
 	}
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Recovered from panic in goroutine:", r)
+			}
+		}()
 		response, err := service.emailClient.SendEmail(context.Background(), &pb.EmailRequest{
 			Email: email, // 받는 사람의 이메일
 			Code:  sb.String(),
@@ -91,7 +97,7 @@ func (service *adminService) sendAuthCode(email string) (string, error) {
 		if err != nil {
 			log.Println(err)
 		}
-		if response.Status == "Success" {
+		if response != nil && response.Status == "Success" {
 			if err := service.db.Create(&model.AuthCode{Email: email, Code: sb.String()}).Error; err != nil {
 				log.Println(err)
 			}
@@ -110,10 +116,19 @@ func (service *adminService) verifyAuthCode(verify VerifyRequest) (string, error
 	if authCode.Code != verify.Code {
 		return "", errors.New("-1")
 	}
-	if err := service.db.Create(&model.VerifiedEmail{Email: authCode.Email}).Error; err != nil {
+
+	tx := service.db.Begin()
+	if err := tx.Where("email = ?", authCode.Email).Unscoped().Delete(&authCode).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error3")
+	}
+
+	if err := tx.Create(&model.VerifiedEmail{Email: authCode.Email}).Error; err != nil {
+		tx.Rollback()
 		return "", errors.New("db error2")
 	}
 
+	tx.Commit()
 	return "200", nil
 }
 
@@ -125,7 +140,8 @@ func (service *adminService) signIn(request SignInRequest) (string, error) {
 		return "", errors.New("empty")
 	}
 
-	result := service.db.Where("email=?", request.Email).Find(&model.VerifiedEmail{})
+	var verify model.VerifiedEmail
+	result := service.db.Where("email=?", request.Email).Find(&verify)
 	if result.Error != nil {
 		return "", errors.New("db error")
 
@@ -144,9 +160,61 @@ func (service *adminService) signIn(request SignInRequest) (string, error) {
 		return "", err
 	}
 
-	admin.Password = string(hashedPassword)
-	if err := service.db.Create(&admin).Error; err != nil {
-		return "", errors.New("db error")
+	tx := service.db.Begin()
+
+	if err := tx.Where("email = ?", request.Email).Unscoped().Delete(&verify).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error2")
 	}
+
+	admin.Password = string(hashedPassword)
+	if err := tx.Create(&admin).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error3")
+	}
+	tx.Commit()
+	return "200", nil
+}
+
+func (service *adminService) resetPassword(request LoginRequest) (string, error) {
+	// 비밀번호 공백 제거
+	password := strings.TrimSpace(request.Password)
+
+	if password == "" {
+		return "", errors.New("empty")
+	}
+
+	var verify model.VerifiedEmail
+	result := service.db.Where("email=?", request.Email).Find(&verify)
+	if result.Error != nil {
+		return "", errors.New("db error")
+
+	} else if result.RowsAffected == 0 {
+		// 인증안함
+		return "", errors.New("-1")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	var admin = model.Admin{}
+
+	if err := copyStruct(request, &admin); err != nil {
+		return "", err
+	}
+
+	tx := service.db.Begin()
+
+	if err := tx.Where("email = ?", request.Email).Unscoped().Delete(&verify).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error2")
+	}
+
+	if err := tx.Model(&admin).Where("email = ?", request.Email).Update("password", string(hashedPassword)).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error3")
+	}
+	tx.Commit()
 	return "200", nil
 }

@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// gRPC 클라이언트 연결 생성
-	conn, err := grpc.Dial("email:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to email service: %v", err)
 	}
@@ -84,6 +84,7 @@ func main() {
 	sendCodeEndpoint := core.SendCodeEndpoint(svc)
 	verifyEndpoint := core.VerifyEndpoint(svc)
 	signInEndpoint := core.SignInEndpoint(svc)
+	resetEndpoint := core.ResetPasswordEndpoint(svc)
 
 	router := gin.Default()
 
@@ -93,6 +94,7 @@ func main() {
 	router.POST("/send-code/:email", rateLimiterMiddleware, core.SendCodeHandler(sendCodeEndpoint))
 	router.POST("/verify-code", core.VerifyHandler(verifyEndpoint))
 	router.POST("/sign-in", core.SignInHandler(signInEndpoint))
+	router.POST("/reset-password", core.ResetPasswordHandler(resetEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

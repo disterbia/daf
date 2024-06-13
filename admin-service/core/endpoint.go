@@ -49,3 +49,14 @@ func SignInEndpoint(s AdminService) endpoint.Endpoint {
 		return BasicResponse{Code: code}, nil
 	}
 }
+
+func ResetPasswordEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		info := request.(LoginRequest)
+		code, err := s.resetPassword(info)
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}

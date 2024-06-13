@@ -18,7 +18,7 @@ import (
 type DafService interface {
 	setUser(userRequest UserJointActionRequest) (string, error)
 	getUser(id uint) (UserJointActionResponse, error)
-	getRecommend(id uint) (map[uint]RecomendResponse, error)
+	getRecommends(id uint) (map[uint]RecomendResponse, error)
 }
 
 type dafService struct {
@@ -184,7 +184,7 @@ func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
 	return responseValue.Interface().(UserJointActionResponse), nil
 }
 
-func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, error) {
+func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, error) {
 
 	//유저 부위별 코드 가져오기
 	var userJointActions []model.UserJointAction
@@ -213,7 +213,7 @@ func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, err
 		bodyCompId := userJointAction.JointAction.BodyCompositionId
 		data := groupData[bodyCompId]
 		data.romList += userJointAction.RomId
-		data.clinicList = append(data.clinicList, userJointAction.ClinicalFeature.ID)
+		data.clinicList = append(data.clinicList, userJointAction.ClinicalFeatureId)
 		data.degreeList += userJointAction.DegreeId
 		data.count++
 		groupData[bodyCompId] = data
@@ -258,7 +258,6 @@ func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, err
 	}
 
 	// var recommends []model.Recommended
-	log.Println(tr)
 	var recommends []model.Recommended
 	err := service.db.Where(`
 	(body_type_id = ? ) OR
@@ -359,7 +358,16 @@ func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, err
 		}
 	}
 
-	tempCategories := []int{1, 2, 3} // daily 운동 카테고리 선별 정책 필요. 그에따른 테이블 생성 필요
+	//daily 카테고리 선별 정책 필요함!!
+	var categoris []model.Category
+	if err := service.db.Find(&categoris).Error; err != nil {
+		return nil, errors.New("db error4")
+	}
+
+	categoryIds := []uint{}
+	for _, c := range categoris {
+		categoryIds = append(categoryIds, c.ID)
+	}
 
 	result := make(map[uint]RecomendResponse)
 	if len(commonExerciseIDs) == 0 {
@@ -372,7 +380,7 @@ func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, err
 			return nil, errors.New("db error2")
 		}
 
-		for _, id := range tempCategories {
+		for _, id := range categoryIds {
 			for _, exercise := range exercises {
 				if exercise.CategoryId == uint(id) {
 					ex := ExerciseResponse{ID: exercise.ID, Name: exercise.Name}
@@ -398,7 +406,7 @@ func (service *dafService) getRecommend(id uint) (map[uint]RecomendResponse, err
 			exerciseCount[history.ExerciseId]++
 		}
 
-		for _, id := range tempCategories {
+		for _, id := range categoryIds {
 			for _, exercise := range exercises {
 				if exercise.CategoryId == uint(id) {
 					log.Println("데일리 카테고리에 해당하는지 분류")

@@ -105,7 +105,7 @@ func VerifyHandler(verifyEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /sign-in [post]
-func SignInHandler(verifyEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+func SignInHandler(siginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		var req SignInRequest
@@ -115,7 +115,38 @@ func SignInHandler(verifyEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
-		response, err := verifyEndpoint(c.Request.Context(), req)
+		response, err := siginEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 관리자 비밀번호 재설정 /admin
+// @Summary 비밀번호 재설정
+// @Description 비밀번호 재설정시 호출
+// @Accept  json
+// @Produce  json
+// @Param request body LoginRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /reset-password [post]
+func ResetPasswordHandler(resetEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		var req LoginRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := resetEndpoint(c.Request.Context(), req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

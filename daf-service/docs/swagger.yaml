@@ -127,7 +127,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 추천운동
+          description: 카테고리아이디:추천운동
           schema:
             additionalProperties:
               $ref: '#/definitions/core.RecomendResponse'
@@ -142,7 +142,7 @@ paths:
             $ref: '#/definitions/core.ErrorResponse'
       summary: 회원별 운동추천
       tags:
-      - 회원별 운동추천  /daf
+      - 회원별 운동 /daf
   /get-user-daf:
     get:
       consumes:
@@ -171,7 +171,7 @@ paths:
             $ref: '#/definitions/core.ErrorResponse'
       summary: 회원 신체능력 조회
       tags:
-      - 회원 신체능력 조회  /daf
+      - 회원 신체능력 /daf
   /set-user-daf:
     post:
       consumes:
@@ -206,5 +206,5 @@ paths:
             $ref: '#/definitions/core.ErrorResponse'
       summary: 회원 신체능력 설정
       tags:
-      - 회원 신체능력 설정  /daf
+      - 회원 신체능력 /daf
 swagger: "2.0"

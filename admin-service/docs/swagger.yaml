@@ -9,6 +9,13 @@ definitions:
       err:
         type: string
     type: object
+  core.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
   core.SignInRequest:
     properties:
       agency_id:
@@ -68,6 +75,36 @@ paths:
       summary: 관리자 로그인
       tags:
       - 관리자 로그인 /admin
+  /reset-password:
+    post:
+      consumes:
+      - application/json
+      description: 비밀번호 재설정시 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 비밀번호 재설정
+      tags:
+      - 관리자 비밀번호 재설정 /admin
   /send-code/{email}:
     post:
       consumes:

@@ -28,10 +28,10 @@ func GetUserEndpoint(s DafService) endpoint.Endpoint {
 	}
 }
 
-func GetRecommendEndpoint(s DafService) endpoint.Endpoint {
+func GetRecommendsEndpoint(s DafService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		id := request.(uint)
-		res, err := s.getRecommend(id)
+		res, err := s.getRecommends(id)
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}

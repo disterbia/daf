@@ -7,7 +7,7 @@ import (
 	kitEndpoint "github.com/go-kit/kit/endpoint"
 )
 
-// @Tags 회원 신체능력 설정  /daf
+// @Tags 회원 신체능력 /daf
 // @Summary 회원 신체능력 설정
 // @Description 회원 신체능력 설정시 호출
 // @Accept  json
@@ -47,7 +47,7 @@ func SetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	}
 }
 
-// @Tags 회원 신체능력 조회  /daf
+// @Tags 회원 신체능력 /daf
 // @Summary 회원 신체능력 조회
 // @Description 회원 신체능력 조회시 호출
 // @Accept  json
@@ -77,7 +77,7 @@ func GetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	}
 }
 
-// @Tags 회원별 운동추천  /daf
+// @Tags 회원별 운동 /daf
 // @Summary 회원별 운동추천
 // @Description 회원별 추천운동 조회시 호출
 // @Accept  json
@@ -87,7 +87,7 @@ func GetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /get-recommend [get]
-func GetRecommendHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+func GetRecommendsHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 토큰 검증 및 처리
 		id, _, err := verifyJWT(c)

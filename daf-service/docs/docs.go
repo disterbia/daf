@@ -26,7 +26,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원별 운동추천  /daf"
+                    "회원별 운동 /daf"
                 ],
                 "summary": "회원별 운동추천",
                 "parameters": [
@@ -40,7 +40,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "추천운동",
+                        "description": "카테고리아이디:추천운동",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -73,7 +73,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원 신체능력 조회  /daf"
+                    "회원 신체능력 /daf"
                 ],
                 "summary": "회원 신체능력 조회",
                 "parameters": [
@@ -117,7 +117,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원 신체능력 설정  /daf"
+                    "회원 신체능력 /daf"
                 ],
                 "summary": "회원 신체능력 설정",
                 "parameters": [
