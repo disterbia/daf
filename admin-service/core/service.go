@@ -135,6 +135,9 @@ func (service *adminService) verifyAuthCode(verify VerifyRequest) (string, error
 }
 
 func (service *adminService) signIn(request SignInRequest) (string, error) {
+	if err := validateSignIn(request); err != nil {
+		return "", err
+	}
 	// 비밀번호 공백 제거
 	password := strings.TrimSpace(request.Password)
 

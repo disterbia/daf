@@ -87,6 +87,20 @@ func validateEmail(email string) error {
 	return nil
 }
 
+func validateSignIn(request SignInRequest) error {
+	pattern := `^010\d{8}$`
+	matched, err := regexp.MatchString(pattern, request.Phone)
+	if err != nil || !matched {
+		return errors.New("invalid phone format, should be 01000000000")
+	}
+
+	name := strings.TrimSpace(request.Name)
+	if len(name) > 10 || len(name) == 0 {
+		return errors.New("invalid name")
+	}
+	return nil
+}
+
 func validateSaveUser(request SaveUserRequest) error {
 	pattern := `^010\d{8}$`
 	matched, err := regexp.MatchString(pattern, request.Phone)
