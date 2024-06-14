@@ -2,11 +2,14 @@ package core
 
 import (
 	"net/http"
+	"sync"
 
 	kitEndpoint "github.com/go-kit/kit/endpoint"
 
 	"github.com/gin-gonic/gin"
 )
+
+var userLocks sync.Map
 
 // @Tags 로그인 /user
 // @Summary sns 로그인

@@ -116,6 +116,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/save-user": {
+            "post": {
+                "description": "회원등록시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원등록 /admin"
+                ],
+                "summary": "회원등록",
+                "parameters": [
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SaveUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/send-code/{email}": {
             "post": {
                 "description": "인증번호 발송시 호출",
@@ -281,6 +327,67 @@ const docTemplate = `{
                 }
             }
         },
+        "core.SaveUserRequest": {
+            "type": "object",
+            "properties": {
+                "addr": {
+                    "type": "string"
+                },
+                "addr_detail": {
+                    "type": "string"
+                },
+                "admin_id": {
+                    "type": "integer"
+                },
+                "agency_id": {
+                    "type": "integer"
+                },
+                "birthday": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "disable_detail_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "disable_type_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "gender": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "memo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "regist_day": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "use_status_id": {
+                    "type": "integer"
+                },
+                "visit_purpose_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "core.SignInRequest": {
             "type": "object",
             "properties": {
@@ -290,8 +397,25 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "english_name": {
+                    "type": "string"
+                },
+                "fax": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
                 "password": {
                     "type": "string"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "01000000000"
+                },
+                "tel": {
+                    "type": "string",
+                    "example": "0510000000"
                 }
             }
         },

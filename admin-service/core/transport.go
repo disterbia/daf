@@ -2,11 +2,14 @@ package core
 
 import (
 	"net/http"
+	"sync"
 
 	kitEndpoint "github.com/go-kit/kit/endpoint"
 
 	"github.com/gin-gonic/gin"
 )
+
+var userLocks sync.Map
 
 // @Tags 관리자 로그인 /admin
 // @Summary 관리자 로그인
@@ -147,6 +150,42 @@ func ResetPasswordHandler(resetEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		}
 
 		response, err := resetEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원등록 /admin
+// @Summary 회원등록
+// @Description 회원등록시 호출
+// @Accept  json
+// @Produce  json
+// @Param request body SaveUserRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /save-user [post]
+func SaveUserHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		var req SaveUserRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		req.Uid = id
+		response, err := saveEndpoint(c.Request.Context(), req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

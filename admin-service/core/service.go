@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"time"
 
 	"admin-service/model"
 	pb "admin-service/proto"
@@ -24,6 +25,7 @@ type AdminService interface {
 	verifyAuthCode(verify VerifyRequest) (string, error)
 	signIn(request SignInRequest) (string, error)
 	resetPassword(request LoginRequest) (string, error)
+	saveUser(request SaveUserRequest) (string, error)
 }
 
 type adminService struct {
@@ -214,6 +216,105 @@ func (service *adminService) resetPassword(request LoginRequest) (string, error)
 	if err := tx.Model(&admin).Where("email = ?", request.Email).Update("password", string(hashedPassword)).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error3")
+	}
+	tx.Commit()
+	return "200", nil
+}
+
+func (service *adminService) saveUser(request SaveUserRequest) (string, error) {
+	if err := validateSaveUser(request); err != nil {
+		return "", err
+	}
+	if len(request.VisitPurposeIDs) == 0 {
+		return "", errors.New("visit err")
+	}
+	if len(request.DisableTypeIDs) == 0 {
+		return "", errors.New("disable err")
+	}
+	if checkDuplicates(request.DisableTypeIDs) {
+		return "", errors.New("duplicate Id")
+	}
+	if checkDuplicates(request.VisitPurposeIDs) {
+		return "", errors.New("duplicate Id")
+	}
+	if checkDuplicates(request.DisableDetailIDs) {
+		return "", errors.New("duplicate Id")
+	}
+	birthday, err := time.Parse("2006-01-02", request.Birthday)
+	if err != nil {
+		return "", errors.New("date err")
+	}
+	registday, err := time.Parse("2006-01-02", request.RegistDay)
+	if err != nil {
+		return "", errors.New("date err")
+	}
+
+	var vists []model.UserVisit
+	var disables []model.UserDisable
+	var details []model.UserDisableDetail
+	var user model.User
+
+	tx := service.db.Begin()
+
+	// 기존 사용자 로드 또는 새 사용자 생성
+	if err := service.db.Where("id = ?", request.ID).First(&user).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", errors.New("db error")
+		}
+	}
+
+	if err := copyStruct(request, &user); err != nil {
+		return "", err
+	}
+
+	user.CreateAdminID = request.Uid
+	user.Birthday = birthday
+	user.RegistDay = registday
+
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error1")
+	}
+
+	//방문목적 저장
+	for _, v := range request.VisitPurposeIDs {
+		vists = append(vists, model.UserVisit{UID: user.ID, VisitPurposeID: v})
+	}
+	if err := tx.Unscoped().Where("uid = ?", user.ID).Delete(&vists).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error2")
+	}
+	if err := tx.Create(&vists).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error3")
+	}
+
+	//장애유형 저장
+	for _, v := range request.DisableTypeIDs {
+		disables = append(disables, model.UserDisable{UID: user.ID, DisableTypeID: v})
+	}
+	if err := tx.Unscoped().Where("uid = ?", user.ID).Delete(&disables).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error4")
+	}
+	if err := tx.Create(&disables).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error5")
+	}
+
+	//장애유형 기타 저장
+	if contains(request.DisableTypeIDs, uint(ETC)) && len(request.DisableTypeIDs) != 0 {
+		for _, v := range request.DisableDetailIDs {
+			details = append(details, model.UserDisableDetail{UID: user.ID, DisableDetailID: v})
+		}
+		if err := tx.Unscoped().Where("uid = ?", user.ID).Delete(&details).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error6")
+		}
+		if err := tx.Create(&details).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error7")
+		}
 	}
 	tx.Commit()
 	return "200", nil

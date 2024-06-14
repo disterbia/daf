@@ -85,6 +85,7 @@ func main() {
 	verifyEndpoint := core.VerifyEndpoint(svc)
 	signInEndpoint := core.SignInEndpoint(svc)
 	resetEndpoint := core.ResetPasswordEndpoint(svc)
+	saveEndpoint := core.SaveUserEndpoint(svc)
 
 	router := gin.Default()
 
@@ -95,6 +96,7 @@ func main() {
 	router.POST("/verify-code", core.VerifyHandler(verifyEndpoint))
 	router.POST("/sign-in", core.SignInHandler(signInEndpoint))
 	router.POST("/reset-password", core.ResetPasswordHandler(resetEndpoint))
+	router.POST("/save-user", core.SaveUserHandler(saveEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

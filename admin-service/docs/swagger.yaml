@@ -16,13 +16,66 @@ definitions:
       password:
         type: string
     type: object
+  core.SaveUserRequest:
+    properties:
+      addr:
+        type: string
+      addr_detail:
+        type: string
+      admin_id:
+        type: integer
+      agency_id:
+        type: integer
+      birthday:
+        example: yyyy-mm-dd
+        type: string
+      disable_detail_ids:
+        items:
+          type: integer
+        type: array
+      disable_type_ids:
+        items:
+          type: integer
+        type: array
+      gender:
+        type: boolean
+      id:
+        type: integer
+      memo:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      regist_day:
+        example: yyyy-mm-dd
+        type: string
+      use_status_id:
+        type: integer
+      visit_purpose_ids:
+        items:
+          type: integer
+        type: array
+    type: object
   core.SignInRequest:
     properties:
       agency_id:
         type: integer
       email:
         type: string
+      english_name:
+        type: string
+      fax:
+        type: string
+      name:
+        type: string
       password:
+        type: string
+      phone:
+        example: "01000000000"
+        type: string
+      tel:
+        example: "0510000000"
         type: string
     type: object
   core.SuccessResponse:
@@ -105,6 +158,36 @@ paths:
       summary: 비밀번호 재설정
       tags:
       - 관리자 비밀번호 재설정 /admin
+  /save-user:
+    post:
+      consumes:
+      - application/json
+      description: 회원등록시 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SaveUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원등록
+      tags:
+      - 회원등록 /admin
   /send-code/{email}:
     post:
       consumes:

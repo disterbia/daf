@@ -2,10 +2,13 @@ package core
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	kitEndpoint "github.com/go-kit/kit/endpoint"
 )
+
+var userLocks sync.Map
 
 // @Tags 회원 신체능력 /daf
 // @Summary 회원 신체능력 설정
@@ -26,6 +29,13 @@ func SetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
 
 		var req UserJointActionRequest
 

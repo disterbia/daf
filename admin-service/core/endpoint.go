@@ -60,3 +60,14 @@ func ResetPasswordEndpoint(s AdminService) endpoint.Endpoint {
 		return BasicResponse{Code: code}, nil
 	}
 }
+
+func SaveUserEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		saveUser := request.(SaveUserRequest)
+		code, err := s.saveUser(saveUser)
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}

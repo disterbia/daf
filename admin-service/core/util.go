@@ -2,8 +2,8 @@ package core
 
 import (
 	"admin-service/model"
-	"encoding/json"
 	"errors"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -56,19 +56,23 @@ func generateJWT(admin model.Admin) (string, error) {
 	return tokenString, nil
 }
 
-func copyStruct(input interface{}, output interface{}) error {
-	jsonData, err := json.Marshal(input)
-	if err != nil {
-		return err
-	}
+func copyStruct(src, dst interface{}) error {
+	srcVal := reflect.ValueOf(src)
+	dstVal := reflect.ValueOf(dst).Elem()
 
-	err = json.Unmarshal(jsonData, output)
-	if err != nil {
-		return err
+	for i := 0; i < srcVal.NumField(); i++ {
+		srcField := srcVal.Field(i)
+		srcFieldName := srcVal.Type().Field(i).Name
+
+		dstField := dstVal.FieldByName(srcFieldName)
+		if dstField.IsValid() && dstField.Type() == srcField.Type() {
+			dstField.Set(srcField)
+		}
 	}
 
 	return nil
 }
+
 func validateEmail(email string) error {
 	// 빈 문자열 검사
 	if email == "" || len(email) > 50 || strings.Contains(email, " ") {
@@ -81,4 +85,38 @@ func validateEmail(email string) error {
 		return errors.New("invalid email format")
 	}
 	return nil
+}
+
+func validateSaveUser(request SaveUserRequest) error {
+	pattern := `^010\d{8}$`
+	matched, err := regexp.MatchString(pattern, request.Phone)
+	if err != nil || !matched {
+		return errors.New("invalid phone format, should be 01000000000")
+	}
+
+	name := strings.TrimSpace(request.Name)
+	if len(name) > 10 || len(name) == 0 {
+		return errors.New("invalid name")
+	}
+	return nil
+}
+
+func contains[T comparable](slice []T, item T) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
+}
+
+func checkDuplicates(slice []uint) bool {
+	seen := make(map[uint]struct{})
+	for _, item := range slice {
+		if _, exists := seen[item]; exists {
+			return true // Duplicate found
+		}
+		seen[item] = struct{}{}
+	}
+	return false // No duplicates
 }
