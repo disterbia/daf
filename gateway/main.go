@@ -83,7 +83,7 @@ func main() {
 	router.Use(IPRateLimitMiddleware())
 
 	//서비스로의 리버스 프록시 설정
-	adminServiceURL, _ := url.Parse("http://localhost:44400")
+	adminServiceURL, _ := url.Parse("http://admin:44400")
 	adminProxy := httputil.NewSingleHostReverseProxy(adminServiceURL)
 	router.Any("/admin/*path", func(c *gin.Context) {
 		c.Request.URL.Path = c.Param("path")
@@ -97,7 +97,7 @@ func main() {
 		coachProxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-	dafServiceURL, _ := url.Parse("http://localhost:44402")
+	dafServiceURL, _ := url.Parse("http://daf:44402")
 	dafProxy := httputil.NewSingleHostReverseProxy(dafServiceURL)
 	router.Any("/daf/*path", func(c *gin.Context) {
 		c.Request.URL.Path = c.Param("path")
@@ -111,9 +111,9 @@ func main() {
 		userProxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-	setupSwaggerUIProxy(router, "/admin-service/swagger/*proxyPath", "http://localhost:44400/swagger/")
+	setupSwaggerUIProxy(router, "/admin-service/swagger/*proxyPath", "http://admin:44400/swagger/")
 	setupSwaggerUIProxy(router, "/coach-service/swagger/*proxyPath", "http://coach:44401/swagger/")
-	setupSwaggerUIProxy(router, "/daf-service/swagger/*proxyPath", "http://localhost:44402/swagger/")
+	setupSwaggerUIProxy(router, "/daf-service/swagger/*proxyPath", "http://daf:44402/swagger/")
 	setupSwaggerUIProxy(router, "/user-service/swagger/*proxyPath", "http://user:44403/swagger/")
 
 	// API 게이트웨이 서버 시작
