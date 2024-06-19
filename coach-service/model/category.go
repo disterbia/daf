@@ -7,5 +7,5 @@ import (
 type Category struct {
 	gorm.Model
 	Name      string
-	Exercises []Exercise `json:"exercises" gorm:"foreignKey:CategoryID"`
+	Exercises []Exercise `gorm:"foreignKey:CategoryID"`
 }

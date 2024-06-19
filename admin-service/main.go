@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// gRPC 클라이언트 연결 생성
-	conn, err := grpc.Dial("localhost:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("email:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to email service: %v", err)
 	}
@@ -86,7 +86,15 @@ func main() {
 	signInEndpoint := core.SignInEndpoint(svc)
 	resetEndpoint := core.ResetPasswordEndpoint(svc)
 	saveEndpoint := core.SaveUserEndpoint(svc)
-
+	searchEndpoint := core.SearhUsersEndpoint(svc)
+	getAdminsEndpoint := core.GetAdminsEndpoint(svc)
+	getAgencisEndpoint := core.GetAgencisEndpoint(svc)
+	getDisableDetailsEndPoint := core.GetDisableDetailsEndpoint(svc)
+	getAfcsEndPoint := core.GetAfcsEndpoint(svc)
+	createAfcEndpoint := core.CreateAfcEndpoint(svc)
+	updateAfcEndpoint := core.UpdateAfcEndpoint(svc)
+	getAfcHistorisEndpoint := core.GetAfcHistorisEndpoint(svc)
+	updateAfcHistoryEndpoint := core.UpdateAfcHistoryEndpoint(svc)
 	router := gin.Default()
 
 	rateLimiterMiddleware := RateLimitMiddleware()
@@ -97,6 +105,16 @@ func main() {
 	router.POST("/sign-in", core.SignInHandler(signInEndpoint))
 	router.POST("/reset-password", core.ResetPasswordHandler(resetEndpoint))
 	router.POST("/save-user", core.SaveUserHandler(saveEndpoint))
+	router.POST("/search-users", core.SearchUsersHandler(searchEndpoint))
+	router.POST("/create-afc", core.CreateAfcHandler(createAfcEndpoint))
+	router.POST("/update-afc", core.UpdateAfcHandler(updateAfcEndpoint))
+	router.POST("/update-afc-history", core.UpdateAfcHistoryHandler(updateAfcHistoryEndpoint))
+
+	router.GET("/get-admins", core.GetAdminsHandler(getAdminsEndpoint))
+	router.GET("/get-agencis", core.GetAgencisHandler(getAgencisEndpoint))
+	router.GET("/get-details", core.GetDisableDetailsHandler(getDisableDetailsEndPoint))
+	router.GET("/get-afcs", core.GetAfcsHandler(getAfcsEndPoint))
+	router.GET("/get-historis", core.GetAfcHistorisHandler(getAfcHistorisEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

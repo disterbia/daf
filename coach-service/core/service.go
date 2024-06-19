@@ -329,18 +329,9 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, error) {
 	var response RecommendResponse
 
-	tx := service.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			log.Printf("Recovered from panic: %v", r)
-		}
-	}()
-
 	// 추천운동 정보 가져오기
 	var recommends []model.Recommended
-	if err := tx.Where("exercise_id = ? AND body_filter != ? ", exerciseID, 0).Preload("Exercise.Category").Find(&recommends).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id = ? AND body_filter != ? ", exerciseID, 0).Preload("Exercise.Category").Find(&recommends).Error; err != nil {
 		return response, errors.New("db error")
 	}
 	if len(recommends) > 0 {
@@ -370,8 +361,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
-	if err := tx.Where("exercise_id = ?", exerciseID).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
 		return response, errors.New("db error")
 	}
 	response.Machines = make([]MachineDto, len(exerciseMachines))
@@ -381,8 +371,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 
 	// 운동목적 정보 가져오기
 	var exercisePurposes []model.ExercisePurpose
-	if err := tx.Where("exercise_id = ?", exerciseID).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
 		return response, errors.New("db error")
 	}
 	response.Purposes = make([]PurposeDto, len(exercisePurposes))
@@ -390,7 +379,6 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 		response.Purposes[i] = PurposeDto{ID: purpose.PurposeID, Name: purpose.Purpose.Name}
 	}
 
-	tx.Commit()
 	return response, nil
 }
 
@@ -399,18 +387,9 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 	pageSize := 30
 	offset := int(page) * pageSize
 
-	tx := service.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			log.Printf("Recovered from panic: %v", r)
-		}
-	}()
-
 	// 1. 전체 ExerciseID 목록 가져오기
 	var exerciseIDs []uint
-	if err := tx.Model(&model.Recommended{}).Distinct("exercise_id").Offset(offset).Limit(pageSize).Pluck("exercise_id", &exerciseIDs).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Model(&model.Recommended{}).Distinct("exercise_id").Offset(offset).Limit(pageSize).Pluck("exercise_id", &exerciseIDs).Error; err != nil {
 		return responses, errors.New("db error")
 	}
 
@@ -420,22 +399,19 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 
 	// 2. 선택된 ExerciseID에 해당하는 추천 운동 데이터 가져오기
 	var recommends []model.Recommended
-	if err := tx.Where("exercise_id IN (?)", exerciseIDs).Where("body_filter != ?", 0).Order("id DESC").Preload("Exercise.Category").Find(&recommends).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Where("body_filter != ?", 0).Order("id DESC").Preload("Exercise.Category").Find(&recommends).Error; err != nil {
 		return responses, errors.New("db error")
 	}
 
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
-	if err := tx.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
 		return responses, errors.New("db error")
 	}
 
 	// 운동목적 정보 가져오기
 	var exercisePurposes []model.ExercisePurpose
-	if err := tx.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
 		return responses, errors.New("db error")
 	}
 
@@ -496,7 +472,6 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 		responses = append(responses, *response)
 	}
 
-	tx.Commit()
 	return responses, nil
 }
 
@@ -506,25 +481,16 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 	pageSize := 30
 	offset := int(page) * pageSize
 
-	tx := service.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			log.Printf("Recovered from panic: %v", r)
-		}
-	}()
-
 	// 1. 전체 ExerciseID 목록 가져오기
 	var exerciseIDs []uint
 	chosungName := getChosung(name)
 	log.Printf("Chosung name: %s", chosungName)
-	if err := tx.Model(&model.Recommended{}).
+	if err := service.db.Model(&model.Recommended{}).
 		Joins("JOIN exercises ON exercises.id = recommendeds.exercise_id").
 		Where("exercises.name LIKE ?", "%"+name+"%").
 		Distinct("recommendeds.exercise_id").
 		Offset(offset).Limit(pageSize).
 		Pluck("recommendeds.exercise_id", &exerciseIDs).Error; err != nil {
-		tx.Rollback()
 		return responses, errors.New("db error")
 	}
 
@@ -534,27 +500,24 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 
 	// 2. 선택된 ExerciseID에 해당하는 추천 운동 데이터 가져오기
 	var recommends []model.Recommended
-	if err := tx.Where("exercise_id IN (?)", exerciseIDs).
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).
 		Where("body_filter != ?", 0).
 		Joins("JOIN exercises ON exercises.id = recommendeds.exercise_id").
 		Order("CASE WHEN exercises.name LIKE '" + name + "%' THEN 0 ELSE 1 END, exercises.name, recommendeds.id DESC").
 		Preload("Exercise.Category").
 		Find(&recommends).Error; err != nil {
-		tx.Rollback()
 		return responses, errors.New("db error")
 	}
 
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
-	if err := tx.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
 		return responses, errors.New("db error")
 	}
 
 	// 운동목적 정보 가져오기
 	var exercisePurposes []model.ExercisePurpose
-	if err := tx.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-		tx.Rollback()
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
 		return responses, errors.New("db error")
 	}
 
@@ -609,6 +572,5 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 		responses = append(responses, *response)
 	}
 
-	tx.Commit()
 	return responses, nil
 }

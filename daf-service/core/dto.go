@@ -1,6 +1,6 @@
 package core
 
-type UserJointActionRequest struct {
+type UserAfcRequest struct {
 	ID  uint `json:"-"`
 	ULS string
 	ULE string
@@ -22,10 +22,11 @@ type UserJointActionRequest struct {
 	LRA string
 	LRT string
 
-	TR string
+	TR         string
+	LOCOMOTION string
 }
 
-type UserJointActionResponse struct {
+type UserAfcResponse struct {
 	ULS  string
 	ULE  string
 	ULW  string
@@ -50,7 +51,8 @@ type UserJointActionResponse struct {
 	LRT  string
 	LRAV string
 
-	TR string
+	TR         string
+	LOCOMOTION string
 }
 
 type RecomendResponse struct {

@@ -8,7 +8,7 @@ const (
 	UR
 	LL
 	LR
-	LOCO
+	LOCOMOTION
 )
 
 const (

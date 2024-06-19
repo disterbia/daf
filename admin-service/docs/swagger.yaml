@@ -1,4 +1,37 @@
 definitions:
+  core.AfcRequest:
+    properties:
+      body_composition_id:
+        type: integer
+      clinical_feature_id:
+        type: integer
+      degree_id:
+        type: integer
+      joint_action_id:
+        type: integer
+      rom_id:
+        type: integer
+    type: object
+  core.AfcResponse:
+    properties:
+      body_composition_id:
+        type: integer
+      clinical_feature_av:
+        type: string
+      degree_av:
+        type: integer
+      rom_av:
+        type: integer
+      rom_name:
+        type: string
+    type: object
+  core.AgAdResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
   core.BasicResponse:
     properties:
       code:
@@ -9,12 +42,41 @@ definitions:
       err:
         type: string
     type: object
+  core.GetAfcResponse:
+    properties:
+      created:
+        type: string
+      created_admin:
+        type: string
+      userAfcResponse:
+        items:
+          $ref: '#/definitions/core.UserAfcResponse'
+        type: array
+    type: object
   core.LoginRequest:
     properties:
       email:
         type: string
       password:
         type: string
+    type: object
+  core.SaveAfcHistoryRequest:
+    properties:
+      afcs:
+        items:
+          $ref: '#/definitions/core.AfcRequest'
+        type: array
+      group_id:
+        type: integer
+    type: object
+  core.SaveAfcRequest:
+    properties:
+      afcs:
+        items:
+          $ref: '#/definitions/core.AfcRequest'
+        type: array
+      uid:
+        type: integer
     type: object
   core.SaveUserRequest:
     properties:
@@ -38,7 +100,7 @@ definitions:
           type: integer
         type: array
       gender:
-        type: boolean
+        type: integer
       id:
         type: integer
       memo:
@@ -55,6 +117,78 @@ definitions:
       visit_purpose_ids:
         items:
           type: integer
+        type: array
+    type: object
+  core.SearchUserRequest:
+    properties:
+      admin_id:
+        type: integer
+      afcs:
+        items:
+          $ref: '#/definitions/core.AfcRequest'
+        type: array
+      age_code:
+        type: integer
+      ageny_id:
+        type: integer
+      disable_detail_ids:
+        items:
+          type: integer
+        type: array
+      disable_type_ids:
+        items:
+          type: integer
+        type: array
+      gender:
+        type: integer
+      name:
+        type: string
+      page:
+        type: integer
+      regist_day:
+        example: yyyy-mm-dd
+        type: string
+      use_status_id:
+        type: integer
+      visit_purpose_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  core.SearchUserResponse:
+    properties:
+      admin_name:
+        type: string
+      afc:
+        items:
+          $ref: '#/definitions/core.AfcResponse'
+        type: array
+      age_code:
+        type: integer
+      ageny_name:
+        type: string
+      disable_detail_names:
+        items:
+          type: string
+        type: array
+      disable_type_names:
+        items:
+          type: string
+        type: array
+      gender:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      regist_day:
+        example: yyyy-mm-dd
+        type: string
+      use_status_name:
+        type: string
+      visit_purpose_names:
+        items:
+          type: string
         type: array
     type: object
   core.SignInRequest:
@@ -83,6 +217,23 @@ definitions:
       jwt:
         type: string
     type: object
+  core.UserAfcResponse:
+    properties:
+      body_composition_id:
+        type: integer
+      clinical_feature_id:
+        type: integer
+      degree_id:
+        type: integer
+      joint_action_id:
+        type: integer
+      rom_id:
+        type: integer
+      updated:
+        type: string
+      updated_admin:
+        type: string
+    type: object
   core.VerifyRequest:
     properties:
       code:
@@ -94,6 +245,196 @@ definitions:
 info:
   contact: {}
 paths:
+  /create-afc:
+    post:
+      consumes:
+      - application/json
+      description: 회원 Afc 등록시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SaveAfcRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 Afc 등록
+      tags:
+      - 회원 Afc /admin
+  /get-admins:
+    get:
+      consumes:
+      - application/json
+      description: 담당코치 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.AgAdResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 담당코치 조회
+      tags:
+      - 회원검색 /admin
+  /get-afc-historis:
+    get:
+      consumes:
+      - application/json
+      description: 회원 Afc history 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.GetAfcResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 Afc history 조회
+      tags:
+      - 회원 Afc /admin
+  /get-afcs:
+    get:
+      consumes:
+      - application/json
+      description: 현재 Afc조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.GetAfcResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 Afc 조회
+      tags:
+      - 회원 Afc /admin
+  /get-agencis:
+    get:
+      consumes:
+      - application/json
+      description: 등록매장 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.AgAdResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 등록매장 조회
+      tags:
+      - 회원검색 /admin
+  /get-disable-details:
+    get:
+      consumes:
+      - application/json
+      description: 기타 장애유형시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.AgAdResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 기타 장애유형 조회
+      tags:
+      - 회원검색 /admin
   /login:
     post:
       consumes:
@@ -123,8 +464,6 @@ paths:
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
-      security:
-      - jwt: []
       summary: 관리자 로그인
       tags:
       - 관리자 로그인 /admin
@@ -164,6 +503,11 @@ paths:
       - application/json
       description: 회원등록시 호출
       parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 요청 DTO
         in: body
         name: request
@@ -217,6 +561,43 @@ paths:
       summary: 인증번호 발송
       tags:
       - 인증번호 /admin
+  /serach-users:
+    post:
+      consumes:
+      - application/json
+      description: 회원리스트 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: '요청 DTO page default=0, gender 1= 남 2=여 '
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SearchUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.SearchUserResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원리스트 조회
+      tags:
+      - 회원검색 /admin
   /sign-in:
     post:
       consumes:
@@ -247,6 +628,76 @@ paths:
       summary: 회원가입
       tags:
       - 관리자 회원가입 /admin
+  /update-afc:
+    post:
+      consumes:
+      - application/json
+      description: 현재 Afc 수정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SaveAfcRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 Afc 수정
+      tags:
+      - 회원 Afc /admin
+  /update-afc-historis:
+    post:
+      consumes:
+      - application/json
+      description: 회원 Afc history 수정시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SaveAfcHistoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 Afc history 수정
+      tags:
+      - 회원 Afc /admin
   /verify-code:
     post:
       consumes:

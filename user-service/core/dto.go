@@ -27,7 +27,7 @@ type UserResponse struct {
 	CreatedAt    time.Time     `json:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at"`
 	Phone        string        `json:"phone"`
-	Gender       bool          `json:"gender"` // true:남 false: 여
+	Gender       uint          `json:"gender"` // true:남 false: 여
 	SnsType      uint          `json:"sns_type"`
 	ProfileImage ImageResponse `json:"profile_image"`
 }

@@ -16,8 +16,8 @@ import (
 )
 
 type DafService interface {
-	setUser(userRequest UserJointActionRequest) (string, error)
-	getUser(id uint) (UserJointActionResponse, error)
+	setUser(userRequest UserAfcRequest) (string, error)
+	getUser(id uint) (UserAfcResponse, error)
 	getRecommends(id uint) (map[uint]RecomendResponse, error)
 }
 
@@ -29,7 +29,7 @@ func NewDafService(db *gorm.DB) DafService {
 	return &dafService{db: db}
 }
 
-func (service *dafService) setUser(request UserJointActionRequest) (string, error) {
+func (service *dafService) setUser(request UserAfcRequest) (string, error) {
 
 	if err := validateRequest(request); err != nil {
 		return "", err
@@ -45,7 +45,7 @@ func (service *dafService) setUser(request UserJointActionRequest) (string, erro
 		return "", errors.New("db error")
 	}
 
-	actions := []model.UserJointAction{}
+	actions := []model.UserAfc{}
 
 	fields := reflect.TypeOf(request)
 	values := reflect.ValueOf(request)
@@ -62,22 +62,35 @@ func (service *dafService) setUser(request UserJointActionRequest) (string, erro
 		for _, jointAction := range jointActions {
 			if jointAction.Name == field.Name {
 				if data != "" {
-					for _, clinicalFeature := range clinicalFeatures {
-						if clinicalFeature.Code == strings.ToUpper(string(data[1])) {
-							clinicalId = clinicalFeature.ID
+					if field.Name != "TR" && field.Name != "LOCOMOTION" {
+						for _, clinicalFeature := range clinicalFeatures {
+							if clinicalFeature.Code == strings.ToUpper(string(data[1])) {
+								clinicalId = clinicalFeature.ID
+							}
 						}
+						romId := uint(data[0] - '0')
+						degreeId := uint(data[2] - '0')
+						action := model.UserAfc{
+							Uid:               request.ID,
+							JointActionID:     jointAction.ID,
+							RomID:             romId,
+							Name:              jointAction.Name,
+							ClinicalFeatureID: &clinicalId,
+							DegreeID:          &degreeId,
+						}
+						actions = append(actions, action)
+					} else {
+						action := model.UserAfc{
+							Uid:               request.ID,
+							JointActionID:     jointAction.ID,
+							RomID:             uint(data[0] - '0'),
+							Name:              jointAction.Name,
+							ClinicalFeatureID: nil,
+							DegreeID:          nil,
+						}
+						actions = append(actions, action)
 					}
-					romId := uint(data[0] - '0')
-					degreeId := uint(data[2] - '0')
-					action := model.UserJointAction{
-						Uid:               request.ID,
-						JointActionId:     jointAction.ID,
-						RomId:             romId,
-						Name:              jointAction.Name,
-						ClinicalFeatureId: clinicalId,
-						DegreeId:          degreeId,
-					}
-					actions = append(actions, action)
+
 				}
 			}
 		}
@@ -85,7 +98,7 @@ func (service *dafService) setUser(request UserJointActionRequest) (string, erro
 	}
 
 	tx := service.db.Begin()
-	if err := tx.Where("uid = ?", request.ID).Unscoped().Delete(&model.UserJointAction{}).Error; err != nil {
+	if err := tx.Where("uid = ?", request.ID).Unscoped().Delete(&model.UserAfc{}).Error; err != nil {
 		return "", errors.New("db error")
 	}
 
@@ -97,14 +110,14 @@ func (service *dafService) setUser(request UserJointActionRequest) (string, erro
 	return "200", nil
 }
 
-func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
+func (service *dafService) getUser(id uint) (UserAfcResponse, error) {
 
-	var userJointActions []model.UserJointAction
+	var userJointActions []model.UserAfc
 	if err := service.db.Where("uid = ?", id).Preload("JointAction").Preload("ClinicalFeature").Find(&userJointActions).Error; err != nil {
-		return UserJointActionResponse{}, errors.New("db error")
+		return UserAfcResponse{}, errors.New("db error")
 	}
 
-	var userJointActionResponse UserJointActionResponse
+	var userJointActionResponse UserAfcResponse
 	fields := reflect.TypeOf(userJointActionResponse)
 	responseValue := reflect.ValueOf(&userJointActionResponse).Elem()
 
@@ -120,27 +133,38 @@ func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
 		for i := 0; i < fields.NumField(); i++ {
 			field := fields.Field(i)
 			if userJointAction.JointAction.Name == field.Name {
+				if field.Name != "TR" && field.Name != "LOCOMOTION" {
+					romId := userJointAction.RomID
+					clinicalFeture := userJointAction.ClinicalFeature.Code
+					degreeId := userJointAction.DegreeID
+					resultCode := strconv.FormatUint(uint64(romId), 10) + clinicalFeture + strconv.FormatUint(uint64(*degreeId), 10)
 
-				romId := userJointAction.RomId
-				clinicalFeture := userJointAction.ClinicalFeature.Code
-				degreeId := userJointAction.DegreeId
-				resultCode := strconv.FormatUint(uint64(romId), 10) + clinicalFeture + strconv.FormatUint(uint64(degreeId), 10)
-
-				// 필드가 유효한지 확인 후 설정
-				if responseField := responseValue.FieldByName(field.Name); responseField.IsValid() && responseField.CanSet() {
-					responseField.Set(reflect.ValueOf(resultCode))
+					// 필드가 유효한지 확인 후 설정
+					if responseField := responseValue.FieldByName(field.Name); responseField.IsValid() && responseField.CanSet() {
+						responseField.Set(reflect.ValueOf(resultCode))
+					} else {
+						fmt.Printf("Invalid field: %s\n", field.Name) // 디버깅 정보 추가
+					}
 				} else {
-					fmt.Printf("Invalid field: %s\n", field.Name) // 디버깅 정보 추가
+					if responseField := responseValue.FieldByName(field.Name); responseField.IsValid() && responseField.CanSet() {
+						romIdString := strconv.Itoa(int(userJointAction.RomID))
+						responseField.Set(reflect.ValueOf(romIdString))
+					} else {
+						log.Println("Invalid field:", field.Name)
+
+					}
 				}
 
 			}
 		}
-		// BodyCompositionId를 키로 사용하는 그룹에 데이터 추가
-		bodyCompId := userJointAction.JointAction.BodyCompositionId
+		// BodyCompositionID를 키로 사용하는 그룹에 데이터 추가
+		bodyCompId := userJointAction.BodyCompositionID
 		data := groupData[bodyCompId]
-		data.romList += userJointAction.RomId
-		data.clinicList = append(data.clinicList, userJointAction.ClinicalFeature.Code)
-		data.degreeList += userJointAction.DegreeId
+		data.romList += userJointAction.RomID
+		if userJointAction.ClinicalFeatureID != nil && userJointAction.DegreeID != nil {
+			data.clinicList = append(data.clinicList, userJointAction.ClinicalFeature.Code)
+			data.degreeList += *userJointAction.DegreeID
+		}
 		data.count++
 		groupData[bodyCompId] = data
 	}
@@ -176,18 +200,20 @@ func (service *dafService) getUser(id uint) (UserJointActionResponse, error) {
 		case uint(LR):
 			responseValue.FieldByName("LRAV").Set(reflect.ValueOf(resultCode))
 		case uint(TR):
-			responseValue.FieldByName("TR").Set(reflect.ValueOf(resultCode))
+			responseValue.FieldByName("TR").Set(reflect.ValueOf(strconv.Itoa(int(romAver))))
+		case uint(LOCOMOTION):
+			responseValue.FieldByName("LOCOMOTION").Set(reflect.ValueOf(strconv.Itoa(int(romAver))))
 		}
 
-		fmt.Printf("BodyCompositionId: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %s\n", bodyCompId, romAver, degreeAver, clinicAver)
+		fmt.Printf("BodyCompositionID: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %s\n", bodyCompId, romAver, degreeAver, clinicAver)
 	}
-	return responseValue.Interface().(UserJointActionResponse), nil
+	return responseValue.Interface().(UserAfcResponse), nil
 }
 
 func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, error) {
 
 	//유저 부위별 코드 가져오기
-	var userJointActions []model.UserJointAction
+	var userJointActions []model.UserAfc
 	if err := service.db.Where("uid = ?", id).Preload("JointAction").Preload("ClinicalFeature").Find(&userJointActions).Error; err != nil {
 		return nil, errors.New("db error")
 	}
@@ -209,12 +235,14 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	var ulav, urav, llav, lrav, tr, loco SearchData
 	for _, userJointAction := range userJointActions {
 
-		// BodyCompositionId를 키로 사용하는 그룹에 데이터 추가
-		bodyCompId := userJointAction.JointAction.BodyCompositionId
+		// BodyCompositionID를 키로 사용하는 그룹에 데이터 추가
+		bodyCompId := userJointAction.BodyCompositionID
 		data := groupData[bodyCompId]
-		data.romList += userJointAction.RomId
-		data.clinicList = append(data.clinicList, userJointAction.ClinicalFeatureId)
-		data.degreeList += userJointAction.DegreeId
+		data.romList += userJointAction.RomID
+		if userJointAction.ClinicalFeatureID != nil && userJointAction.DegreeID != nil {
+			data.clinicList = append(data.clinicList, *userJointAction.ClinicalFeatureID)
+			data.degreeList += *userJointAction.DegreeID
+		}
 		data.count++
 		groupData[bodyCompId] = data
 	}
@@ -249,12 +277,12 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		case uint(LR):
 			lrav = SearchData{bodyType: uint(LBODY), rom: romAver, clinic: clinicAver, degree: degreeAver}
 		case uint(TR):
-			tr = SearchData{bodyType: uint(TBODY), rom: romAver, clinic: clinicAver, degree: degreeAver}
-		case uint(LOCO):
-			loco = SearchData{bodyType: uint(LOCOBODY), rom: romAver, clinic: clinicAver, degree: degreeAver}
+			tr = SearchData{bodyType: uint(TBODY), rom: romAver}
+		case uint(LOCOMOTION):
+			loco = SearchData{bodyType: uint(LOCOBODY), rom: romAver}
 		}
 
-		fmt.Printf("BodyCompositionId: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %d\n", bodyCompId, romAver, degreeAver, clinicAver)
+		fmt.Printf("BodyCompositionID: %d, ROM 평균: %d, Degree 평균: %d, Clinic 평균: %d\n", bodyCompId, romAver, degreeAver, clinicAver)
 	}
 
 	// var recommends []model.Recommended
@@ -292,10 +320,10 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 			}
 
 		case rec.BodyTypeID == loco.bodyType:
-			originMap[uint(LOCO)] = append(originMap[uint(LOCO)], rec)
+			originMap[uint(LOCOMOTION)] = append(originMap[uint(LOCOMOTION)], rec)
 			if rec.RomID <= loco.rom {
 				recommendsLoco = append(recommendsLoco, rec)
-				recommendMap[uint(LOCO)] = recommendsLoco
+				recommendMap[uint(LOCOMOTION)] = recommendsLoco
 			}
 
 		case rec.BodyTypeID == ulav.bodyType:

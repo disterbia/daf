@@ -11,25 +11,25 @@ type User struct {
 	Name          string
 	Birthday      time.Time `gorm:"type:date"`
 	Phone         string    `gorm:"unique"`
-	Gender        bool      // true:남 false: 여
+	Gender        uint
 	Addr          string    `json:"addr"`
 	AddrDetail    string    `json:"addr_detail"`
 	Memo          string    `json:"memo"`
 	Agency        Agency    `gorm:"foreignKey:AgencyID"`
-	AgencyID      uint
-	Admin         Admin `gorm:"foreignKey:AdminID"`
-	AdminID       uint
+	AgencyID      uint      `gorm:"index"`
+	Admin         Admin     `gorm:"foreignKey:AdminID"`
+	AdminID       uint      `gorm:"index"`
 	RegistDay     time.Time `gorm:"type:date"`
 	UseStatus     UseStatus `gorm:"foreignKey:UseStatusID"`
-	UseStatusID   uint
-	CreateAdmin   Admin `gorm:"foreignKey:CreateAdminID"`
-	CreateAdminID uint
+	UseStatusID   uint      `gorm:"index"`
+	CreateAdmin   Admin     `gorm:"foreignKey:CreateAdminID"`
+	CreateAdminID uint      `gorm:"index"`
 
-	Email            *string `gorm:"unique"`
-	Nickname         string
-	DeviceID         string
-	FCMToken         string
-	SnsType          uint
-	Images           []Image           `gorm:"foreignKey:Uid"`
-	UserJointActions []UserJointAction `gorm:"foreignKey:Uid"`
+	Email    *string `gorm:"unique"`
+	Nickname string
+	DeviceID string
+	FCMToken string
+	SnsType  uint
+	Images   []Image   `gorm:"foreignKey:Uid"`
+	UserAfcs []UserAfc `gorm:"foreignKey:Uid"`
 }

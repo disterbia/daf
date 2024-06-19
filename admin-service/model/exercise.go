@@ -8,5 +8,5 @@ type Exercise struct {
 	gorm.Model
 	Name       string   `gorm:"unique"`
 	Category   Category `gorm:"foreignKey:CategoryId"`
-	CategoryId uint
+	CategoryId uint     `gorm:"index"`
 }

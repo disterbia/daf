@@ -4,17 +4,19 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserJointAction struct {
+type UserAfc struct {
 	gorm.Model
-	Name string
-	User User `gorm:"foreignKey:Uid"`
-	Uid  uint `gorm:"index"`
-
-	JointActionID uint `gorm:"index"`
-	Rom           Rom  `gorm:"foreignKey:RomID"`
-	RomID         uint `gorm:"index"`
-
-	ClinicalFeatureID uint `gorm:"index"`
-
-	DegreeID uint `gorm:"index"`
+	Name              string
+	User              User `gorm:"foreignKey:Uid"`
+	Uid               uint
+	BodyComposition   BodyComposition `gorm:"foreignKey:BodyCompositionID"`
+	BodyCompositionID uint
+	JointActions      JointAction     `gorm:"foreignKey:JointActionID"`
+	JointActionID     uint            `gorm:"index"`
+	Rom               Rom             `gorm:"foreignKey:RomID"`
+	RomID             uint            `gorm:"index"`
+	ClinicalFeature   ClinicalFeature `gorm:"foreignKey:ClinicalFeatureID"`
+	ClinicalFeatureID *uint           `gorm:"index"`
+	Degree            Degree          `gorm:"foreignKey:DegreeId"`
+	DegreeId          *uint           `gorm:"index"`
 }

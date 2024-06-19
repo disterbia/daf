@@ -71,3 +71,94 @@ func SaveUserEndpoint(s AdminService) endpoint.Endpoint {
 		return BasicResponse{Code: code}, nil
 	}
 }
+
+func SearhUsersEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		param := request.(SearchUserRequest)
+		result, err := s.searchUsers(param)
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetAgencisEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getAgencis()
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetAdminsEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getAdmins()
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetDisableDetailsEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getDisableDetails()
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetAfcsEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getAfcs(request.(uint))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func CreateAfcEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.createAfc(request.(SaveAfcRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func UpdateAfcEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.updateAfc(request.(SaveAfcRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetAfcHistorisEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getAfcHistoris(request.(uint))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func UpdateAfcHistoryEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.updateAfcHistory(request.(SaveAfcHistoryRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}

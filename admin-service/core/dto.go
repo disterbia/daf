@@ -8,7 +8,7 @@ type LoginRequest struct {
 type SignInRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
-	AgencyId    uint   `json:"agency_id"`
+	AgencyID    uint   `json:"agency_id"`
 	Name        string `json:"name"`
 	EnglishName string `json:"english_name"`
 	Phone       string `json:"phone" example:"01000000000"`
@@ -30,7 +30,7 @@ type SaveUserRequest struct {
 	ID               uint   `json:"id"`
 	Uid              uint   `json:"-"`
 	Name             string `json:"name"`
-	Gender           bool   `json:"gender"`
+	Gender           uint   `json:"gender"`
 	Birthday         string `json:"birthday" example:"yyyy-mm-dd"`
 	Phone            string `json:"phone"`
 	Addr             string `json:"addr"`
@@ -43,6 +43,90 @@ type SaveUserRequest struct {
 	DisableTypeIDs   []uint `json:"disable_type_ids"`
 	VisitPurposeIDs  []uint `json:"visit_purpose_ids"`
 	DisableDetailIDs []uint `json:"disable_detail_ids"`
+}
+
+type SearchUserRequest struct {
+	Page             uint         `json:"page"`
+	Name             string       `json:"name"`
+	Gender           uint         `json:"gender"`
+	AgeCode          uint         `json:"age_code"`
+	AgencyID         uint         `json:"ageny_id"`
+	AdminID          uint         `json:"admin_id"`
+	RegistDay        string       `json:"regist_day" example:"yyyy-mm-dd"`
+	UseStatusID      uint         `json:"use_status_id"`
+	DisableTypeIDs   []uint       `json:"disable_type_ids"`
+	VisitPurposeIDs  []uint       `json:"visit_purpose_ids"`
+	DisableDetailIDs []uint       `json:"disable_detail_ids"`
+	Afcs             []AfcRequest `json:"afcs"`
+}
+
+type SearchUserResponse struct {
+	ID                 uint          `json:"id"`
+	Name               string        `json:"name"`
+	Gender             uint          `json:"gender"`
+	AgeCode            uint          `json:"age_code"`
+	AgencyName         string        `json:"ageny_name"`
+	AdminName          string        `json:"admin_name"`
+	RegistDay          string        `json:"regist_day" example:"yyyy-mm-dd"`
+	UseStatusName      string        `json:"use_status_name"`
+	DisableTypeNames   []string      `json:"disable_type_names"`
+	VisitPurposeNames  []string      `json:"visit_purpose_names"`
+	DisableDetailNames []string      `json:"disable_detail_names"`
+	Afc                []AfcResponse `json:"afc"`
+}
+
+type AfcRequest struct {
+	BodyCompositionID uint `json:"body_composition_id"`
+	JointActionID     uint `json:"joint_action_id"`
+	RomID             uint `json:"rom_id"`
+	ClinicalFeatureID uint `json:"clinical_feature_id"`
+	DegreeID          uint `json:"degree_id"`
+}
+
+type AfcResponse struct {
+	BodyCompositionID uint    `json:"body_composition_id"`
+	RomAv             uint    `json:"rom_av"`
+	ClinicalFeatureAv *string `json:"clinical_feature_av"`
+	DegreeAv          *uint   `json:"degree_av"`
+	RomName           *string `json:"rom_name"`
+}
+
+type GetAfcResponse struct {
+	CreatedAdmin    string `json:"created_admin"`
+	Created         string `json:"created"`
+	UserAfcResponse []UserAfcResponse
+}
+type UserAfcResponse struct {
+	UpdatedAdmin      string `json:"updated_admin"`
+	Updated           string `json:"updated"`
+	BodyCompositionID uint   `json:"body_composition_id"`
+	JointActionID     uint   `json:"joint_action_id"`
+	RomID             uint   `json:"rom_id"`
+	ClinicalFeatureID *uint  `json:"clinical_feature_id"`
+	DegreeID          *uint  `json:"degree_id"`
+}
+
+type SaveAfcRequest struct {
+	Id   uint         `json:"-"`
+	Uid  uint         `json:"uid"`
+	Afcs []AfcRequest `json:"afcs"`
+}
+
+type SaveAfcHistoryRequest struct {
+	Id      uint         `json:"-"`
+	GroupId uint         `json:"group_id"`
+	Afcs    []AfcRequest `json:"afcs"`
+}
+
+type AfcHistoryResponse struct {
+	Id      uint         `json:"-"`
+	GroupId uint         `json:"group_id"`
+	Afcs    []AfcRequest `json:"afcs"`
+}
+
+type AgAdResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
 }
 
 type BasicResponse struct {

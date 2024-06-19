@@ -6,8 +6,8 @@ import (
 
 type UserDisableDetail struct {
 	gorm.Model
-	User            User `gorm:"foreignKey:UID"`
-	UID             uint
+	User            User          `gorm:"foreignKey:UID"`
+	UID             uint          `gorm:"index"`
 	DisableDetail   DisableDetail `gorm:"foreignKey:DisableDetailID"`
-	DisableDetailID uint
+	DisableDetailID uint          `gorm:"index"`
 }

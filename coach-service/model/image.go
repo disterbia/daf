@@ -4,12 +4,13 @@ import "gorm.io/gorm"
 
 type Image struct {
 	gorm.Model
-	Uid uint `gorm:"index"`
+	User `gorm:"foreignKey:Uid"`
+	Uid  uint
 
 	//부모 아이디
-	ParentID uint `json:"parent_ID"`
+	ParentId uint
 	Type     uint
 
 	Url          string
-	ThumbnailUrl string `json:"thumbnail_url"`
+	ThumbnailUrl string
 }

@@ -29,7 +29,7 @@ type ExerciseRequest struct {
 type ExerciseResponse struct {
 	ID       uint   `json:"id"`
 	Name     string `json:"name"`
-	BodyType uint   `json:body_type`
+	BodyType uint   `json:"body_type"`
 }
 
 type MachineDto struct {

@@ -79,7 +79,7 @@ func (service *userService) snsLogin(request LoginRequest) (string, error) {
 		return "", err
 	}
 
-	user.Email = email
+	user.Email = &email
 	user.SnsType = snsType
 	u, err := findOrCreateUser(user, service)
 	if err != nil {

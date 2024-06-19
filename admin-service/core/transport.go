@@ -20,7 +20,6 @@ var userLocks sync.Map
 // @Param password body string true "password"
 // @Success 200 {object} SuccessResponse "성공시 JWT 토큰 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Security jwt
 // @Router /login [post]
 func LoginHandler(loginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -165,6 +164,7 @@ func ResetPasswordHandler(resetEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Description 회원등록시 호출
 // @Accept  json
 // @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
 // @Param request body SaveUserRequest true "요청 DTO"
 // @Success 200 {object} BasicResponse "성공시 200 반환"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
@@ -186,6 +186,296 @@ func SaveUserHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 
 		req.Uid = id
 		response, err := saveEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원검색 /admin
+// @Summary 회원리스트 조회
+// @Description 회원리스트 조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SearchUserRequest true "요청 DTO page default=0, gender 1= 남 2=여 "
+// @Success 200 {object} []SearchUserResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /serach-users [post]
+func SearchUsersHandler(searchEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		var req SearchUserRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := searchEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]SearchUserResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원검색 /admin
+// @Summary 등록매장 조회
+// @Description 등록매장 조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []AgAdResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-agencis [get]
+func GetAgencisHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := getEndpoint(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]AgAdResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원검색 /admin
+// @Summary 담당코치 조회
+// @Description 담당코치 조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []AgAdResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-admins [get]
+func GetAdminsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := getEndpoint(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]AgAdResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원검색 /admin
+// @Summary 기타 장애유형 조회
+// @Description 기타 장애유형시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []AgAdResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-disable-details [get]
+func GetDisableDetailsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := getEndpoint(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]AgAdResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원 Afc /admin
+// @Summary 회원 Afc 조회
+// @Description 현재 Afc조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []GetAfcResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-afcs [get]
+func GetAfcsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := getEndpoint(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]GetAfcResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원 Afc /admin
+// @Summary 회원 Afc 등록
+// @Description 회원 Afc 등록시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SaveAfcRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /create-afc [post]
+func CreateAfcHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req SaveAfcRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		req.Id = id
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원 Afc /admin
+// @Summary 회원 Afc 수정
+// @Description 현재 Afc 수정시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SaveAfcRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /update-afc [post]
+func UpdateAfcHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req SaveAfcRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		req.Id = id
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원 Afc /admin
+// @Summary 회원 Afc history 조회
+// @Description 회원 Afc history 조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []GetAfcResponse "응답DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-afc-historis [get]
+func GetAfcHistorisHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := myEndpoint(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]GetAfcResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 회원 Afc /admin
+// @Summary 회원 Afc history 수정
+// @Description 회원 Afc history 수정시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SaveAfcHistoryRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /update-afc-historis [post]
+func UpdateAfcHistoryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req SaveAfcHistoryRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		req.Id = id
+
+		response, err := myEndpoint(c.Request.Context(), req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

@@ -27,7 +27,7 @@ definitions:
           $ref: '#/definitions/core.ExerciseResponse'
         type: array
     type: object
-  core.UserJointActionRequest:
+  core.UserAfcRequest:
     properties:
       lla:
         type: string
@@ -64,7 +64,7 @@ definitions:
       urw:
         type: string
     type: object
-  core.UserJointActionResponse:
+  core.UserAfcResponse:
     properties:
       lla:
         type: string
@@ -160,7 +160,7 @@ paths:
         "200":
           description: 신체능력 정보
           schema:
-            $ref: '#/definitions/core.UserJointActionResponse'
+            $ref: '#/definitions/core.UserAfcResponse'
         "400":
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
@@ -188,7 +188,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/core.UserJointActionRequest'
+          $ref: '#/definitions/core.UserAfcRequest'
       produces:
       - application/json
       responses:

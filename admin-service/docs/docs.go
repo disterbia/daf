@@ -16,13 +16,296 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/login": {
+        "/create-afc": {
             "post": {
-                "security": [
+                "description": "회원 Afc 등록시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원 Afc /admin"
+                ],
+                "summary": "회원 Afc 등록",
+                "parameters": [
                     {
-                        "jwt": []
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SaveAfcRequest"
+                        }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-admins": {
+            "get": {
+                "description": "담당코치 조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원검색 /admin"
+                ],
+                "summary": "담당코치 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.AgAdResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-afc-historis": {
+            "get": {
+                "description": "회원 Afc history 조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원 Afc /admin"
+                ],
+                "summary": "회원 Afc history 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.GetAfcResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-afcs": {
+            "get": {
+                "description": "현재 Afc조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원 Afc /admin"
+                ],
+                "summary": "회원 Afc 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.GetAfcResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-agencis": {
+            "get": {
+                "description": "등록매장 조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원검색 /admin"
+                ],
+                "summary": "등록매장 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.AgAdResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-disable-details": {
+            "get": {
+                "description": "기타 장애유형시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원검색 /admin"
+                ],
+                "summary": "기타 장애유형 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.AgAdResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
                 "description": "관리자 로그인시 호출",
                 "consumes": [
                     "application/json"
@@ -131,6 +414,13 @@ const docTemplate = `{
                 "summary": "회원등록",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "요청 DTO",
                         "name": "request",
                         "in": "body",
@@ -206,6 +496,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/serach-users": {
+            "post": {
+                "description": "회원리스트 조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원검색 /admin"
+                ],
+                "summary": "회원리스트 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO page default=0, gender 1= 남 2=여 ",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SearchUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.SearchUserResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/sign-in": {
             "post": {
                 "description": "회원 가입시 호출",
@@ -227,6 +573,112 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/core.SignInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/update-afc": {
+            "post": {
+                "description": "현재 Afc 수정시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원 Afc /admin"
+                ],
+                "summary": "회원 Afc 수정",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SaveAfcRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/update-afc-historis": {
+            "post": {
+                "description": "회원 Afc history 수정시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원 Afc /admin"
+                ],
+                "summary": "회원 Afc history 수정",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SaveAfcHistoryRequest"
                         }
                     }
                 ],
@@ -300,6 +752,57 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "core.AfcRequest": {
+            "type": "object",
+            "properties": {
+                "body_composition_id": {
+                    "type": "integer"
+                },
+                "clinical_feature_id": {
+                    "type": "integer"
+                },
+                "degree_id": {
+                    "type": "integer"
+                },
+                "joint_action_id": {
+                    "type": "integer"
+                },
+                "rom_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "core.AfcResponse": {
+            "type": "object",
+            "properties": {
+                "body_composition_id": {
+                    "type": "integer"
+                },
+                "clinical_feature_av": {
+                    "type": "string"
+                },
+                "degree_av": {
+                    "type": "integer"
+                },
+                "rom_av": {
+                    "type": "integer"
+                },
+                "rom_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.AgAdResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "core.BasicResponse": {
             "type": "object",
             "properties": {
@@ -316,6 +819,23 @@ const docTemplate = `{
                 }
             }
         },
+        "core.GetAfcResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "string"
+                },
+                "created_admin": {
+                    "type": "string"
+                },
+                "userAfcResponse": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.UserAfcResponse"
+                    }
+                }
+            }
+        },
         "core.LoginRequest": {
             "type": "object",
             "properties": {
@@ -324,6 +844,34 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "core.SaveAfcHistoryRequest": {
+            "type": "object",
+            "properties": {
+                "afcs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.AfcRequest"
+                    }
+                },
+                "group_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "core.SaveAfcRequest": {
+            "type": "object",
+            "properties": {
+                "afcs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.AfcRequest"
+                    }
+                },
+                "uid": {
+                    "type": "integer"
                 }
             }
         },
@@ -359,7 +907,7 @@ const docTemplate = `{
                     }
                 },
                 "gender": {
-                    "type": "boolean"
+                    "type": "integer"
                 },
                 "id": {
                     "type": "integer"
@@ -384,6 +932,114 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "integer"
+                    }
+                }
+            }
+        },
+        "core.SearchUserRequest": {
+            "type": "object",
+            "properties": {
+                "admin_id": {
+                    "type": "integer"
+                },
+                "afcs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.AfcRequest"
+                    }
+                },
+                "age_code": {
+                    "type": "integer"
+                },
+                "ageny_id": {
+                    "type": "integer"
+                },
+                "disable_detail_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "disable_type_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "gender": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "regist_day": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "use_status_id": {
+                    "type": "integer"
+                },
+                "visit_purpose_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "core.SearchUserResponse": {
+            "type": "object",
+            "properties": {
+                "admin_name": {
+                    "type": "string"
+                },
+                "afc": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.AfcResponse"
+                    }
+                },
+                "age_code": {
+                    "type": "integer"
+                },
+                "ageny_name": {
+                    "type": "string"
+                },
+                "disable_detail_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "disable_type_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gender": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "regist_day": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "use_status_name": {
+                    "type": "string"
+                },
+                "visit_purpose_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }
@@ -423,6 +1079,32 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "jwt": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.UserAfcResponse": {
+            "type": "object",
+            "properties": {
+                "body_composition_id": {
+                    "type": "integer"
+                },
+                "clinical_feature_id": {
+                    "type": "integer"
+                },
+                "degree_id": {
+                    "type": "integer"
+                },
+                "joint_action_id": {
+                    "type": "integer"
+                },
+                "rom_id": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "updated_admin": {
                     "type": "string"
                 }
             }

@@ -16,7 +16,7 @@ var userLocks sync.Map
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
-// @Param request body UserJointActionRequest true "요청 DTO - 업데이트 할 데이터"
+// @Param request body UserAfcRequest true "요청 DTO - 업데이트 할 데이터"
 // @Success 200 {object} BasicResponse "성공시 200 반환"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
@@ -37,7 +37,7 @@ func SetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		}
 		defer userLocks.Delete(id)
 
-		var req UserJointActionRequest
+		var req UserAfcRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -63,7 +63,7 @@ func SetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
-// @Success 200 {object} UserJointActionResponse "신체능력 정보"
+// @Success 200 {object} UserAfcResponse "신체능력 정보"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /get-user-daf [get]
@@ -82,7 +82,7 @@ func GetUserHandler(endpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
-		resp := response.(UserJointActionResponse)
+		resp := response.(UserAfcResponse)
 		c.JSON(http.StatusOK, resp)
 	}
 }

@@ -3,6 +3,7 @@ package core
 import (
 	"admin-service/model"
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -133,4 +134,76 @@ func checkDuplicates(slice []uint) bool {
 		seen[item] = struct{}{}
 	}
 	return false // No duplicates
+}
+
+func calculateAgeCode(birthday time.Time) uint {
+	now := time.Now()
+	age := now.Year() - birthday.Year()
+	if now.YearDay() < birthday.YearDay() {
+		age--
+	}
+
+	switch {
+	case age < 10:
+		return 1
+	case age < 20:
+		return 2
+	case age < 30:
+		return 3
+	case age < 40:
+		return 4
+	case age < 50:
+		return 5
+	case age < 60:
+		return 6
+	default:
+		return 7
+	}
+}
+
+func getBirthdayRangeByAgeCode(ageCode uint) (time.Time, time.Time, error) {
+	now := time.Now()
+	currentYear := now.Year()
+	var startYear, endYear int
+
+	switch ageCode {
+	case 1: // 0-9 years
+		startYear = currentYear - 9
+		endYear = currentYear
+	case 2: // 10-19 years
+		startYear = currentYear - 19
+		endYear = currentYear - 10
+	case 3: // 20-29 years
+		startYear = currentYear - 29
+		endYear = currentYear - 20
+	case 4: // 30-39 years
+		startYear = currentYear - 39
+		endYear = currentYear - 30
+	case 5: // 40-49 years
+		startYear = currentYear - 49
+		endYear = currentYear - 40
+	case 6: // 50-59 years
+		startYear = currentYear - 59
+		endYear = currentYear - 50
+	case 7: // 60 years and above
+		startYear = 0
+		endYear = currentYear - 60
+	default:
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid age code")
+	}
+
+	startDate := time.Date(startYear, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(endYear, 12, 31, 23, 59, 59, 999999999, time.UTC)
+	return startDate, endDate, nil
+}
+
+func validateAfc(request []AfcRequest) bool {
+	for _, v := range request {
+		if v.BodyCompositionID == 0 || v.RomID == 0 {
+			return false
+		} else if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) && (v.ClinicalFeatureID == 0 || v.DegreeID == 0) {
+			return false
+		}
+	}
+	return true
 }

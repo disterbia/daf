@@ -89,7 +89,7 @@ const docTemplate = `{
                     "200": {
                         "description": "신체능력 정보",
                         "schema": {
-                            "$ref": "#/definitions/core.UserJointActionResponse"
+                            "$ref": "#/definitions/core.UserAfcResponse"
                         }
                     },
                     "400": {
@@ -134,7 +134,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/core.UserJointActionRequest"
+                            "$ref": "#/definitions/core.UserAfcRequest"
                         }
                     }
                 ],
@@ -206,7 +206,7 @@ const docTemplate = `{
                 }
             }
         },
-        "core.UserJointActionRequest": {
+        "core.UserAfcRequest": {
             "type": "object",
             "properties": {
                 "lla": {
@@ -262,7 +262,7 @@ const docTemplate = `{
                 }
             }
         },
-        "core.UserJointActionResponse": {
+        "core.UserAfcResponse": {
             "type": "object",
             "properties": {
                 "lla": {

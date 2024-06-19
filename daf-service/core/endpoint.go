@@ -8,7 +8,7 @@ import (
 
 func SetUserEndpoint(s DafService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		user := request.(UserJointActionRequest)
+		user := request.(UserAfcRequest)
 		code, err := s.setUser(user)
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
