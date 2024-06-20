@@ -94,8 +94,10 @@ type AfcResponse struct {
 type GetAfcResponse struct {
 	CreatedAdmin    string `json:"created_admin"`
 	Created         string `json:"created"`
+	GroupId         uint   `json:"group_id"`
 	UserAfcResponse []UserAfcResponse
 }
+
 type UserAfcResponse struct {
 	UpdatedAdmin      string `json:"updated_admin"`
 	Updated           string `json:"updated"`

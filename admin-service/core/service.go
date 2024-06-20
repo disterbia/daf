@@ -30,7 +30,7 @@ type AdminService interface {
 	getAgencis() ([]AgAdResponse, error)
 	getAdmins() ([]AgAdResponse, error)
 	getDisableDetails() ([]AgAdResponse, error)
-	getAfcs(uid uint) ([]GetAfcResponse, error)
+	getAfcs(uid uint) (GetAfcResponse, error)
 	createAfc(request SaveAfcRequest) (string, error)
 	updateAfc(request SaveAfcRequest) (string, error)
 	getAfcHistoris(uid uint) ([]GetAfcResponse, error)
@@ -428,7 +428,7 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 
 	query = query.Offset(offset).Limit(pageSize)
 
-	if err := query.Preload("Agency").Preload("Admin").Preload("UserStatus").Find(&users).Error; err != nil {
+	if err := query.Preload("Agency").Preload("Admin").Preload("UseStatus").Find(&users).Error; err != nil {
 		return nil, err
 	}
 
@@ -596,24 +596,20 @@ func (service *adminService) getDisableDetails() ([]AgAdResponse, error) {
 	return agencyResponse, nil
 }
 
-func (service *adminService) getAfcs(uid uint) ([]GetAfcResponse, error) {
+func (service *adminService) getAfcs(uid uint) (GetAfcResponse, error) {
 	var afcs []model.UserAfc
 	if err := service.db.Where("uid = ?", uid).Preload("Admin").Preload("UserAfcHistoryGroup.Admin").Find(&afcs).Error; err != nil {
-		return nil, errors.New("db error")
+		return GetAfcResponse{}, errors.New("db error")
 	}
 
-	// Group by UserAfcHistoryGroupID
-	historyGroupMap := make(map[uint]*GetAfcResponse)
+	var response GetAfcResponse
 	for _, v := range afcs {
-		groupID := v.UserAfcHistoryGroupID
-		if _, exists := historyGroupMap[groupID]; !exists {
-			historyGroupMap[groupID] = &GetAfcResponse{
-				CreatedAdmin:    v.UserAfcHistoryGroup.Admin.Name,
-				Created:         v.UserAfcHistoryGroup.CreatedAt.Format("2006-01-02 15:04:05"),
-				UserAfcResponse: []UserAfcResponse{},
-			}
+		response = GetAfcResponse{
+			CreatedAdmin:    v.UserAfcHistoryGroup.Admin.Name,
+			Created:         v.UserAfcHistoryGroup.CreatedAt.Format("2006-01-02 15:04:05"),
+			UserAfcResponse: []UserAfcResponse{},
 		}
-		historyGroupMap[groupID].UserAfcResponse = append(historyGroupMap[groupID].UserAfcResponse, UserAfcResponse{
+		response.UserAfcResponse = append(response.UserAfcResponse, UserAfcResponse{
 			UpdatedAdmin:      v.Admin.Name,
 			Updated:           v.CreatedAt.Format("2006-01-02 15:04:05"),
 			BodyCompositionID: v.BodyCompositionID,
@@ -624,12 +620,6 @@ func (service *adminService) getAfcs(uid uint) ([]GetAfcResponse, error) {
 		})
 	}
 
-	// Convert map to slice
-	var response []GetAfcResponse
-	for _, v := range historyGroupMap {
-		response = append(response, *v)
-	}
-
 	return response, nil
 }
 
@@ -637,19 +627,9 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 	if !validateAfc(request.Afcs) {
 		return "", errors.New("validate afc")
 	}
-	var ujas []model.UserAfc
-
-	for _, v := range request.Afcs {
-		clinic := new(uint)
-		degree := new(uint)
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
-			clinic = &v.ClinicalFeatureID
-			degree = &v.DegreeID
-		}
-		ujas = append(ujas, model.UserAfc{AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
-	}
 
 	tx := service.db.Begin()
+
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -657,40 +637,54 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 		}
 	}()
 
-	result := tx.Where("uid = ? ", request.Uid).Unscoped().Delete(&model.UserAfc{})
-	if result.Error != nil {
-		tx.Rollback()
+	//history기록을 위해 기존의 afc불러옴
+	var originAfcs []model.UserAfc
+	if err := service.db.Where("uid=?", request.Uid).Find(&originAfcs).Error; err != nil {
 		return "", errors.New("db error")
 	}
+
+	//히스토리 그룹생성
 	var group model.UserAfcHistoryGroup
 	group.AdminID = request.Id
 	group.Uid = request.Uid
 	if err := tx.Create(&group).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error0")
+		return "", errors.New("db error1")
 	}
+
+	//UserAfc 생성
+	var ujas []model.UserAfc
+	for _, v := range request.Afcs {
+		clinic := new(uint)
+		degree := new(uint)
+		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+			clinic = &v.ClinicalFeatureID
+			degree = &v.DegreeID
+		}
+		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: group.ID, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+	}
+	result := tx.Where("uid = ? ", request.Uid).Unscoped().Delete(&model.UserAfc{})
+	if result.Error != nil {
+		tx.Rollback()
+		return "", errors.New("db error")
+	}
+	if err := tx.Create(&ujas).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error2")
+	}
+
+	// 기존에 등록된게 있을때 히스토리 등록
 	deletedRows := result.RowsAffected
-	if deletedRows != 0 { // 기존에 등록된게 있을때
+	if deletedRows != 0 {
 		var historis []model.UserAfcHistory
-		for _, v := range request.Afcs {
-			clinic := new(uint)
-			degree := new(uint)
-			if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
-				clinic = &v.ClinicalFeatureID
-				degree = &v.DegreeID
-			}
-			historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: group.ID, AdminID: request.Id,
-				BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+		for _, v := range originAfcs {
+			historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: v.UserAfcHistoryGroupID, AdminID: request.Id,
+				BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: v.ClinicalFeatureID, DegreeID: v.DegreeID})
 		}
 		if err := tx.Create(&historis).Error; err != nil {
 			tx.Rollback()
 			return "", errors.New("db error1")
 		}
-	}
-
-	if err := tx.Create(&ujas).Error; err != nil {
-		tx.Rollback()
-		return "", errors.New("db error2")
 	}
 
 	tx.Commit()
@@ -701,8 +695,15 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 	if !validateAfc(request.Afcs) {
 		return "", errors.New("validate afc")
 	}
-	var ujas []model.UserAfc
 
+	//기존의 히스토리그룹 id참조를 위해 afc 하나만가져옴
+	var groupId uint
+	row := service.db.Model(&model.UserAfc{}).Where("uid = ?", request.Uid).Select("user_afc_history_group_id").Row()
+	if err := row.Scan(&groupId); err != nil {
+		return "", errors.New("db error")
+	}
+
+	var ujas []model.UserAfc
 	for _, v := range request.Afcs {
 		clinic := new(uint)
 		degree := new(uint)
@@ -710,7 +711,7 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 			clinic = &v.ClinicalFeatureID
 			degree = &v.DegreeID
 		}
-		ujas = append(ujas, model.UserAfc{AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: groupId, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
 	}
 
 	tx := service.db.Begin()
@@ -771,6 +772,7 @@ func (service *adminService) getAfcHistoris(uid uint) ([]GetAfcResponse, error) 
 			historyGroupMap[groupID] = &GetAfcResponse{
 				CreatedAdmin:    v.UserAfcHistoryGroup.Admin.Name,
 				Created:         v.UserAfcHistoryGroup.CreatedAt.Format("2006-01-02 15:04:05"),
+				GroupId:         groupID,
 				UserAfcResponse: []UserAfcResponse{},
 			}
 		}
@@ -808,7 +810,7 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 			clinic = &v.ClinicalFeatureID
 			degree = &v.DegreeID
 		}
-		historis = append(historis, model.UserAfcHistory{AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+		historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: request.GroupId, AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
 	}
 
 	tx := service.db.Begin()

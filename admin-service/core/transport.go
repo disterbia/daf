@@ -206,7 +206,7 @@ func SaveUserHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Success 200 {object} []SearchUserResponse "응답 DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /serach-users [post]
+// @Router /search-users [post]
 func SearchUsersHandler(searchEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, _, err := verifyJWT(c)
@@ -299,7 +299,7 @@ func GetAdminsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Success 200 {object} []AgAdResponse "응답 DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /get-disable-details [get]
+// @Router /get-details [get]
 func GetDisableDetailsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, _, err := verifyJWT(c)
@@ -325,7 +325,7 @@ func GetDisableDetailsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc 
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
-// @Success 200 {object} []GetAfcResponse "응답 DTO"
+// @Success 200 {object} GetAfcResponse "응답 DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /get-afcs [get]
@@ -343,7 +343,7 @@ func GetAfcsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
-		resp := response.([]GetAfcResponse)
+		resp := response.(GetAfcResponse)
 		c.JSON(http.StatusOK, resp)
 	}
 }
@@ -459,7 +459,7 @@ func GetAfcHistorisHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Success 200 {object} BasicResponse "성공시 200 반환"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /update-afc-historis [post]
+// @Router /update-afc-history [post]
 func UpdateAfcHistoryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _, err := verifyJWT(c)
