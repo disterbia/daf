@@ -42,15 +42,23 @@ type PurposeDto struct {
 	Name string `json:"name"`
 }
 
+type MeasureDto struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
 type RecommendRequest struct {
-	ExerciseID          uint                            `json:"exercise_id"` // 운동아이디
-	MachineIDs          []uint                          `json:"machine_ids"` // 기구아이디
-	PurposeIDs          []uint                          `json:"purpose_ids"` // 목적아이디
-	Asymmetric          bool                            `json:"asymmetric"`  // 비대칭 여부
-	BodyType            uint                            `json:"body_type"`
+	ExerciseID          uint                            `json:"exercise_id"`            // 운동아이디
+	MachineIDs          []uint                          `json:"machine_ids"`            // 기구아이디
+	PurposeIDs          []uint                          `json:"purpose_ids"`            // 목적아이디
+	MeasureIds          []uint                          `json:"measure_ids"`            // 측정항목 아이디
+	IsAsymmetric        bool                            `json:"is_asymmetric"`          // 비대칭 여부
+	BodyType            uint                            `json:"body_type"`              // 전신,상체,하체
 	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
 	TrRom               uint                            `json:"tr_rom"`
 	Locomotion          uint                            `json:"locomotion"`
+	UAmputation         uint                            `json:"u_amputation"`
+	LAmputation         uint                            `json:"l_amputation"`
 }
 
 type RecommendResponse struct {
@@ -58,10 +66,12 @@ type RecommendResponse struct {
 	Exercise            ExerciseResponse `json:"exercise"`
 	Machines            []MachineDto     `json:"machines"`
 	Purposes            []PurposeDto     `json:"purposes"`
-	Asymmetric          bool             `json:"asymmetric"`
+	Measures            []MeasureDto     `json:"measure"`
+	IsAsymmetric        bool             `json:"is_asymmetric"`
 	TrRom               uint             `json:"tr_rom"`
 	Locomotion          uint             `json:"locomotion"`
-	BodyRomClinicDegree map[uint]map[uint]map[uint]uint
+	Amputation          uint             `json:"amputation"`
+	BodyRomClinicDegree map[uint]map[*uint]map[*uint]*uint
 }
 
 type SearchRequest struct {

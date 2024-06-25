@@ -35,6 +35,8 @@ type AdminService interface {
 	updateAfc(request SaveAfcRequest) (string, error)
 	getAfcHistoris(uid uint) ([]GetAfcResponse, error)
 	updateAfcHistory(request SaveAfcHistoryRequest) (string, error)
+
+	searchDiary(request SearchUserRequest) ([]SearchUserResponse, error)
 }
 
 type adminService struct {
@@ -366,7 +368,7 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 	query := service.db.Model(&model.User{})
 
 	if strings.TrimSpace(request.Name) != "" {
-		query = query.Where("name = ?", request.Name)
+		query = query.Where("name LIKE ?", "%"+request.Name+"%")
 	}
 	if request.Gender != 0 {
 		query = query.Where("gender = ?", request.Gender)
@@ -442,55 +444,58 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 	var userDisables []model.UserDisable
 	var userVisits []model.UserVisit
 	var userDisableDetails []model.UserDisableDetail
-	var userJointActions []model.UserAfc
+	var userAfcs []model.UserAfc
 
 	service.db.Where("uid IN ?", userIDs).Preload("DisableType").Find(&userDisables)
 	service.db.Where("uid IN ?", userIDs).Preload("VisitPurpose").Find(&userVisits)
 	service.db.Where("uid IN ?", userIDs).Preload("DisableDetail").Find(&userDisableDetails)
-	service.db.Where("uid IN ?", userIDs).Find(&userJointActions)
+	service.db.Where("uid IN ?", userIDs).Find(&userAfcs)
 	// 사용자 ID를 키로 하는 맵 생성
-	disableTypeNamesMap := make(map[uint][]string)
-	visitPurposeNamesMap := make(map[uint][]string)
-	disableDetailNamesMap := make(map[uint][]string)
+	disableTypeNamesMap := make(map[uint][]IdNameResponse)
+	visitPurposeNamesMap := make(map[uint][]IdNameResponse)
+	disableDetailNamesMap := make(map[uint][]IdNameResponse)
 	userJointActionsMap := make(map[uint][]AfcResponse)
 	type GroupData struct {
-		romList    uint
+		romList    []uint
 		clinicList []string
-		degreeList uint
-		count      uint
+		degreeList []uint
 	}
 	groupData := make(map[uint]GroupData)
 
 	for _, ud := range userDisables {
-		disableTypeNamesMap[ud.UID] = append(disableTypeNamesMap[ud.UID], ud.DisableType.Name)
+		disableTypeNamesMap[ud.UID] = append(disableTypeNamesMap[ud.UID], IdNameResponse{Id: ud.DisableTypeID, Name: ud.DisableType.Name})
 	}
 
 	for _, uv := range userVisits {
-		visitPurposeNamesMap[uv.UID] = append(visitPurposeNamesMap[uv.UID], uv.VisitPurpose.Name)
+		visitPurposeNamesMap[uv.UID] = append(visitPurposeNamesMap[uv.UID], IdNameResponse{Id: uv.VisitPurposeID, Name: uv.VisitPurpose.Name})
 	}
 
 	for _, udd := range userDisableDetails {
-		disableDetailNamesMap[udd.UID] = append(disableDetailNamesMap[udd.UID], udd.DisableDetail.Name)
+		disableDetailNamesMap[udd.UID] = append(disableDetailNamesMap[udd.UID], IdNameResponse{Id: udd.DisableDetailID, Name: udd.DisableDetail.Name})
 	}
 
-	for _, uja := range userJointActions {
+	for _, userAfc := range userAfcs {
 		// BodyCompositionID를 키로 사용하는 그룹에 데이터 추가
-		bodyCompId := uja.BodyCompositionID
+		bodyCompId := userAfc.BodyCompositionID
 		data := groupData[bodyCompId]
-		data.romList += uja.RomID
-		if uja.ClinicalFeatureID != nil && uja.DegreeID != nil {
-			data.clinicList = append(data.clinicList, uja.ClinicalFeature.Code)
-			data.degreeList += *uja.DegreeID
+		if userAfc.RomID != nil {
+			data.romList = append(data.romList, *userAfc.RomID)
 		}
-		data.count++
+		if userAfc.ClinicalFeatureID != nil {
+			data.clinicList = append(data.clinicList, userAfc.ClinicalFeature.Code)
+		}
+		if userAfc.DegreeID != nil {
+			data.degreeList = append(data.degreeList, *userAfc.DegreeID)
+		}
+
 		groupData[bodyCompId] = data
 
 	}
 
 	// 그룹별 평균 계산
 	for bodyCompId, data := range groupData {
-		romAver := data.romList / data.count
-		degreeAver := data.degreeList / data.count
+		romAver := sum(data.romList) / uint(len(data.romList))
+		degreeAver := sum(data.degreeList) / uint(len(data.degreeList))
 		var clinicAver string
 
 		// 빈도 수를 기록하기 위한 해시맵
@@ -507,8 +512,12 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 			}
 		}
 		// 해당 그룹의 사용자들에게 평균값을 설정
-		for _, uja := range userJointActions {
+		for _, uja := range userAfcs {
 			if uja.BodyCompositionID == bodyCompId {
+				romAv := new(uint)
+				if romAver != 0 {
+					*romAv = romAver
+				}
 				romName := new(string)
 				if bodyCompId == uint(LOCOMOTION) {
 					romName = uja.Rom.Name
@@ -523,7 +532,7 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 				}
 				userJointActionsMap[uja.Uid] = append(userJointActionsMap[uja.Uid], AfcResponse{
 					BodyCompositionID: uja.BodyCompositionID,
-					RomAv:             romAver,
+					RomAv:             romAv,
 					RomName:           romName,
 					ClinicalFeatureAv: clinicalFeatureAv,
 					DegreeAv:          degreeAv,
@@ -536,18 +545,18 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 		ageCode := calculateAgeCode(user.Birthday)
 
 		response = append(response, SearchUserResponse{
-			ID:                 user.ID,
-			Name:               user.Name,
-			Gender:             user.Gender,
-			AgeCode:            ageCode,
-			RegistDay:          user.RegistDay.String(),
-			AgencyName:         user.Agency.Name,
-			AdminName:          user.Admin.Name,
-			UseStatusName:      user.UseStatus.Name,
-			DisableTypeNames:   disableTypeNamesMap[user.ID],
-			VisitPurposeNames:  visitPurposeNamesMap[user.ID],
-			DisableDetailNames: disableDetailNamesMap[user.ID],
-			Afc:                userJointActionsMap[user.ID],
+			ID:             user.ID,
+			Name:           user.Name,
+			Gender:         user.Gender,
+			AgeCode:        ageCode,
+			RegistDay:      user.RegistDay.String(),
+			AgencyName:     user.Agency.Name,
+			AdminName:      user.Admin.Name,
+			UseStatusName:  user.UseStatus.Name,
+			DisableTypes:   disableTypeNamesMap[user.ID],
+			VisitPurposes:  visitPurposeNamesMap[user.ID],
+			DisableDetails: disableDetailNamesMap[user.ID],
+			Afc:            userJointActionsMap[user.ID],
 		})
 	}
 
@@ -655,13 +664,22 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 	//UserAfc 생성
 	var ujas []model.UserAfc
 	for _, v := range request.Afcs {
+		rom := new(uint)
 		clinic := new(uint)
 		degree := new(uint)
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
-			clinic = &v.ClinicalFeatureID
-			degree = &v.DegreeID
+		if v.ClinicalFeatureID != uint(AC) {
+			rom = &v.RomID
 		}
-		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: group.ID, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+			if v.ClinicalFeatureID != uint(AC) {
+				clinic = &v.ClinicalFeatureID
+				degree = &v.DegreeID
+			} else {
+				clinic = &v.ClinicalFeatureID
+			}
+
+		}
+		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: group.ID, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
 	}
 	result := tx.Where("uid = ? ", request.Uid).Unscoped().Delete(&model.UserAfc{})
 	if result.Error != nil {
@@ -705,13 +723,23 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 
 	var ujas []model.UserAfc
 	for _, v := range request.Afcs {
+		rom := new(uint)
 		clinic := new(uint)
 		degree := new(uint)
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
-			clinic = &v.ClinicalFeatureID
-			degree = &v.DegreeID
+		if v.ClinicalFeatureID != uint(AC) {
+			rom = &v.RomID
 		}
-		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: groupId, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+			if v.ClinicalFeatureID != uint(AC) {
+				clinic = &v.ClinicalFeatureID
+				degree = &v.DegreeID
+			} else {
+				clinic = &v.ClinicalFeatureID
+			}
+
+		}
+		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: groupId, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID,
+			RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
 	}
 
 	tx := service.db.Begin()
@@ -804,13 +832,22 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 	var historis []model.UserAfcHistory
 
 	for _, v := range request.Afcs {
+		rom := new(uint)
 		clinic := new(uint)
 		degree := new(uint)
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
-			clinic = &v.ClinicalFeatureID
-			degree = &v.DegreeID
+		if v.ClinicalFeatureID != uint(AC) {
+			rom = &v.RomID
 		}
-		historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: request.GroupId, AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: clinic, DegreeID: degree})
+		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+			if v.ClinicalFeatureID != uint(AC) {
+				clinic = &v.ClinicalFeatureID
+				degree = &v.DegreeID
+			} else {
+				clinic = &v.ClinicalFeatureID
+			}
+
+		}
+		historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: request.GroupId, AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
 	}
 
 	tx := service.db.Begin()
@@ -834,4 +871,9 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 
 	tx.Commit()
 	return "200", nil
+}
+
+func (service *adminService) searchDiary(request SearchUserRequest) ([]SearchUserResponse, error) {
+	var response []SearchUserResponse
+	return response, nil
 }

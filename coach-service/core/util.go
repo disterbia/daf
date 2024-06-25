@@ -71,7 +71,7 @@ func copyStruct(input interface{}, output interface{}) error {
 
 func validateRecommendRequest(request RecommendRequest) error {
 	if request.ExerciseID == 0 || request.MachineIDs == nil || request.PurposeIDs == nil || request.BodyRomClinicDegree == nil ||
-		len(request.MachineIDs) == 0 || len(request.PurposeIDs) == 0 || len(request.BodyRomClinicDegree) == 0 {
+		len(request.MachineIDs) == 0 || len(request.PurposeIDs) == 0 || len(request.BodyRomClinicDegree) == 0 || request.BodyType > 3 {
 		return errors.New("check body")
 	}
 	return nil

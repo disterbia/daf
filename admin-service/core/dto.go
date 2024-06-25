@@ -61,18 +61,26 @@ type SearchUserRequest struct {
 }
 
 type SearchUserResponse struct {
-	ID                 uint          `json:"id"`
-	Name               string        `json:"name"`
-	Gender             uint          `json:"gender"`
-	AgeCode            uint          `json:"age_code"`
-	AgencyName         string        `json:"ageny_name"`
-	AdminName          string        `json:"admin_name"`
-	RegistDay          string        `json:"regist_day" example:"yyyy-mm-dd"`
-	UseStatusName      string        `json:"use_status_name"`
-	DisableTypeNames   []string      `json:"disable_type_names"`
-	VisitPurposeNames  []string      `json:"visit_purpose_names"`
-	DisableDetailNames []string      `json:"disable_detail_names"`
-	Afc                []AfcResponse `json:"afc"`
+	ID             uint             `json:"id"`
+	Name           string           `json:"name"`
+	Gender         uint             `json:"gender"`
+	AgeCode        uint             `json:"age_code"`
+	AgencyId       uint             `json:"agency_id"`
+	AgencyName     string           `json:"ageny_name"`
+	AdminId        uint             `json:"admin_id"`
+	AdminName      string           `json:"admin_name"`
+	RegistDay      string           `json:"regist_day" example:"yyyy-mm-dd"`
+	UseStatusId    uint             `json:"use_status_id"`
+	UseStatusName  string           `json:"use_status_name"`
+	DisableTypes   []IdNameResponse `json:"disable_types"`
+	VisitPurposes  []IdNameResponse `json:"visit_purposes"`
+	DisableDetails []IdNameResponse `json:"disable_details"`
+	Afc            []AfcResponse    `json:"afc"`
+}
+
+type IdNameResponse struct {
+	Id   uint   `json:"id"`
+	Name string `json:"string"`
 }
 
 type AfcRequest struct {
@@ -85,7 +93,7 @@ type AfcRequest struct {
 
 type AfcResponse struct {
 	BodyCompositionID uint    `json:"body_composition_id"`
-	RomAv             uint    `json:"rom_av"`
+	RomAv             *uint   `json:"rom_av"`
 	ClinicalFeatureAv *string `json:"clinical_feature_av"`
 	DegreeAv          *uint   `json:"degree_av"`
 	RomName           *string `json:"rom_name"`
@@ -103,7 +111,7 @@ type UserAfcResponse struct {
 	Updated           string `json:"updated"`
 	BodyCompositionID uint   `json:"body_composition_id"`
 	JointActionID     uint   `json:"joint_action_id"`
-	RomID             uint   `json:"rom_id"`
+	RomID             *uint  `json:"rom_id"`
 	ClinicalFeatureID *uint  `json:"clinical_feature_id"`
 	DegreeID          *uint  `json:"degree_id"`
 }

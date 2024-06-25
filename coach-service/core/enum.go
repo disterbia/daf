@@ -11,14 +11,14 @@ const (
 
 const (
 	NC level = iota + 1
+	TC
 	PC
 	CC
 	SC
 	AC
-	TC
 )
 
-var CLINIC = [6]level{NC, PC, CC, SC, AC, TC}
+var CLINIC = [6]level{NC, TC, PC, CC, SC, AC}
 
 // const (
 // 	ULS level = iota + 1

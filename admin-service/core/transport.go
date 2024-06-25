@@ -177,6 +177,14 @@ func SaveUserHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
+
 		var req SaveUserRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -325,19 +333,20 @@ func GetDisableDetailsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc 
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
+// @Param id path string true "id"
 // @Success 200 {object} GetAfcResponse "응답 DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /get-afcs [get]
+// @Router /get-afcs/{id} [get]
 func GetAfcsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _, err := verifyJWT(c)
+		_, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
-		response, err := getEndpoint(c.Request.Context(), id)
+		userId := c.Param("id")
+		response, err := getEndpoint(c.Request.Context(), userId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -366,6 +375,13 @@ func CreateAfcHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
 
 		var req SaveAfcRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -403,6 +419,13 @@ func UpdateAfcHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
+
 		var req SaveAfcRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -426,19 +449,20 @@ func UpdateAfcHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
+// @Param id path string true "id"
 // @Success 200 {object} []GetAfcResponse "응답DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /get-afc-historis [get]
+// @Router /get-afc-historis/{id} [get]
 func GetAfcHistorisHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _, err := verifyJWT(c)
+		_, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
-		response, err := myEndpoint(c.Request.Context(), id)
+		userId := c.Param("id")
+		response, err := myEndpoint(c.Request.Context(), userId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -467,6 +491,13 @@ func UpdateAfcHistoryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
 
 		var req SaveAfcHistoryRequest
 		if err := c.ShouldBindJSON(&req); err != nil {

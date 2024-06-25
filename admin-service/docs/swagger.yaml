@@ -48,10 +48,19 @@ definitions:
         type: string
       created_admin:
         type: string
+      group_id:
+        type: integer
       userAfcResponse:
         items:
           $ref: '#/definitions/core.UserAfcResponse'
         type: array
+    type: object
+  core.IdNameResponse:
+    properties:
+      id:
+        type: integer
+      string:
+        type: string
     type: object
   core.LoginRequest:
     properties:
@@ -157,6 +166,8 @@ definitions:
     type: object
   core.SearchUserResponse:
     properties:
+      admin_id:
+        type: integer
       admin_name:
         type: string
       afc:
@@ -165,15 +176,17 @@ definitions:
         type: array
       age_code:
         type: integer
+      agency_id:
+        type: integer
       ageny_name:
         type: string
-      disable_detail_names:
+      disable_details:
         items:
-          type: string
+          $ref: '#/definitions/core.IdNameResponse'
         type: array
-      disable_type_names:
+      disable_types:
         items:
-          type: string
+          $ref: '#/definitions/core.IdNameResponse'
         type: array
       gender:
         type: integer
@@ -184,11 +197,13 @@ definitions:
       regist_day:
         example: yyyy-mm-dd
         type: string
+      use_status_id:
+        type: integer
       use_status_name:
         type: string
-      visit_purpose_names:
+      visit_purposes:
         items:
-          type: string
+          $ref: '#/definitions/core.IdNameResponse'
         type: array
     type: object
   core.SignInRequest:
@@ -311,7 +326,7 @@ paths:
       summary: 담당코치 조회
       tags:
       - 회원검색 /admin
-  /get-afc-historis:
+  /get-afc-historis/{id}:
     get:
       consumes:
       - application/json
@@ -320,6 +335,11 @@ paths:
       - description: Bearer {jwt_token}
         in: header
         name: Authorization
+        required: true
+        type: string
+      - description: id
+        in: path
+        name: id
         required: true
         type: string
       produces:
@@ -342,7 +362,7 @@ paths:
       summary: 회원 Afc history 조회
       tags:
       - 회원 Afc /admin
-  /get-afcs:
+  /get-afcs/{id}:
     get:
       consumes:
       - application/json
@@ -353,15 +373,18 @@ paths:
         name: Authorization
         required: true
         type: string
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: 응답 DTO
           schema:
-            items:
-              $ref: '#/definitions/core.GetAfcResponse'
-            type: array
+            $ref: '#/definitions/core.GetAfcResponse'
         "400":
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
@@ -404,7 +427,7 @@ paths:
       summary: 등록매장 조회
       tags:
       - 회원검색 /admin
-  /get-disable-details:
+  /get-details:
     get:
       consumes:
       - application/json
@@ -532,36 +555,7 @@ paths:
       summary: 회원등록
       tags:
       - 회원등록 /admin
-  /send-code/{email}:
-    post:
-      consumes:
-      - application/json
-      description: 인증번호 발송시 호출
-      parameters:
-      - description: 이메일
-        in: path
-        name: email
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공시 200 반환
-          schema:
-            $ref: '#/definitions/core.BasicResponse'
-        "400":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-        "500":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-      summary: 인증번호 발송
-      tags:
-      - 인증번호 /admin
-  /serach-users:
+  /search-users:
     post:
       consumes:
       - application/json
@@ -598,6 +592,35 @@ paths:
       summary: 회원리스트 조회
       tags:
       - 회원검색 /admin
+  /send-code/{email}:
+    post:
+      consumes:
+      - application/json
+      description: 인증번호 발송시 호출
+      parameters:
+      - description: 이메일
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 인증번호 발송
+      tags:
+      - 인증번호 /admin
   /sign-in:
     post:
       consumes:
@@ -663,7 +686,7 @@ paths:
       summary: 회원 Afc 수정
       tags:
       - 회원 Afc /admin
-  /update-afc-historis:
+  /update-afc-history:
     post:
       consumes:
       - application/json

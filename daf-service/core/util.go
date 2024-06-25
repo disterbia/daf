@@ -73,3 +73,11 @@ func validateRequest(request UserAfcRequest) error {
 
 	return nil
 }
+
+func sum(slice []uint) uint {
+	total := uint(0)
+	for _, value := range slice {
+		total += value
+	}
+	return total
+}

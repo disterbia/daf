@@ -619,7 +619,7 @@ const docTemplate = `{
         "core.ExerciseResponse": {
             "type": "object",
             "properties": {
-                "bodyType": {
+                "body_type": {
                     "type": "integer"
                 },
                 "id": {
@@ -631,6 +631,17 @@ const docTemplate = `{
             }
         },
         "core.MachineDto": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.MeasureDto": {
             "type": "object",
             "properties": {
                 "id": {
@@ -655,10 +666,6 @@ const docTemplate = `{
         "core.RecommendRequest": {
             "type": "object",
             "properties": {
-                "asymmetric": {
-                    "description": "비대칭 여부",
-                    "type": "boolean"
-                },
                 "body_rom_clinic_degree": {
                     "description": "증상id : 정도",
                     "type": "object",
@@ -673,10 +680,18 @@ const docTemplate = `{
                     }
                 },
                 "body_type": {
+                    "description": "전신,상체,하체",
                     "type": "integer"
                 },
                 "exercise_id": {
                     "description": "운동아이디",
+                    "type": "integer"
+                },
+                "is_asymmetric": {
+                    "description": "비대칭 여부",
+                    "type": "boolean"
+                },
+                "l_amputation": {
                     "type": "integer"
                 },
                 "locomotion": {
@@ -684,6 +699,13 @@ const docTemplate = `{
                 },
                 "machine_ids": {
                     "description": "기구아이디",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "measure_ids": {
+                    "description": "측정항목 아이디",
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -698,14 +720,17 @@ const docTemplate = `{
                 },
                 "tr_rom": {
                     "type": "integer"
+                },
+                "u_amputation": {
+                    "type": "integer"
                 }
             }
         },
         "core.RecommendResponse": {
             "type": "object",
             "properties": {
-                "asymmetric": {
-                    "type": "boolean"
+                "amputation": {
+                    "type": "integer"
                 },
                 "bodyRomClinicDegree": {
                     "type": "object",
@@ -725,6 +750,9 @@ const docTemplate = `{
                 "exercise": {
                     "$ref": "#/definitions/core.ExerciseResponse"
                 },
+                "is_asymmetric": {
+                    "type": "boolean"
+                },
                 "locomotion": {
                     "type": "integer"
                 },
@@ -732,6 +760,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/core.MachineDto"
+                    }
+                },
+                "measure": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.MeasureDto"
                     }
                 },
                 "purposes": {

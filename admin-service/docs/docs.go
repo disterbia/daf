@@ -116,7 +116,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/get-afc-historis": {
+        "/get-afc-historis/{id}": {
             "get": {
                 "description": "회원 Afc history 조회시 호출",
                 "consumes": [
@@ -135,6 +135,13 @@ const docTemplate = `{
                         "description": "Bearer {jwt_token}",
                         "name": "Authorization",
                         "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -163,7 +170,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/get-afcs": {
+        "/get-afcs/{id}": {
             "get": {
                 "description": "현재 Afc조회시 호출",
                 "consumes": [
@@ -183,16 +190,20 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "응답 DTO",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/core.GetAfcResponse"
-                            }
+                            "$ref": "#/definitions/core.GetAfcResponse"
                         }
                     },
                     "400": {
@@ -257,7 +268,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/get-disable-details": {
+        "/get-details": {
             "get": {
                 "description": "기타 장애유형시 호출",
                 "consumes": [
@@ -452,51 +463,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/send-code/{email}": {
-            "post": {
-                "description": "인증번호 발송시 호출",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "인증번호 /admin"
-                ],
-                "summary": "인증번호 발송",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "이메일",
-                        "name": "email",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "성공시 200 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.BasicResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/serach-users": {
+        "/search-users": {
             "post": {
                 "description": "회원리스트 조회시 호출",
                 "consumes": [
@@ -535,6 +502,50 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/core.SearchUserResponse"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/send-code/{email}": {
+            "post": {
+                "description": "인증번호 발송시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "인증번호 /admin"
+                ],
+                "summary": "인증번호 발송",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "이메일",
+                        "name": "email",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
                         }
                     },
                     "400": {
@@ -651,7 +662,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/update-afc-historis": {
+        "/update-afc-history": {
             "post": {
                 "description": "회원 Afc history 수정시 호출",
                 "consumes": [
@@ -828,11 +839,25 @@ const docTemplate = `{
                 "created_admin": {
                     "type": "string"
                 },
+                "group_id": {
+                    "type": "integer"
+                },
                 "userAfcResponse": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/core.UserAfcResponse"
                     }
+                }
+            }
+        },
+        "core.IdNameResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "string": {
+                    "type": "string"
                 }
             }
         },
@@ -993,6 +1018,9 @@ const docTemplate = `{
         "core.SearchUserResponse": {
             "type": "object",
             "properties": {
+                "admin_id": {
+                    "type": "integer"
+                },
                 "admin_name": {
                     "type": "string"
                 },
@@ -1005,19 +1033,22 @@ const docTemplate = `{
                 "age_code": {
                     "type": "integer"
                 },
+                "agency_id": {
+                    "type": "integer"
+                },
                 "ageny_name": {
                     "type": "string"
                 },
-                "disable_detail_names": {
+                "disable_details": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/core.IdNameResponse"
                     }
                 },
-                "disable_type_names": {
+                "disable_types": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/core.IdNameResponse"
                     }
                 },
                 "gender": {
@@ -1033,13 +1064,16 @@ const docTemplate = `{
                     "type": "string",
                     "example": "yyyy-mm-dd"
                 },
+                "use_status_id": {
+                    "type": "integer"
+                },
                 "use_status_name": {
                     "type": "string"
                 },
-                "visit_purpose_names": {
+                "visit_purposes": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/core.IdNameResponse"
                     }
                 }
             }

@@ -20,6 +20,17 @@ const (
 
 const RECOMMENDCOUNT = 3
 
+const (
+	NC level = iota + 1
+	TC
+	PC
+	CC
+	SC
+	AC
+)
+
+var CLINIC = [6]level{NC, TC, PC, CC, SC, AC}
+
 // const (
 // 	ULS level = iota + 1
 // 	ULE

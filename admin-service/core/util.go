@@ -199,11 +199,19 @@ func getBirthdayRangeByAgeCode(ageCode uint) (time.Time, time.Time, error) {
 
 func validateAfc(request []AfcRequest) bool {
 	for _, v := range request {
-		if v.BodyCompositionID == 0 || v.RomID == 0 {
+		if v.BodyCompositionID == 0 || v.JointActionID == 0 {
 			return false
-		} else if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) && (v.ClinicalFeatureID == 0 || v.DegreeID == 0) {
+		} else if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) && v.ClinicalFeatureID != uint(AC) &&
+			(v.RomID == 0 || v.ClinicalFeatureID == 0 || v.DegreeID == 0) {
 			return false
 		}
 	}
 	return true
+}
+func sum(slice []uint) uint {
+	total := uint(0)
+	for _, value := range slice {
+		total += value
+	}
+	return total
 }

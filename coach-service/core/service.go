@@ -221,47 +221,74 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		return "", errors.New("db error5")
 	}
 
+	// 측정항목
+	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.ExerciseMeasure{}).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error5")
+	}
+
 	var recommends []model.Recommended
 	recommends = append(recommends, model.Recommended{
-		ExerciseID: request.ExerciseID,
-		Asymmetric: request.Asymmetric,
-		BodyFilter: request.BodyType,
-		BodyTypeID: uint(TBODY),
-		RomID:      request.TrRom,
+		ExerciseID:   request.ExerciseID,
+		IsAsymmetric: request.IsAsymmetric,
+		BodyFilter:   request.BodyType,
+		BodyTypeID:   uint(TBODY),
+		RomID:        &request.TrRom,
 	})
 	recommends = append(recommends, model.Recommended{
-		ExerciseID: request.ExerciseID,
-		Asymmetric: request.Asymmetric,
-		BodyFilter: request.BodyType,
-		BodyTypeID: uint(LOCOBODY),
-		RomID:      request.Locomotion,
+		ExerciseID:   request.ExerciseID,
+		IsAsymmetric: request.IsAsymmetric,
+		BodyFilter:   request.BodyType,
+		BodyTypeID:   uint(LOCOBODY),
+		RomID:        &request.Locomotion,
 	})
-
-	log.Println(request.BodyRomClinicDegree)
 
 	for bodyType, romClinicDegree := range request.BodyRomClinicDegree {
 		if bodyType == uint(UBODY) || bodyType == uint(LBODY) {
-			if request.BodyType == bodyType {
-				for rom, clinicDegree := range romClinicDegree {
-					var checkClinic = make(map[uint]bool)
-					for clinic, degree := range clinicDegree {
-						if _, exists := checkClinic[clinic]; exists {
-							continue // 중복된 clinic인 경우 처리하지 않음
-						}
-						recommends = append(recommends, model.Recommended{
-							ExerciseID:        request.ExerciseID,
-							Asymmetric:        request.Asymmetric,
-							BodyFilter:        request.BodyType,
-							BodyTypeID:        bodyType,
-							RomID:             rom,
-							ClinicalFeatureID: uintPointer(clinic),
-							DegreeID:          uintPointer(degree),
-						})
-						checkClinic[clinic] = true
+			if bodyType == uint(UBODY) && (request.UAmputation == 1 || request.UAmputation == 2) {
+				recommends = append(recommends, model.Recommended{
+					ExerciseID:     request.ExerciseID,
+					IsAsymmetric:   request.IsAsymmetric,
+					BodyFilter:     request.BodyType,
+					BodyTypeID:     bodyType,
+					AmputationCode: request.UAmputation,
+				})
+				break
+			} else if bodyType == uint(LBODY) && (request.LAmputation == 1 || request.LAmputation == 2) {
+				recommends = append(recommends, model.Recommended{
+					ExerciseID:     request.ExerciseID,
+					IsAsymmetric:   request.IsAsymmetric,
+					BodyFilter:     request.BodyType,
+					BodyTypeID:     bodyType,
+					AmputationCode: request.LAmputation,
+				})
+				break
+			}
+			amputation := 0
+			if bodyType == uint(UBODY) {
+				amputation = int(request.UAmputation)
+			} else if bodyType == uint(LBODY) {
+				amputation = int(request.LAmputation)
+			}
+			for rom, clinicDegree := range romClinicDegree {
+				var checkClinic = make(map[uint]bool)
+				for clinic, degree := range clinicDegree {
+					if _, exists := checkClinic[clinic]; exists {
+						continue // 중복된 clinic인 경우 처리하지 않음
 					}
+					recommends = append(recommends, model.Recommended{
+						ExerciseID:        request.ExerciseID,
+						IsAsymmetric:      request.IsAsymmetric,
+						BodyFilter:        request.BodyType,
+						BodyTypeID:        bodyType,
+						RomID:             &rom,
+						ClinicalFeatureID: &clinic,
+						DegreeID:          &degree,
+						AmputationCode:    uint(amputation),
+					})
+					checkClinic[clinic] = true
 				}
 			}
-
 		}
 	}
 	if err := tx.Create(recommends).Error; err != nil {
@@ -271,15 +298,16 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 
 	// 추가 추천운동 생성
 	var extras []model.Recommended
+	romPointer := uint(1)
 	degreePointer := uint(1)
 	if request.BodyType == uint(UBODY) {
 		for _, v := range CLINIC {
 			extras = append(extras, model.Recommended{
 				ExerciseID:        request.ExerciseID,
-				Asymmetric:        request.Asymmetric,
+				IsAsymmetric:      request.IsAsymmetric,
 				BodyFilter:        0,
 				BodyTypeID:        uint(LBODY),
-				RomID:             1,
+				RomID:             &romPointer,
 				DegreeID:          &degreePointer,
 				ClinicalFeatureID: uintPointer(uint(v)),
 			})
@@ -288,10 +316,10 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		for _, v := range CLINIC {
 			extras = append(extras, model.Recommended{
 				ExerciseID:        request.ExerciseID,
-				Asymmetric:        request.Asymmetric,
+				IsAsymmetric:      request.IsAsymmetric,
 				BodyFilter:        0,
 				BodyTypeID:        uint(UBODY),
-				RomID:             1,
+				RomID:             &romPointer,
 				DegreeID:          &degreePointer,
 				ClinicalFeatureID: uintPointer(uint(v)),
 			})
@@ -322,6 +350,16 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		tx.Rollback()
 		return "", errors.New("db error6")
 	}
+
+	var exerciseMeasure []model.ExerciseMeasure
+	for _, id := range request.MachineIDs {
+		exerciseMeasure = append(exerciseMeasure, model.ExerciseMeasure{ExerciseID: request.ExerciseID, MeasureID: id})
+	}
+	if err := tx.Create(exerciseMeasure).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error7")
+	}
+
 	tx.Commit()
 	return "200", nil
 }
@@ -335,26 +373,34 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 		return response, errors.New("db error")
 	}
 	if len(recommends) > 0 {
-		response.Asymmetric = recommends[0].Asymmetric
-		response.BodyRomClinicDegree = make(map[uint]map[uint]map[uint]uint)
+		response.IsAsymmetric = recommends[0].IsAsymmetric
+		response.BodyRomClinicDegree = make(map[uint]map[*uint]map[*uint]*uint)
 		for _, rec := range recommends {
 			response.Category = CategoryRequest{ID: rec.Exercise.CategoryID, Name: rec.Exercise.Category.Name}
 			response.Exercise = ExerciseResponse{ID: rec.Exercise.ID, Name: rec.Exercise.Name, BodyType: rec.BodyTypeID}
-			if rec.BodyTypeID == uint(TBODY) {
-				response.TrRom = rec.RomID
-				continue
+			if rec.RomID != nil {
+				if rec.BodyTypeID == uint(TBODY) {
+					response.TrRom = *rec.RomID
+					continue
+				}
+				if rec.BodyTypeID == uint(LOCOBODY) {
+					response.Locomotion = *rec.RomID
+					continue
+				}
 			}
-			if rec.BodyTypeID == uint(LOCOBODY) {
-				response.Locomotion = rec.RomID
-				continue
-			}
+
 			if response.BodyRomClinicDegree[rec.BodyTypeID] == nil {
-				response.BodyRomClinicDegree[rec.BodyTypeID] = make(map[uint]map[uint]uint)
+				response.BodyRomClinicDegree[rec.BodyTypeID] = make(map[*uint]map[*uint]*uint)
 			}
-			if response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] == nil {
-				response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] = make(map[uint]uint)
+
+			if rec.RomID != nil {
+				if response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] == nil {
+					response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] = make(map[*uint]*uint)
+				}
+				if rec.ClinicalFeatureID != nil && rec.DegreeID != nil && rec.RomID != nil {
+					response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID][rec.ClinicalFeatureID] = rec.DegreeID
+				}
 			}
-			response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID][*rec.ClinicalFeatureID] = *rec.DegreeID
 
 		}
 	}
@@ -362,7 +408,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
 	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-		return response, errors.New("db error")
+		return response, errors.New("db error1")
 	}
 	response.Machines = make([]MachineDto, len(exerciseMachines))
 	for i, machine := range exerciseMachines {
@@ -372,11 +418,21 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 	// 운동목적 정보 가져오기
 	var exercisePurposes []model.ExercisePurpose
 	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-		return response, errors.New("db error")
+		return response, errors.New("db error2")
 	}
 	response.Purposes = make([]PurposeDto, len(exercisePurposes))
 	for i, purpose := range exercisePurposes {
 		response.Purposes[i] = PurposeDto{ID: purpose.PurposeID, Name: purpose.Purpose.Name}
+	}
+
+	// 측정항목 정보 가져오기
+	var exerciseMeasure []model.ExerciseMeasure
+	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Measure").Find(&exerciseMeasure).Error; err != nil {
+		return response, errors.New("db error3")
+	}
+	response.Measures = make([]MeasureDto, len(exerciseMeasure))
+	for i, measure := range exerciseMeasure {
+		response.Measures[i] = MeasureDto{ID: measure.MeasureID, Name: measure.Measure.Name}
 	}
 
 	return response, nil
@@ -400,19 +456,25 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 	// 2. 선택된 ExerciseID에 해당하는 추천 운동 데이터 가져오기
 	var recommends []model.Recommended
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Where("body_filter != ?", 0).Order("id DESC").Preload("Exercise.Category").Find(&recommends).Error; err != nil {
-		return responses, errors.New("db error")
+		return responses, errors.New("db error1")
 	}
 
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-		return responses, errors.New("db error")
+		return responses, errors.New("db error2")
 	}
 
 	// 운동목적 정보 가져오기
 	var exercisePurposes []model.ExercisePurpose
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-		return responses, errors.New("db error")
+		return responses, errors.New("db error3")
+	}
+
+	// 운동목적 정보 가져오기
+	var exerciseMeasures []model.ExerciseMeasure
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Measure").Find(&exerciseMeasures).Error; err != nil {
+		return responses, errors.New("db error4")
 	}
 
 	// 응답 구조체 생성
@@ -422,25 +484,33 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 			exerciseIDToRecommend[recommend.ExerciseID] = &RecommendResponse{
 				Category:            CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 				Exercise:            ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, BodyType: recommend.BodyFilter},
-				Asymmetric:          recommend.Asymmetric,
-				BodyRomClinicDegree: make(map[uint]map[uint]map[uint]uint),
+				IsAsymmetric:        recommend.IsAsymmetric,
+				BodyRomClinicDegree: make(map[uint]map[*uint]map[*uint]*uint),
 			}
 		}
 		if recommend.BodyTypeID == uint(TBODY) {
-			exerciseIDToRecommend[recommend.ExerciseID].TrRom = recommend.RomID
+			if recommend.RomID != nil {
+				exerciseIDToRecommend[recommend.ExerciseID].TrRom = *recommend.RomID
+			}
 			continue
 		}
 		if recommend.BodyTypeID == uint(LOCOBODY) {
-			exerciseIDToRecommend[recommend.ExerciseID].Locomotion = recommend.RomID
+			if recommend.RomID != nil {
+				exerciseIDToRecommend[recommend.ExerciseID].Locomotion = *recommend.RomID
+			}
 			continue
 		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] == nil {
-			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[uint]map[uint]uint)
+			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[*uint]map[*uint]*uint)
 		}
-		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
-			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[uint]uint)
+		if recommend.RomID != nil {
+			if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[*uint]*uint)
+			}
+			if recommend.ClinicalFeatureID != nil && recommend.DegreeID != nil {
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][recommend.ClinicalFeatureID] = recommend.DegreeID
+			}
 		}
-		exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][*recommend.ClinicalFeatureID] = *recommend.DegreeID
 
 	}
 
@@ -453,6 +523,12 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 	for _, purpose := range exercisePurposes {
 		if response, exists := exerciseIDToRecommend[purpose.ExerciseID]; exists {
 			response.Purposes = append(response.Purposes, PurposeDto{ID: purpose.PurposeID, Name: purpose.Purpose.Name})
+		}
+	}
+
+	for _, measure := range exerciseMeasures {
+		if response, exists := exerciseIDToRecommend[measure.ExerciseID]; exists {
+			response.Measures = append(response.Measures, MeasureDto{ID: measure.MeasureID, Name: measure.Measure.Name})
 		}
 	}
 
@@ -506,19 +582,25 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 		Order("CASE WHEN exercises.name LIKE '" + name + "%' THEN 0 ELSE 1 END, exercises.name, recommendeds.id DESC").
 		Preload("Exercise.Category").
 		Find(&recommends).Error; err != nil {
-		return responses, errors.New("db error")
+		return responses, errors.New("db error1")
 	}
 
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-		return responses, errors.New("db error")
+		return responses, errors.New("db error2")
 	}
 
 	// 운동목적 정보 가져오기
 	var exercisePurposes []model.ExercisePurpose
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-		return responses, errors.New("db error")
+		return responses, errors.New("db error3")
+	}
+
+	// 측정항목 정보 가져오기
+	var exerciseMeasures []model.ExerciseMeasure
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Measure").Find(&exerciseMeasures).Error; err != nil {
+		return responses, errors.New("db error4")
 	}
 
 	// 응답 구조체 생성 및 초기화
@@ -530,28 +612,35 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 			response := &RecommendResponse{
 				Category:            CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 				Exercise:            ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, BodyType: recommend.BodyFilter},
-				Asymmetric:          recommend.Asymmetric,
-				BodyRomClinicDegree: make(map[uint]map[uint]map[uint]uint),
+				IsAsymmetric:        recommend.IsAsymmetric,
+				BodyRomClinicDegree: make(map[uint]map[*uint]map[*uint]*uint),
 			}
 			exerciseIDToRecommend[recommend.ExerciseID] = response
 			sortedResponses = append(sortedResponses, response)
 		}
-
 		if recommend.BodyTypeID == uint(TBODY) {
-			exerciseIDToRecommend[recommend.ExerciseID].TrRom = recommend.RomID
+			if recommend.RomID != nil {
+				exerciseIDToRecommend[recommend.ExerciseID].TrRom = *recommend.RomID
+			}
 			continue
 		}
 		if recommend.BodyTypeID == uint(LOCOBODY) {
-			exerciseIDToRecommend[recommend.ExerciseID].Locomotion = recommend.RomID
+			if recommend.RomID != nil {
+				exerciseIDToRecommend[recommend.ExerciseID].Locomotion = *recommend.RomID
+			}
 			continue
 		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] == nil {
-			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[uint]map[uint]uint)
+			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[*uint]map[*uint]*uint)
 		}
-		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
-			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[uint]uint)
+		if recommend.RomID != nil {
+			if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[*uint]*uint)
+			}
+			if recommend.ClinicalFeatureID != nil && recommend.DegreeID != nil {
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][recommend.ClinicalFeatureID] = recommend.DegreeID
+			}
 		}
-		exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][*recommend.ClinicalFeatureID] = *recommend.DegreeID
 
 	}
 
@@ -564,6 +653,12 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 	for _, purpose := range exercisePurposes {
 		if response, exists := exerciseIDToRecommend[purpose.ExerciseID]; exists {
 			response.Purposes = append(response.Purposes, PurposeDto{ID: purpose.PurposeID, Name: purpose.Purpose.Name})
+		}
+	}
+
+	for _, measure := range exerciseMeasures {
+		if response, exists := exerciseIDToRecommend[measure.ExerciseID]; exists {
+			response.Measures = append(response.Measures, MeasureDto{ID: measure.MeasureID, Name: measure.Measure.Name})
 		}
 	}
 

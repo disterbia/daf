@@ -28,8 +28,6 @@ func main() {
 	}
 
 	svc := core.NewDafService(database)
-	setUserEndpoint := core.SetUserEndpoint(svc)
-	getUserEndpoint := core.GetUserEndpoint(svc)
 	getRecommendEndpoint := core.GetRecommendsEndpoint(svc)
 	fmt.Printf("svc: %v\n", svc)
 
@@ -37,8 +35,6 @@ func main() {
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	router.POST("/set-user-daf", core.SetUserHandler(setUserEndpoint))
-	router.GET("/get-user-daf", core.GetUserHandler(getUserEndpoint))
 	router.GET("/get-recommend", core.GetRecommendsHandler(getRecommendEndpoint))
 
 	router.Run(":44402")

@@ -38,7 +38,7 @@ definitions:
     type: object
   core.ExerciseResponse:
     properties:
-      bodyType:
+      body_type:
         type: integer
       id:
         type: integer
@@ -46,6 +46,13 @@ definitions:
         type: string
     type: object
   core.MachineDto:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.MeasureDto:
     properties:
       id:
         type: integer
@@ -61,9 +68,6 @@ definitions:
     type: object
   core.RecommendRequest:
     properties:
-      asymmetric:
-        description: 비대칭 여부
-        type: boolean
       body_rom_clinic_degree:
         additionalProperties:
           additionalProperties:
@@ -74,14 +78,25 @@ definitions:
         description: '증상id : 정도'
         type: object
       body_type:
+        description: 전신,상체,하체
         type: integer
       exercise_id:
         description: 운동아이디
+        type: integer
+      is_asymmetric:
+        description: 비대칭 여부
+        type: boolean
+      l_amputation:
         type: integer
       locomotion:
         type: integer
       machine_ids:
         description: 기구아이디
+        items:
+          type: integer
+        type: array
+      measure_ids:
+        description: 측정항목 아이디
         items:
           type: integer
         type: array
@@ -92,11 +107,13 @@ definitions:
         type: array
       tr_rom:
         type: integer
+      u_amputation:
+        type: integer
     type: object
   core.RecommendResponse:
     properties:
-      asymmetric:
-        type: boolean
+      amputation:
+        type: integer
       bodyRomClinicDegree:
         additionalProperties:
           additionalProperties:
@@ -109,11 +126,17 @@ definitions:
         $ref: '#/definitions/core.CategoryRequest'
       exercise:
         $ref: '#/definitions/core.ExerciseResponse'
+      is_asymmetric:
+        type: boolean
       locomotion:
         type: integer
       machines:
         items:
           $ref: '#/definitions/core.MachineDto'
+        type: array
+      measure:
+        items:
+          $ref: '#/definitions/core.MeasureDto'
         type: array
       purposes:
         items:

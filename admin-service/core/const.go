@@ -3,7 +3,8 @@ package core
 type level int
 
 const (
-	ETC level = iota + 1
+	NONE level = iota + 1
+	ETC
 )
 
 const (
@@ -14,3 +15,14 @@ const (
 	LR
 	LOCOMOTION
 )
+
+const (
+	NC level = iota + 1
+	TC
+	PC
+	CC
+	SC
+	AC
+)
+
+var CLINIC = [6]level{NC, TC, PC, CC, SC, AC}

@@ -15,5 +15,6 @@ type Recommended struct {
 	ClinicalFeatureID uint            `gorm:"index"`
 	Degree            Degree          `gorm:"foreignKey:DegreeID"`
 	DegreeID          uint            `gorm:"index"`
-	Asymmetric        bool
+	IsAsymmetric      bool
+	AmputationCode    uint
 }
