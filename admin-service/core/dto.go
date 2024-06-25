@@ -62,6 +62,7 @@ type SearchUserRequest struct {
 
 type SearchUserResponse struct {
 	ID             uint             `json:"id"`
+	Phone          string           `json:"phone" example:"01000000000"`
 	Name           string           `json:"name"`
 	Gender         uint             `json:"gender"`
 	AgeCode        uint             `json:"age_code"`
