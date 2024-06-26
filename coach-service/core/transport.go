@@ -277,7 +277,7 @@ func SaveRecommendHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		defer userLocks.Delete(id)
 
 		var req RecommendRequest
-		log.Println(req.BodyRomClinicDegree)
+
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Println(err.Error())
 			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})

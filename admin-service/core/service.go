@@ -561,6 +561,9 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 			VisitPurposes:  visitPurposeNamesMap[user.ID],
 			DisableDetails: disableDetailNamesMap[user.ID],
 			Afc:            userJointActionsMap[user.ID],
+			Addr:           user.Addr + " " + user.AddrDetail,
+			Birthday:       user.Birthday.Format("2006-01-02"),
+			Memo:           user.Memo,
 		})
 	}
 

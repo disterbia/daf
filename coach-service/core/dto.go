@@ -59,19 +59,25 @@ type RecommendRequest struct {
 	Locomotion          uint                            `json:"locomotion"`
 	UAmputation         uint                            `json:"u_amputation"`
 	LAmputation         uint                            `json:"l_amputation"`
+	QuillJson           []QuillJson                     `json:"quill_json"`
+}
+type QuillJson struct {
+	Insert     interface{}            `json:"insert"`
+	Attributes map[string]interface{} `json:"attributes,omitempty"`
 }
 
 type RecommendResponse struct {
-	Category            CategoryRequest  `json:"category"`
-	Exercise            ExerciseResponse `json:"exercise"`
-	Machines            []MachineDto     `json:"machines"`
-	Purposes            []PurposeDto     `json:"purposes"`
-	Measures            []MeasureDto     `json:"measure"`
-	IsAsymmetric        bool             `json:"is_asymmetric"`
-	TrRom               uint             `json:"tr_rom"`
-	Locomotion          uint             `json:"locomotion"`
-	Amputation          uint             `json:"amputation"`
-	BodyRomClinicDegree map[uint]map[*uint]map[*uint]*uint
+	Category            CategoryRequest                 `json:"category"`
+	Exercise            ExerciseResponse                `json:"exercise"`
+	Machines            []MachineDto                    `json:"machines"`
+	Purposes            []PurposeDto                    `json:"purposes"`
+	Measures            []MeasureDto                    `json:"measure"`
+	IsAsymmetric        bool                            `json:"is_asymmetric"`
+	TrRom               uint                            `json:"tr_rom"`
+	Locomotion          uint                            `json:"locomotion"`
+	Amputation          uint                            `json:"amputation"`
+	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree,omitempty"`
+	QuillJson           []QuillJson                     `json:"quill_json"`
 }
 
 type SearchRequest struct {

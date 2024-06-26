@@ -1,6 +1,10 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"encoding/json"
+
+	"gorm.io/gorm"
+)
 
 type Recommended struct {
 	gorm.Model
@@ -17,4 +21,5 @@ type Recommended struct {
 	DegreeID          *uint           `gorm:"index"`
 	IsAsymmetric      bool
 	AmputationCode    uint
+	Explain           json.RawMessage `gorm:"type:jsonb"`
 }

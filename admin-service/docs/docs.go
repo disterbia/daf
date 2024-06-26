@@ -463,7 +463,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/search-users": {
+        "/search-userds": {
             "post": {
                 "description": "회원리스트 조회시 호출",
                 "consumes": [
@@ -1059,6 +1059,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "01000000000"
                 },
                 "regist_day": {
                     "type": "string",

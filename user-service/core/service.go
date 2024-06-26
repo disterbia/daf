@@ -218,7 +218,7 @@ func (service *userService) setUser(userRequest UserRequest) (string, error) {
 	}()
 
 	//유저 정보 업데이트
-	result := service.db.Model(&user).Where("id=?", user.ID).Update("nickname", user.Nickname)
+	result := tx.Model(&user).Where("id=?", user.ID).Update("nickname", user.Nickname)
 	if result.Error != nil {
 		log.Println(result.Error.Error())
 		tx.Rollback()
@@ -236,7 +236,7 @@ func (service *userService) setUser(userRequest UserRequest) (string, error) {
 	}
 	if userRequest.ProfileImage != "" {
 		// 기존 이미지 레코드 논리삭제
-		result = service.db.Where("parent_id = ? AND type =?", user.ID, profileImageType).Delete(&model.Image{})
+		result = tx.Where("parent_id = ? AND type =?", user.ID, profileImageType).Delete(&model.Image{})
 		if result.Error != nil {
 			log.Println(result.Error.Error())
 			tx.Rollback()

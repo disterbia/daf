@@ -41,7 +41,6 @@ func main() {
 		Region:      aws.String("ap-northeast-2"),
 		Credentials: credentials.NewStaticCredentials(accessKey, secretKey, ""),
 	})
-	log.Println("ccc")
 	if err != nil {
 		log.Println("aws connection error:", err)
 	}

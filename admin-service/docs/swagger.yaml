@@ -194,6 +194,9 @@ definitions:
         type: integer
       name:
         type: string
+      phone:
+        example: "01000000000"
+        type: string
       regist_day:
         example: yyyy-mm-dd
         type: string
@@ -555,7 +558,7 @@ paths:
       summary: 회원등록
       tags:
       - 회원등록 /admin
-  /search-users:
+  /search-userds:
     post:
       consumes:
       - application/json

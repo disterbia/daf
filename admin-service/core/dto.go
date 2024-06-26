@@ -77,6 +77,9 @@ type SearchUserResponse struct {
 	VisitPurposes  []IdNameResponse `json:"visit_purposes"`
 	DisableDetails []IdNameResponse `json:"disable_details"`
 	Afc            []AfcResponse    `json:"afc"`
+	Addr           string           `json:"addr"`
+	Memo           string           `json:"memo"`
+	Birthday       string           `json:"birthday" example:"yyyy-mm-dd"`
 }
 
 type IdNameResponse struct {

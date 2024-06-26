@@ -4,11 +4,15 @@ package core
 
 import (
 	"coach-service/model"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -28,11 +32,14 @@ type CoachService interface {
 }
 
 type coachService struct {
-	db *gorm.DB
+	db        *gorm.DB
+	s3svc     *s3.S3
+	bucket    string
+	bucketUrl string
 }
 
-func NewCoachService(db *gorm.DB) CoachService {
-	return &coachService{db: db}
+func NewCoachService(db *gorm.DB, s3svc *s3.S3, bucket string, bucketUrl string) CoachService {
+	return &coachService{db: db, s3svc: s3svc, bucket: bucket, bucketUrl: bucketUrl}
 }
 
 func (service *coachService) login(request LoginRequest) (string, error) {
@@ -193,6 +200,53 @@ func (service *coachService) getPurposes() ([]PurposeDto, error) {
 }
 
 func (service *coachService) saveRecommend(request RecommendRequest) (string, error) {
+	for i, v := range request.QuillJson {
+		switch insertValue := v.Insert.(type) {
+		case map[string]interface{}:
+			if image, ok := insertValue["image"]; ok {
+				base64Image, ok := image.(string)
+				if !ok {
+					return "", errors.New("image field is not a string")
+				}
+				imgData, err := base64.StdEncoding.DecodeString(base64Image)
+				if err != nil {
+					return "", err
+				}
+
+				// 이미지 포맷 체크
+				contentType, ext, err := getImageFormat(imgData)
+				if err != nil {
+					return "", err
+				}
+
+				// 이미지 크기 조정 (10MB 제한)
+				if len(imgData) > 10*1024*1024 {
+					imgData, err = reduceImageSize(imgData)
+					if err != nil {
+						return "", err
+					}
+				}
+
+				// S3에 이미지 및 썸네일 업로드
+				url, err := uploadImagesToS3(imgData, contentType, ext, service.s3svc, service.bucket, service.bucketUrl, strconv.FormatUint(uint64(request.ExerciseID), 10))
+				if err != nil {
+					return "", err
+				}
+				request.QuillJson[i].Insert = map[string]interface{}{"image": url}
+			}
+		case string:
+			// v.Insert is a string, nothing to do
+		default:
+			return "", errors.New("unexpected insert value type")
+		}
+	}
+
+	// QuillJson을 JSON 문자열로 변환
+	explainJson, err := json.Marshal(request.QuillJson)
+	if err != nil {
+		return "", err
+	}
+
 	if err := validateRecommendRequest(request); err != nil {
 		return "", err
 	}
@@ -234,6 +288,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		BodyFilter:   request.BodyType,
 		BodyTypeID:   uint(TBODY),
 		RomID:        &request.TrRom,
+		Explain:      explainJson,
 	})
 	recommends = append(recommends, model.Recommended{
 		ExerciseID:   request.ExerciseID,
@@ -241,6 +296,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		BodyFilter:   request.BodyType,
 		BodyTypeID:   uint(LOCOBODY),
 		RomID:        &request.Locomotion,
+		Explain:      explainJson,
 	})
 
 	for bodyType, romClinicDegree := range request.BodyRomClinicDegree {
@@ -252,6 +308,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 					BodyFilter:     request.BodyType,
 					BodyTypeID:     bodyType,
 					AmputationCode: request.UAmputation,
+					Explain:        explainJson,
 				})
 				break
 			} else if bodyType == uint(LBODY) && (request.LAmputation == 1 || request.LAmputation == 2) {
@@ -261,6 +318,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 					BodyFilter:     request.BodyType,
 					BodyTypeID:     bodyType,
 					AmputationCode: request.LAmputation,
+					Explain:        explainJson,
 				})
 				break
 			}
@@ -285,6 +343,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 						ClinicalFeatureID: &clinic,
 						DegreeID:          &degree,
 						AmputationCode:    uint(amputation),
+						Explain:           explainJson,
 					})
 					checkClinic[clinic] = true
 				}
@@ -352,7 +411,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 	}
 
 	var exerciseMeasure []model.ExerciseMeasure
-	for _, id := range request.MachineIDs {
+	for _, id := range request.MeasureIds {
 		exerciseMeasure = append(exerciseMeasure, model.ExerciseMeasure{ExerciseID: request.ExerciseID, MeasureID: id})
 	}
 	if err := tx.Create(exerciseMeasure).Error; err != nil {
@@ -372,9 +431,15 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 	if err := service.db.Where("exercise_id = ? AND body_filter != ? ", exerciseID, 0).Preload("Exercise.Category").Find(&recommends).Error; err != nil {
 		return response, errors.New("db error")
 	}
+
+	var quillJson []QuillJson
+	if err := json.Unmarshal(recommends[0].Explain, &quillJson); err != nil {
+		return RecommendResponse{}, err
+	}
 	if len(recommends) > 0 {
 		response.IsAsymmetric = recommends[0].IsAsymmetric
-		response.BodyRomClinicDegree = make(map[uint]map[*uint]map[*uint]*uint)
+		response.BodyRomClinicDegree = make(map[uint]map[uint]map[uint]uint)
+		response.QuillJson = quillJson
 		for _, rec := range recommends {
 			response.Category = CategoryRequest{ID: rec.Exercise.CategoryID, Name: rec.Exercise.Category.Name}
 			response.Exercise = ExerciseResponse{ID: rec.Exercise.ID, Name: rec.Exercise.Name, BodyType: rec.BodyTypeID}
@@ -390,15 +455,15 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 			}
 
 			if response.BodyRomClinicDegree[rec.BodyTypeID] == nil {
-				response.BodyRomClinicDegree[rec.BodyTypeID] = make(map[*uint]map[*uint]*uint)
+				response.BodyRomClinicDegree[rec.BodyTypeID] = make(map[uint]map[uint]uint)
 			}
 
 			if rec.RomID != nil {
-				if response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] == nil {
-					response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID] = make(map[*uint]*uint)
+				if response.BodyRomClinicDegree[rec.BodyTypeID][*rec.RomID] == nil {
+					response.BodyRomClinicDegree[rec.BodyTypeID][*rec.RomID] = make(map[uint]uint)
 				}
 				if rec.ClinicalFeatureID != nil && rec.DegreeID != nil && rec.RomID != nil {
-					response.BodyRomClinicDegree[rec.BodyTypeID][rec.RomID][rec.ClinicalFeatureID] = rec.DegreeID
+					response.BodyRomClinicDegree[rec.BodyTypeID][*rec.RomID][*rec.ClinicalFeatureID] = *rec.DegreeID
 				}
 			}
 
@@ -485,7 +550,7 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 				Category:            CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 				Exercise:            ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, BodyType: recommend.BodyFilter},
 				IsAsymmetric:        recommend.IsAsymmetric,
-				BodyRomClinicDegree: make(map[uint]map[*uint]map[*uint]*uint),
+				BodyRomClinicDegree: make(map[uint]map[uint]map[uint]uint),
 			}
 		}
 		if recommend.BodyTypeID == uint(TBODY) {
@@ -501,14 +566,14 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 			continue
 		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] == nil {
-			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[*uint]map[*uint]*uint)
+			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[uint]map[uint]uint)
 		}
 		if recommend.RomID != nil {
-			if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
-				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[*uint]*uint)
+			if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][*recommend.RomID] == nil {
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][*recommend.RomID] = make(map[uint]uint)
 			}
 			if recommend.ClinicalFeatureID != nil && recommend.DegreeID != nil {
-				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][recommend.ClinicalFeatureID] = recommend.DegreeID
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][*recommend.RomID][*recommend.ClinicalFeatureID] = *recommend.DegreeID
 			}
 		}
 
@@ -613,7 +678,7 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 				Category:            CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 				Exercise:            ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, BodyType: recommend.BodyFilter},
 				IsAsymmetric:        recommend.IsAsymmetric,
-				BodyRomClinicDegree: make(map[uint]map[*uint]map[*uint]*uint),
+				BodyRomClinicDegree: make(map[uint]map[uint]map[uint]uint),
 			}
 			exerciseIDToRecommend[recommend.ExerciseID] = response
 			sortedResponses = append(sortedResponses, response)
@@ -631,14 +696,14 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 			continue
 		}
 		if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] == nil {
-			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[*uint]map[*uint]*uint)
+			exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID] = make(map[uint]map[uint]uint)
 		}
 		if recommend.RomID != nil {
-			if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] == nil {
-				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID] = make(map[*uint]*uint)
+			if exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][*recommend.RomID] == nil {
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][*recommend.RomID] = make(map[uint]uint)
 			}
 			if recommend.ClinicalFeatureID != nil && recommend.DegreeID != nil {
-				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][recommend.RomID][recommend.ClinicalFeatureID] = recommend.DegreeID
+				exerciseIDToRecommend[recommend.ExerciseID].BodyRomClinicDegree[recommend.BodyTypeID][*recommend.RomID][*recommend.ClinicalFeatureID] = *recommend.DegreeID
 			}
 		}
 
