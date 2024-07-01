@@ -10,7 +10,7 @@ type UserAfcHistory struct {
 	BodyComposition       BodyComposition `gorm:"foreignKey:BodyCompositionID"`
 	BodyCompositionID     uint
 	JointAction           JointAction         `gorm:"foreignKey:JointActionID"`
-	JointActionID         uint                `gorm:"index"`
+	JointActionID         *uint               `gorm:"index"`
 	Rom                   Rom                 `gorm:"foreignKey:RomID"`
 	RomID                 *uint               `gorm:"index"`
 	ClinicalFeature       ClinicalFeature     `gorm:"foreignKey:ClinicalFeatureID"`

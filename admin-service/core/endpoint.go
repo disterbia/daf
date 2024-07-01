@@ -85,7 +85,7 @@ func SearhUsersEndpoint(s AdminService) endpoint.Endpoint {
 
 func GetAgencisEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		result, err := s.getAgencis()
+		result, err := s.getAgencis(request.(uint))
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
@@ -95,7 +95,7 @@ func GetAgencisEndpoint(s AdminService) endpoint.Endpoint {
 
 func GetAdminsEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		result, err := s.getAdmins()
+		result, err := s.getAdmins(request.(uint))
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
@@ -115,7 +115,10 @@ func GetDisableDetailsEndpoint(s AdminService) endpoint.Endpoint {
 
 func GetAfcsEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		result, err := s.getAfcs(request.(uint))
+		reqMap := request.(map[string]interface{})
+		id := reqMap["id"].(uint)
+		uid := reqMap["user_id"].(uint)
+		result, err := s.getAfcs(id, uid)
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
@@ -129,7 +132,7 @@ func CreateAfcEndpoint(s AdminService) endpoint.Endpoint {
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
-		return result, nil
+		return BasicResponse{Code: result}, nil
 	}
 }
 
@@ -139,13 +142,16 @@ func UpdateAfcEndpoint(s AdminService) endpoint.Endpoint {
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
-		return result, nil
+		return BasicResponse{Code: result}, nil
 	}
 }
 
 func GetAfcHistorisEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		result, err := s.getAfcHistoris(request.(uint))
+		reqMap := request.(map[string]interface{})
+		id := reqMap["id"].(uint)
+		uid := reqMap["user_id"].(uint)
+		result, err := s.getAfcHistoris(id, uid)
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
@@ -159,6 +165,26 @@ func UpdateAfcHistoryEndpoint(s AdminService) endpoint.Endpoint {
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}
+		return BasicResponse{Code: result}, nil
+	}
+}
+
+func SearhDiaryEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.searchDiary(request.(SearchDiaryRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
 		return result, nil
+	}
+}
+
+func SaveDiaryEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.saveDiary(request.(SaveDiaryRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return BasicResponse{Code: result}, nil
 	}
 }

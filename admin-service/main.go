@@ -11,6 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"golang.org/x/time/rate"
@@ -79,7 +83,20 @@ func main() {
 	}
 	defer conn.Close()
 
-	svc := core.NewAdminService(database, conn)
+	accessKey := os.Getenv("S3_ACCESS_KEY")
+	secretKey := os.Getenv("S3_SECRET_KEY")
+	bucket := os.Getenv("S3_BUCKET")
+	bucketUrl := os.Getenv("S3_BUCKET_URL")
+	s3sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("ap-northeast-2"),
+		Credentials: credentials.NewStaticCredentials(accessKey, secretKey, ""),
+	})
+	if err != nil {
+		log.Println("aws connection error:", err)
+	}
+	s3svc := s3.New(s3sess)
+
+	svc := core.NewAdminService(database, conn, s3svc, bucket, bucketUrl)
 	loginEndpoint := core.LoginEndpoint(svc)
 	sendCodeEndpoint := core.SendCodeEndpoint(svc)
 	verifyEndpoint := core.VerifyEndpoint(svc)
@@ -95,6 +112,8 @@ func main() {
 	updateAfcEndpoint := core.UpdateAfcEndpoint(svc)
 	getAfcHistorisEndpoint := core.GetAfcHistorisEndpoint(svc)
 	updateAfcHistoryEndpoint := core.UpdateAfcHistoryEndpoint(svc)
+	searchDiaryEndpoint := core.SearhDiaryEndpoint(svc)
+	saveDiaryEndPoint := core.SaveDiaryEndpoint(svc)
 	router := gin.Default()
 
 	rateLimiterMiddleware := RateLimitMiddleware()
@@ -115,6 +134,9 @@ func main() {
 	router.GET("/get-details", core.GetDisableDetailsHandler(getDisableDetailsEndPoint))
 	router.GET("/get-afcs/:id", core.GetAfcsHandler(getAfcsEndPoint))
 	router.GET("/get-historis/:id", core.GetAfcHistorisHandler(getAfcHistorisEndpoint))
+
+	router.POST("/search-diary", core.SearchDiaryHandler(searchDiaryEndpoint))
+	router.POST("/save-diary", core.SaveDiaryHandler(saveDiaryEndPoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

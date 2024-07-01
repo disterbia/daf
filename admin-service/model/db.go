@@ -21,8 +21,9 @@ func NewDB(dataSourceName string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Admin{}, &Agency{}, &AppVersion{}, &AuthCode{}, &BodyComposition{}, &BodyType{}, &Category{}, &ClinicalFeature{}, &Degree{}, &DisableDetail{}, &DisableType{},
-		&ExerciseMachine{}, &ExercisePurpose{}, &ExerciseMeasure{}, &Exercise{}, &History{}, &Image{}, &JointAction{}, &Machine{}, &Measure{}, &Purpose{}, &Recommended{}, &Role{}, &Rom{},
-		&UseStatus{}, &UserAfcHistoryGroup{}, &UserAfcHistory{}, &UserDisableDetail{}, &UserDisable{}, &UserAfc{}, &UserVisit{}, &User{}, &VerifiedEmail{}, &VisitPurpose{})
+	db.AutoMigrate(&Admin{}, &Agency{}, &Amputation{}, &AppVersion{}, &AuthCode{}, &BodyComposition{}, &BodyType{}, &Category{}, &ClassPurpose{}, &ClinicalFeature{}, &Degree{}, &Diary{},
+		&DisableDetail{}, &DisableType{}, &ExerciseDiary{}, &ExerciseMachine{}, &ExercisePurpose{}, &ExerciseMeasure{}, &Exercise{}, &History{}, &Image{}, &JointAction{}, &Machine{}, &Measure{},
+		&Purpose{}, &Recommended{}, &Role{}, &Rom{}, &SuperAgency{}, &UseStatus{}, &UserAfcHistoryGroup{}, &UserAfcHistory{}, &UserDisableDetail{}, &UserDisable{}, &UserAfc{}, &UserVisit{},
+		&User{}, &VerifiedEmail{}, &VisitPurpose{})
 	return db, nil
 }

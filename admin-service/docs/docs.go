@@ -116,60 +116,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/get-afc-historis/{id}": {
-            "get": {
-                "description": "회원 Afc history 조회시 호출",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "회원 Afc /admin"
-                ],
-                "summary": "회원 Afc history 조회",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer {jwt_token}",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "응답DTO",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/core.GetAfcResponse"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/get-afcs/{id}": {
             "get": {
                 "description": "현재 Afc조회시 호출",
@@ -315,6 +261,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/get-historis/{id}": {
+            "get": {
+                "description": "회원 Afc history 조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원 Afc /admin"
+                ],
+                "summary": "회원 Afc history 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.GetAfcResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "관리자 로그인시 호출",
@@ -410,6 +410,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/save-diary": {
+            "post": {
+                "description": "운동일지 저장시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동일지 /admin"
+                ],
+                "summary": "운동일지 저장",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO 수정시 id생략",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SaveDiaryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/save-user": {
             "post": {
                 "description": "회원등록시 호출",
@@ -463,7 +516,63 @@ const docTemplate = `{
                 }
             }
         },
-        "/search-userds": {
+        "/search-diary": {
+            "post": {
+                "description": "운동일지 검색시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동일지 /admin"
+                ],
+                "summary": "운동일지 찾기",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SearchDiaryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.SearchDiaryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/search-users": {
             "post": {
                 "description": "회원리스트 조회시 호출",
                 "consumes": [
@@ -797,9 +906,6 @@ const docTemplate = `{
                 },
                 "rom_av": {
                     "type": "integer"
-                },
-                "rom_name": {
-                    "type": "string"
                 }
             }
         },
@@ -827,6 +933,23 @@ const docTemplate = `{
             "properties": {
                 "err": {
                     "type": "string"
+                }
+            }
+        },
+        "core.ExerciseDiaryResponse": {
+            "type": "object",
+            "properties": {
+                "exercise_id": {
+                    "type": "integer"
+                },
+                "exercise_name": {
+                    "type": "string"
+                },
+                "measures": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.MeasureResponse"
+                    }
                 }
             }
         },
@@ -872,6 +995,30 @@ const docTemplate = `{
                 }
             }
         },
+        "core.MeasureResponse": {
+            "type": "object",
+            "properties": {
+                "measureID": {
+                    "type": "integer"
+                },
+                "measureName": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "core.QuillJson": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "insert": {}
+            }
+        },
         "core.SaveAfcHistoryRequest": {
             "type": "object",
             "properties": {
@@ -894,6 +1041,48 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/core.AfcRequest"
                     }
+                },
+                "uid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "core.SaveDiaryRequest": {
+            "type": "object",
+            "properties": {
+                "class_date": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "class_name": {
+                    "type": "string"
+                },
+                "class_purpose_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "class_type": {
+                    "type": "integer"
+                },
+                "exercise_measures": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.ExerciseDiaryResponse"
+                    }
+                },
+                "explain": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.QuillJson"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
                 },
                 "uid": {
                     "type": "integer"
@@ -961,6 +1150,107 @@ const docTemplate = `{
                 }
             }
         },
+        "core.SearchDiaryRequest": {
+            "type": "object",
+            "properties": {
+                "admin_id": {
+                    "type": "integer"
+                },
+                "class_date": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "class_purpose_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "class_type": {
+                    "type": "integer"
+                },
+                "disable_detail_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "disable_type_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "visit_purpose_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "core.SearchDiaryResponse": {
+            "type": "object",
+            "properties": {
+                "admin_name": {
+                    "type": "string"
+                },
+                "class_date": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "class_name": {
+                    "type": "string"
+                },
+                "class_purposes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.IdNameResponse"
+                    }
+                },
+                "class_type": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "diary_name": {
+                    "type": "string"
+                },
+                "exercise_measures": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.ExerciseDiaryResponse"
+                    }
+                },
+                "explain": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.QuillJson"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "uid": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "user_name": {
+                    "type": "string"
+                }
+            }
+        },
         "core.SearchUserRequest": {
             "type": "object",
             "properties": {
@@ -1018,6 +1308,9 @@ const docTemplate = `{
         "core.SearchUserResponse": {
             "type": "object",
             "properties": {
+                "addr": {
+                    "type": "string"
+                },
                 "admin_id": {
                     "type": "integer"
                 },
@@ -1039,6 +1332,10 @@ const docTemplate = `{
                 "ageny_name": {
                     "type": "string"
                 },
+                "birthday": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
                 "disable_details": {
                     "type": "array",
                     "items": {
@@ -1056,6 +1353,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "memo": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"

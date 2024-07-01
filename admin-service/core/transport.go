@@ -2,6 +2,7 @@ package core
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 
 	kitEndpoint "github.com/go-kit/kit/endpoint"
@@ -217,7 +218,7 @@ func SaveUserHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Router /search-users [post]
 func SearchUsersHandler(searchEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, err := verifyJWT(c)
+		id, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -229,6 +230,7 @@ func SearchUsersHandler(searchEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
+		req.Id = id
 		response, err := searchEndpoint(c.Request.Context(), req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -252,13 +254,13 @@ func SearchUsersHandler(searchEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Router /get-agencis [get]
 func GetAgencisHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, err := verifyJWT(c)
+		id, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		response, err := getEndpoint(c.Request.Context(), nil)
+		response, err := getEndpoint(c.Request.Context(), id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -281,13 +283,13 @@ func GetAgencisHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Router /get-admins [get]
 func GetAdminsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, err := verifyJWT(c)
+		id, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		response, err := getEndpoint(c.Request.Context(), nil)
+		response, err := getEndpoint(c.Request.Context(), id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -340,13 +342,21 @@ func GetDisableDetailsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc 
 // @Router /get-afcs/{id} [get]
 func GetAfcsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, err := verifyJWT(c)
+		id, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		userId := c.Param("id")
-		response, err := getEndpoint(c.Request.Context(), userId)
+		parsed, err := strconv.ParseUint(userId, 10, 64)
+		u := uint(parsed)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameter"})
+		}
+		response, err := getEndpoint(c.Request.Context(), map[string]interface{}{
+			"id":      id,
+			"user_id": u,
+		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -453,16 +463,24 @@ func UpdateAfcHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Success 200 {object} []GetAfcResponse "응답DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /get-afc-historis/{id} [get]
+// @Router /get-historis/{id} [get]
 func GetAfcHistorisHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, err := verifyJWT(c)
+		id, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		userId := c.Param("id")
-		response, err := myEndpoint(c.Request.Context(), userId)
+		parsed, err := strconv.ParseUint(userId, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameter"})
+		}
+		u := uint(parsed)
+		response, err := myEndpoint(c.Request.Context(), map[string]interface{}{
+			"id":      id,
+			"user_id": u,
+		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -505,6 +523,81 @@ func UpdateAfcHistoryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 		req.Id = id
+
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동일지 /admin
+// @Summary 운동일지 찾기
+// @Description 운동일지 검색시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SearchDiaryRequest true "요청 DTO"
+// @Success 200 {object} []SearchDiaryResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /search-diary [post]
+func SearchDiaryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req SearchDiaryRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		req.Id = id
+
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]SearchDiaryResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동일지 /admin
+// @Summary 운동일지 저장
+// @Description 운동일지 저장시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SaveDiaryRequest true "요청 DTO 수정시 id생략"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /save-diary [post]
+func SaveDiaryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req SaveDiaryRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		req.AdminId = id
 
 		response, err := myEndpoint(c.Request.Context(), req)
 		if err != nil {

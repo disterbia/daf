@@ -22,8 +22,6 @@ definitions:
         type: integer
       rom_av:
         type: integer
-      rom_name:
-        type: string
     type: object
   core.AgAdResponse:
     properties:
@@ -41,6 +39,17 @@ definitions:
     properties:
       err:
         type: string
+    type: object
+  core.ExerciseDiaryResponse:
+    properties:
+      exercise_id:
+        type: integer
+      exercise_name:
+        type: string
+      measures:
+        items:
+          $ref: '#/definitions/core.MeasureResponse'
+        type: array
     type: object
   core.GetAfcResponse:
     properties:
@@ -69,6 +78,22 @@ definitions:
       password:
         type: string
     type: object
+  core.MeasureResponse:
+    properties:
+      measureID:
+        type: integer
+      measureName:
+        type: string
+      value:
+        type: integer
+    type: object
+  core.QuillJson:
+    properties:
+      attributes:
+        additionalProperties: true
+        type: object
+      insert: {}
+    type: object
   core.SaveAfcHistoryRequest:
     properties:
       afcs:
@@ -84,6 +109,34 @@ definitions:
         items:
           $ref: '#/definitions/core.AfcRequest'
         type: array
+      uid:
+        type: integer
+    type: object
+  core.SaveDiaryRequest:
+    properties:
+      class_date:
+        example: yyyy-mm-dd
+        type: string
+      class_name:
+        type: string
+      class_purpose_ids:
+        items:
+          type: integer
+        type: array
+      class_type:
+        type: integer
+      exercise_measures:
+        items:
+          $ref: '#/definitions/core.ExerciseDiaryResponse'
+        type: array
+      explain:
+        items:
+          $ref: '#/definitions/core.QuillJson'
+        type: array
+      id:
+        type: integer
+      title:
+        type: string
       uid:
         type: integer
     type: object
@@ -128,6 +181,74 @@ definitions:
           type: integer
         type: array
     type: object
+  core.SearchDiaryRequest:
+    properties:
+      admin_id:
+        type: integer
+      class_date:
+        example: yyyy-mm-dd
+        type: string
+      class_purpose_ids:
+        items:
+          type: integer
+        type: array
+      class_type:
+        type: integer
+      disable_detail_ids:
+        items:
+          type: integer
+        type: array
+      disable_type_ids:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      page:
+        type: integer
+      visit_purpose_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  core.SearchDiaryResponse:
+    properties:
+      admin_name:
+        type: string
+      class_date:
+        example: yyyy-mm-dd
+        type: string
+      class_name:
+        type: string
+      class_purposes:
+        items:
+          $ref: '#/definitions/core.IdNameResponse'
+        type: array
+      class_type:
+        type: integer
+      created_at:
+        example: yyyy-mm-dd
+        type: string
+      diary_name:
+        type: string
+      exercise_measures:
+        items:
+          $ref: '#/definitions/core.ExerciseDiaryResponse'
+        type: array
+      explain:
+        items:
+          $ref: '#/definitions/core.QuillJson'
+        type: array
+      id:
+        type: integer
+      uid:
+        type: integer
+      updated_at:
+        example: yyyy-mm-dd
+        type: string
+      user_name:
+        type: string
+    type: object
   core.SearchUserRequest:
     properties:
       admin_id:
@@ -166,6 +287,8 @@ definitions:
     type: object
   core.SearchUserResponse:
     properties:
+      addr:
+        type: string
       admin_id:
         type: integer
       admin_name:
@@ -180,6 +303,9 @@ definitions:
         type: integer
       ageny_name:
         type: string
+      birthday:
+        example: yyyy-mm-dd
+        type: string
       disable_details:
         items:
           $ref: '#/definitions/core.IdNameResponse'
@@ -192,6 +318,8 @@ definitions:
         type: integer
       id:
         type: integer
+      memo:
+        type: string
       name:
         type: string
       phone:
@@ -329,42 +457,6 @@ paths:
       summary: 담당코치 조회
       tags:
       - 회원검색 /admin
-  /get-afc-historis/{id}:
-    get:
-      consumes:
-      - application/json
-      description: 회원 Afc history 조회시 호출
-      parameters:
-      - description: Bearer {jwt_token}
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 응답DTO
-          schema:
-            items:
-              $ref: '#/definitions/core.GetAfcResponse'
-            type: array
-        "400":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-        "500":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-      summary: 회원 Afc history 조회
-      tags:
-      - 회원 Afc /admin
   /get-afcs/{id}:
     get:
       consumes:
@@ -461,6 +553,42 @@ paths:
       summary: 기타 장애유형 조회
       tags:
       - 회원검색 /admin
+  /get-historis/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 회원 Afc history 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.GetAfcResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 Afc history 조회
+      tags:
+      - 회원 Afc /admin
   /login:
     post:
       consumes:
@@ -523,6 +651,41 @@ paths:
       summary: 비밀번호 재설정
       tags:
       - 관리자 비밀번호 재설정 /admin
+  /save-diary:
+    post:
+      consumes:
+      - application/json
+      description: 운동일지 저장시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO 수정시 id생략
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SaveDiaryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동일지 저장
+      tags:
+      - 운동일지 /admin
   /save-user:
     post:
       consumes:
@@ -558,7 +721,44 @@ paths:
       summary: 회원등록
       tags:
       - 회원등록 /admin
-  /search-userds:
+  /search-diary:
+    post:
+      consumes:
+      - application/json
+      description: 운동일지 검색시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SearchDiaryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.SearchDiaryResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동일지 찾기
+      tags:
+      - 운동일지 /admin
+  /search-users:
     post:
       consumes:
       - application/json

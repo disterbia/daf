@@ -46,6 +46,7 @@ type SaveUserRequest struct {
 }
 
 type SearchUserRequest struct {
+	Id               uint         `json:"-"`
 	Page             uint         `json:"page"`
 	Name             string       `json:"name"`
 	Gender           uint         `json:"gender"`
@@ -100,7 +101,6 @@ type AfcResponse struct {
 	RomAv             *uint   `json:"rom_av"`
 	ClinicalFeatureAv *string `json:"clinical_feature_av"`
 	DegreeAv          *uint   `json:"degree_av"`
-	RomName           *string `json:"rom_name"`
 }
 
 type GetAfcResponse struct {
@@ -114,7 +114,7 @@ type UserAfcResponse struct {
 	UpdatedAdmin      string `json:"updated_admin"`
 	Updated           string `json:"updated"`
 	BodyCompositionID uint   `json:"body_composition_id"`
-	JointActionID     uint   `json:"joint_action_id"`
+	JointActionID     *uint  `json:"joint_action_id"`
 	RomID             *uint  `json:"rom_id"`
 	ClinicalFeatureID *uint  `json:"clinical_feature_id"`
 	DegreeID          *uint  `json:"degree_id"`
@@ -141,6 +141,65 @@ type AfcHistoryResponse struct {
 type AgAdResponse struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`
+}
+
+type SearchDiaryRequest struct {
+	Id               uint   `json:"-"`
+	Page             uint   `json:"page"`
+	Name             string `json:"name"`
+	AdminID          uint   `json:"admin_id"`
+	ClassType        uint   `json:"class_type"`
+	ClassDate        string `json:"class_date" example:"yyyy-mm-dd"`
+	DisableTypeIDs   []uint `json:"disable_type_ids"`
+	VisitPurposeIDs  []uint `json:"visit_purpose_ids"`
+	DisableDetailIDs []uint `json:"disable_detail_ids"`
+	ClassPurposeIDs  []uint `json:"class_purpose_ids"`
+}
+
+type SearchDiaryResponse struct {
+	ID               uint                    `json:"id"`
+	CreatedAt        string                  `json:"created_at" example:"yyyy-mm-dd"`
+	UpdatedAt        string                  `json:"updated_at" example:"yyyy-mm-dd"`
+	Uid              uint                    `json:"uid"`
+	UserName         string                  `json:"user_name"`
+	DiaryName        string                  `json:"diary_name"`
+	ClassName        string                  `json:"class_name"`
+	ClassType        uint                    `json:"class_type"`
+	ClassDate        string                  `json:"class_date" example:"yyyy-mm-dd"`
+	AdminName        string                  `json:"admin_name"`
+	ClassPurposes    []IdNameResponse        `json:"class_purposes"`
+	ExerciseMeasures []ExerciseDiaryResponse `json:"exercise_measures"`
+	Explain          []QuillJson             `json:"explain"`
+}
+
+type ExerciseDiaryResponse struct {
+	ExerciseID   uint              `json:"exercise_id"`
+	ExerciseName string            `json:"exercise_name"`
+	Measures     []MeasureResponse `json:"measures"`
+}
+
+type MeasureResponse struct {
+	MeasureID   uint
+	MeasureName string
+	Value       uint
+}
+
+type QuillJson struct {
+	Insert     interface{}            `json:"insert"`
+	Attributes map[string]interface{} `json:"attributes,omitempty"`
+}
+
+type SaveDiaryRequest struct {
+	Id               uint                    `json:"id"`
+	AdminId          uint                    `json:"-"`
+	Uid              uint                    `json:"uid"`
+	Title            string                  `json:"title"`
+	ClassDate        string                  `json:"class_date" example:"yyyy-mm-dd"`
+	ClassName        string                  `json:"class_name"`
+	ClassType        uint                    `json:"class_type"`
+	ClassPurposeIDs  []uint                  `json:"class_purpose_ids"`
+	ExerciseMeasures []ExerciseDiaryResponse `json:"exercise_measures"`
+	Explain          []QuillJson             `json:"explain"`
 }
 
 type BasicResponse struct {
