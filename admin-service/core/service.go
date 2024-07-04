@@ -1549,17 +1549,27 @@ func (service *adminService) searchMachines(request SearchMachineRequest) ([]Sea
 		agencyMachineIDMap[id] = true
 	}
 
+	query := service.db.Offset(offset).Limit(pageSize)
+	if strings.TrimSpace(request.Name) != "" {
+		query = query.Where("name LIKE ?", "%"+request.Name+"%")
+	}
+	if len(request.MachineTypes) != 0 {
+		query = query.Where("machine_type IN ?", request.MachineTypes)
+	}
+
 	// 전체 Machine을 조회하고, 해당 Machine이 Agency에 포함되는지 여부를 설정
 	var machines []model.Machine
-	if err := service.db.Offset(offset).Limit(pageSize).Find(&machines).Error; err != nil {
+	if err := query.Find(&machines).Error; err != nil {
 		return nil, errors.New("db error2")
 	}
 
 	for _, machine := range machines {
 		response = append(response, SearchMachineResponse{
-			ID:        machine.ID,
-			Name:      machine.Name,
-			IsContain: agencyMachineIDMap[machine.ID],
+			ID:          machine.ID,
+			Name:        machine.Name,
+			MachineType: machine.MachineType,
+			Memo:        machine.Memo,
+			IsContain:   agencyMachineIDMap[machine.ID],
 		})
 	}
 
@@ -1588,8 +1598,10 @@ func (service *adminService) getMachines(id uint) ([]GetMachineResponse, error) 
 
 	for _, machine := range machines {
 		response = append(response, GetMachineResponse{
-			ID:   machine.ID,
-			Name: machine.Name,
+			ID:          machine.ID,
+			Name:        machine.Name,
+			MachineType: machine.MachineType,
+			Memo:        machine.Memo,
 		})
 	}
 	return response, nil

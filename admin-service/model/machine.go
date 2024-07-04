@@ -6,5 +6,7 @@ import (
 
 type Machine struct {
 	gorm.Model
-	Name string `gorm:"unique"`
+	Name        string `gorm:"unique"`
+	MachineType uint
+	Memo        string
 }

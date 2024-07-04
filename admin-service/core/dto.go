@@ -244,20 +244,25 @@ type GetAllUsersResponse struct {
 }
 
 type SearchMachineRequest struct {
-	ID   uint   `json:"-"`
-	Page uint   `json:"page"`
-	Name string `json:"name"`
+	ID           uint   `json:"-"`
+	Page         uint   `json:"page"`
+	Name         string `json:"name"`
+	MachineTypes []uint `json:"machine_type"`
 }
 
 type SearchMachineResponse struct {
-	ID        uint   `json:"id"`
-	Name      string `json:"name"`
-	IsContain bool   `json:"is_contain"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	MachineType uint   `json:"machine_type"`
+	Memo        string `json:"memo"`
+	IsContain   bool   `json:"is_contain"`
 }
 
 type GetMachineResponse struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	MachineType uint   `json:"machine_type"`
+	Memo        string `json:"json"`
 }
 
 type PostMachineRequest struct {
