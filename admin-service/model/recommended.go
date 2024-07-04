@@ -1,8 +1,6 @@
 package model
 
 import (
-	"encoding/json"
-
 	"gorm.io/gorm"
 )
 
@@ -22,5 +20,4 @@ type Recommended struct {
 	IsAsymmetric      bool
 	Amputation        Amputation `gorm:"foreignKey:AmputationID"`
 	AmputationID      *uint
-	Explain           json.RawMessage `gorm:"type:jsonb"`
 }

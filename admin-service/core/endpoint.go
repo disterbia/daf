@@ -61,6 +61,16 @@ func ResetPasswordEndpoint(s AdminService) endpoint.Endpoint {
 	}
 }
 
+func GetSuperEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getSuperAgencis()
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
 func SaveUserEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		saveUser := request.(SaveUserRequest)
@@ -182,6 +192,79 @@ func SearhDiaryEndpoint(s AdminService) endpoint.Endpoint {
 func SaveDiaryEndpoint(s AdminService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		result, err := s.saveDiary(request.(SaveDiaryRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return BasicResponse{Code: result}, nil
+	}
+}
+
+func GetExerciseMeasuresEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getExerciseMeasure()
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetAllUsersEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getAllUsers(request.(uint))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetUserEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqMap := request.(map[string]interface{})
+		id := reqMap["id"].(uint)
+		uid := reqMap["uid"].(uint)
+		result, err := s.getUser(id, uid)
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func SearchMachinesEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.searchMachines(request.(SearchMachineRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func GetMachinesEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.getMachines(request.(uint))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return result, nil
+	}
+}
+
+func SaveMachinesEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.saveMachines(request.(PostMachineRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return BasicResponse{Code: result}, nil
+	}
+}
+
+func RemoveMachinesEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.removeMachines(request.(PostMachineRequest))
 		if err != nil {
 			return BasicResponse{Code: err.Error()}, err
 		}

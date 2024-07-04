@@ -154,17 +154,17 @@ func calculateAgeCode(birthday time.Time) uint {
 	}
 
 	switch {
-	case age < 10:
-		return 1
 	case age < 20:
-		return 2
+		return 1
 	case age < 30:
-		return 3
+		return 2
 	case age < 40:
-		return 4
+		return 3
 	case age < 50:
-		return 5
+		return 4
 	case age < 60:
+		return 5
+	case age < 70:
 		return 6
 	default:
 		return 7

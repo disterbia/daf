@@ -4,8 +4,8 @@ import "gorm.io/gorm"
 
 type History struct {
 	gorm.Model
-	Exercise          Exercise        `gorm:"foreignKey:ExerciseId"`
-	ExerciseId        uint            `gorm:"index"`
+	Exercise          Exercise        `gorm:"foreignKey:ExerciseID"`
+	ExerciseID        uint            `gorm:"index"`
 	BodyComposition   BodyComposition `gorm:"foreignKey:BodyCompositionID"`
 	BodyCompositionID uint            `gorm:"index"`
 	JointActions      JointAction     `gorm:"foreignKey:JointActionID"`
@@ -16,4 +16,6 @@ type History struct {
 	ClinicalFeatureID uint            `gorm:"index"`
 	Degree            Degree          `gorm:"foreignKey:DegreeId"`
 	DegreeId          uint            `gorm:"index"`
+	Diary             Diary           `gorm:"foreignKey:DiaryID"`
+	DiaryID           uint            `gorm:"index"`
 }

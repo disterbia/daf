@@ -129,6 +129,29 @@ func SignInHandler(siginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	}
 }
 
+// @Tags 관리자 회원가입 /admin
+// @Summary 매장정보 검색
+// @Description 회원 가입시 호출
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} []GetSuperResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-supers [get]
+func GetSupersHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		response, err := myEndpoint(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]GetSuperResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
 // @Tags 관리자 비밀번호 재설정 /admin
 // @Summary 비밀번호 재설정
 // @Description 비밀번호 재설정시 호출
@@ -598,6 +621,243 @@ func SaveDiaryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		}
 
 		req.AdminId = id
+
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동일지 /admin
+// @Summary 운동,측정항목 조회
+// @Description 운동일지 내용 입력 시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []ExerciseMeasureResponse "응답DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-exercise-measures [get]
+func GetExerciseMeasuresHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		response, err := myEndpoint(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]ExerciseMeasureResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동일지 /admin
+// @Summary 회원 리스트 조회
+// @Description 운동일지 내용 입력 시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []GetAllUsersResponse "응답DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-all-users [get]
+func GetAllUsersHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		response, err := myEndpoint(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]GetAllUsersResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동일지 /admin
+// @Summary 회원 정보 조회
+// @Description 운동일지 상세조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param id path string true "id"
+// @Success 200 {object} GetAllUsersResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-user/{id} [get]
+func GetUserHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		userId := c.Param("id")
+		parsed, err := strconv.ParseUint(userId, 10, 64)
+		u := uint(parsed)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameter"})
+		}
+		response, err := getEndpoint(c.Request.Context(), map[string]interface{}{
+			"id":  id,
+			"uid": u,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(GetAllUsersResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동기구 /admin
+// @Summary 운동기구 찾기
+// @Description 운동기구 검색시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body SearchMachineRequest true "요청 DTO"
+// @Success 200 {object} []SearchMachineResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /search-machines [get]
+func SearchMachinesHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req SearchMachineRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		req.ID = id
+
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]SearchMachineResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동기구 /admin
+// @Summary 등록된 운동기구 조회
+// @Description 지점에 등록된 운동기구 조회시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param id path string true "id"
+// @Success 200 {object} []GetMachineResponse "응답 DTO"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-machines/{id} [get]
+func GetMachinesHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := myEndpoint(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]GetMachineResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동기구 /admin
+// @Summary 운동기구 등록
+// @Description 지점에 운동기구 등록 시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body PostMachineRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /save-machines [post]
+func SaveMachinesHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req PostMachineRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		req.AdminID = id
+
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 운동기구 /admin
+// @Summary 운동기구 삭제
+// @Description 지점에 등록된 운동기구 삭제시 호출
+// @Accept  json
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body PostMachineRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /remove-machines [post]
+func RemoveDiaryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var req PostMachineRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		req.AdminID = id
 
 		response, err := myEndpoint(c.Request.Context(), req)
 		if err != nil {

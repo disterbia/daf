@@ -45,6 +45,15 @@ type SaveUserRequest struct {
 	DisableDetailIDs []uint `json:"disable_detail_ids"`
 }
 
+type GetSuperResponse struct {
+	SuperAgencyName string                 `json:"super_agency_name"`
+	Agencies        []SingInAgencyResponse `json:"agencies"`
+}
+
+type SingInAgencyResponse struct {
+	Id   uint   `json:"id"`
+	Name string `json:"name"`
+}
 type SearchUserRequest struct {
 	Id               uint         `json:"-"`
 	Page             uint         `json:"page"`
@@ -169,7 +178,7 @@ type SearchDiaryResponse struct {
 	AdminName        string                  `json:"admin_name"`
 	ClassPurposes    []IdNameResponse        `json:"class_purposes"`
 	ExerciseMeasures []ExerciseDiaryResponse `json:"exercise_measures"`
-	Explain          []QuillJson             `json:"explain"`
+	Explain          []Explain               `json:"explain"`
 }
 
 type ExerciseDiaryResponse struct {
@@ -179,12 +188,12 @@ type ExerciseDiaryResponse struct {
 }
 
 type MeasureResponse struct {
-	MeasureID   uint
-	MeasureName string
-	Value       uint
+	MeasureID   uint   `json:"measure_id"`
+	MeasureName string `json:"measure_name"`
+	Value       uint   `json:"value"`
 }
 
-type QuillJson struct {
+type Explain struct {
 	Insert     interface{}            `json:"insert"`
 	Attributes map[string]interface{} `json:"attributes,omitempty"`
 }
@@ -199,7 +208,61 @@ type SaveDiaryRequest struct {
 	ClassType        uint                    `json:"class_type"`
 	ClassPurposeIDs  []uint                  `json:"class_purpose_ids"`
 	ExerciseMeasures []ExerciseDiaryResponse `json:"exercise_measures"`
-	Explain          []QuillJson             `json:"explain"`
+	Explain          []Explain               `json:"explain"`
+}
+
+type ExerciseMeasureResponse struct {
+	ExerciseID   uint                     `json:"exercise_id"`
+	ExerciseName string                   `json:"exercise_name"`
+	Measures     []MeasureResponseNoValue `json:"measures"`
+}
+
+type MeasureResponseNoValue struct {
+	MeasureID   uint   `json:"measure_id"`
+	MeasureName string `json:"measure_name"`
+}
+
+type GetAllUsersResponse struct {
+	ID             uint             `json:"id"`
+	Phone          string           `json:"phone" example:"01000000000"`
+	Name           string           `json:"name"`
+	Gender         uint             `json:"gender"`
+	AgeCode        uint             `json:"age_code"`
+	AgencyId       uint             `json:"agency_id"`
+	AgencyName     string           `json:"ageny_name"`
+	AdminId        uint             `json:"admin_id"`
+	AdminName      string           `json:"admin_name"`
+	RegistDay      string           `json:"regist_day" example:"yyyy-mm-dd"`
+	UseStatusId    uint             `json:"use_status_id"`
+	UseStatusName  string           `json:"use_status_name"`
+	DisableTypes   []IdNameResponse `json:"disable_types"`
+	VisitPurposes  []IdNameResponse `json:"visit_purposes"`
+	DisableDetails []IdNameResponse `json:"disable_details"`
+	Addr           string           `json:"addr"`
+	Memo           string           `json:"memo"`
+	Birthday       string           `json:"birthday" example:"yyyy-mm-dd"`
+}
+
+type SearchMachineRequest struct {
+	ID   uint   `json:"-"`
+	Page uint   `json:"page"`
+	Name string `json:"name"`
+}
+
+type SearchMachineResponse struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	IsContain bool   `json:"is_contain"`
+}
+
+type GetMachineResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type PostMachineRequest struct {
+	AdminID uint   `json:"-"`
+	ID      []uint `json:"id"`
 }
 
 type BasicResponse struct {

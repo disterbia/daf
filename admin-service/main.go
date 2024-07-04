@@ -101,6 +101,7 @@ func main() {
 	sendCodeEndpoint := core.SendCodeEndpoint(svc)
 	verifyEndpoint := core.VerifyEndpoint(svc)
 	signInEndpoint := core.SignInEndpoint(svc)
+	getSupersEndpoint := core.GetSuperEndpoint(svc)
 	resetEndpoint := core.ResetPasswordEndpoint(svc)
 	saveEndpoint := core.SaveUserEndpoint(svc)
 	searchEndpoint := core.SearhUsersEndpoint(svc)
@@ -114,6 +115,14 @@ func main() {
 	updateAfcHistoryEndpoint := core.UpdateAfcHistoryEndpoint(svc)
 	searchDiaryEndpoint := core.SearhDiaryEndpoint(svc)
 	saveDiaryEndPoint := core.SaveDiaryEndpoint(svc)
+	getExerciseMeasuresEndpoint := core.GetExerciseMeasuresEndpoint(svc)
+	getAllUsersEndpoint := core.GetAllUsersEndpoint(svc)
+	getUserEndpoint := core.GetUserEndpoint(svc)
+	searchMachinesEndpoint := core.SearchMachinesEndpoint(svc)
+	getMachinesEndpoint := core.GetMachinesEndpoint(svc)
+	saveMachinesEndpoint := core.SaveMachinesEndpoint(svc)
+	removeMachinesEndpoint := core.RemoveMachinesEndpoint(svc)
+
 	router := gin.Default()
 
 	rateLimiterMiddleware := RateLimitMiddleware()
@@ -128,15 +137,22 @@ func main() {
 	router.POST("/create-afc", core.CreateAfcHandler(createAfcEndpoint))
 	router.POST("/update-afc", core.UpdateAfcHandler(updateAfcEndpoint))
 	router.POST("/update-afc-history", core.UpdateAfcHistoryHandler(updateAfcHistoryEndpoint))
+	router.POST("/search-diary", core.SearchDiaryHandler(searchDiaryEndpoint))
+	router.POST("/save-diary", core.SaveDiaryHandler(saveDiaryEndPoint))
+	router.POST("/search-machines", core.SearchMachinesHandler(searchMachinesEndpoint))
+	router.POST("/save-machines", core.SaveMachinesHandler(saveMachinesEndpoint))
+	router.POST("/remove-machines", core.RemoveDiaryHandler(removeMachinesEndpoint))
 
+	router.GET("/get-supers", core.GetSupersHandler(getSupersEndpoint))
 	router.GET("/get-admins", core.GetAdminsHandler(getAdminsEndpoint))
 	router.GET("/get-agencis", core.GetAgencisHandler(getAgencisEndpoint))
 	router.GET("/get-details", core.GetDisableDetailsHandler(getDisableDetailsEndPoint))
 	router.GET("/get-afcs/:id", core.GetAfcsHandler(getAfcsEndPoint))
+	router.GET("/get-user/:id", core.GetUserHandler(getUserEndpoint))
 	router.GET("/get-historis/:id", core.GetAfcHistorisHandler(getAfcHistorisEndpoint))
-
-	router.POST("/search-diary", core.SearchDiaryHandler(searchDiaryEndpoint))
-	router.POST("/save-diary", core.SaveDiaryHandler(saveDiaryEndPoint))
+	router.GET("/get-all-users", core.GetAllUsersHandler(getAllUsersEndpoint))
+	router.GET("/get-exercise-measures", core.GetExerciseMeasuresHandler(getExerciseMeasuresEndpoint))
+	router.GET("/get-machines/:id", core.GetMachinesHandler(getMachinesEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

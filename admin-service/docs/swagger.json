@@ -202,6 +202,53 @@
                 }
             }
         },
+        "/get-all-users": {
+            "get": {
+                "description": "운동일지 내용 입력 시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동일지 /admin"
+                ],
+                "summary": "회원 리스트 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.GetAllUsersResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/get-details": {
             "get": {
                 "description": "기타 장애유형시 호출",
@@ -231,6 +278,53 @@
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/core.AgAdResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-exercise-measures": {
+            "get": {
+                "description": "운동일지 내용 입력 시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동일지 /admin"
+                ],
+                "summary": "운동,측정항목 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.ExerciseMeasureResponse"
                             }
                         }
                     },
@@ -303,6 +397,149 @@
                 }
             }
         },
+        "/get-machines/{id}": {
+            "get": {
+                "description": "지점에 등록된 운동기구 조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동기구 /admin"
+                ],
+                "summary": "등록된 운동기구 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.GetMachineResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-supers": {
+            "get": {
+                "description": "회원 가입시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "관리자 회원가입 /admin"
+                ],
+                "summary": "매장정보 검색",
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.GetSuperResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/get-user/{id}": {
+            "get": {
+                "description": "운동일지 상세조회시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동일지 /admin"
+                ],
+                "summary": "회원 정보 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "$ref": "#/definitions/core.GetAllUsersResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "관리자 로그인시 호출",
@@ -341,6 +578,59 @@
                         "description": "성공시 JWT 토큰 반환",
                         "schema": {
                             "$ref": "#/definitions/core.SuccessResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/remove-machines": {
+            "post": {
+                "description": "지점에 등록된 운동기구 삭제시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동기구 /admin"
+                ],
+                "summary": "운동기구 삭제",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.PostMachineRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
                         }
                     },
                     "500": {
@@ -426,6 +716,59 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/core.SaveDiaryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 200 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/save-machines": {
+            "post": {
+                "description": "지점에 운동기구 등록 시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동기구 /admin"
+                ],
+                "summary": "운동기구 등록",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.PostMachineRequest"
                         }
                     }
                 ],
@@ -542,6 +885,62 @@
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/core.SearchDiaryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/search-machines": {
+            "get": {
+                "description": "운동기구 검색시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "운동기구 /admin"
+                ],
+                "summary": "운동기구 찾기",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {jwt_token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SearchMachineRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "응답 DTO",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/core.SearchMachineResponse"
                             }
                         }
                     },
@@ -941,6 +1340,23 @@
                 }
             }
         },
+        "core.ExerciseMeasureResponse": {
+            "type": "object",
+            "properties": {
+                "exercise_id": {
+                    "type": "integer"
+                },
+                "exercise_name": {
+                    "type": "string"
+                },
+                "measures": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.MeasureResponseNoValue"
+                    }
+                }
+            }
+        },
         "core.GetAfcResponse": {
             "type": "object",
             "properties": {
@@ -958,6 +1374,102 @@
                     "items": {
                         "$ref": "#/definitions/core.UserAfcResponse"
                     }
+                }
+            }
+        },
+        "core.GetAllUsersResponse": {
+            "type": "object",
+            "properties": {
+                "addr": {
+                    "type": "string"
+                },
+                "admin_id": {
+                    "type": "integer"
+                },
+                "admin_name": {
+                    "type": "string"
+                },
+                "age_code": {
+                    "type": "integer"
+                },
+                "agency_id": {
+                    "type": "integer"
+                },
+                "ageny_name": {
+                    "type": "string"
+                },
+                "birthday": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "disable_details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.IdNameResponse"
+                    }
+                },
+                "disable_types": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.IdNameResponse"
+                    }
+                },
+                "gender": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "memo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "01000000000"
+                },
+                "regist_day": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "use_status_id": {
+                    "type": "integer"
+                },
+                "use_status_name": {
+                    "type": "string"
+                },
+                "visit_purposes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.IdNameResponse"
+                    }
+                }
+            }
+        },
+        "core.GetMachineResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.GetSuperResponse": {
+            "type": "object",
+            "properties": {
+                "agencies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/core.SingInAgencyResponse"
+                    }
+                },
+                "super_agency_name": {
+                    "type": "string"
                 }
             }
         },
@@ -986,14 +1498,36 @@
         "core.MeasureResponse": {
             "type": "object",
             "properties": {
-                "measureID": {
+                "measure_id": {
                     "type": "integer"
                 },
-                "measureName": {
+                "measure_name": {
                     "type": "string"
                 },
                 "value": {
                     "type": "integer"
+                }
+            }
+        },
+        "core.MeasureResponseNoValue": {
+            "type": "object",
+            "properties": {
+                "measure_id": {
+                    "type": "integer"
+                },
+                "measure_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.PostMachineRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -1239,6 +1773,31 @@
                 }
             }
         },
+        "core.SearchMachineRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer"
+                }
+            }
+        },
+        "core.SearchMachineResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "is_contain": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "core.SearchUserRequest": {
             "type": "object",
             "properties": {
@@ -1398,6 +1957,17 @@
                 "tel": {
                     "type": "string",
                     "example": "0510000000"
+                }
+            }
+        },
+        "core.SingInAgencyResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },

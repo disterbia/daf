@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ type AdminService interface {
 	login(request LoginRequest) (string, error)
 	verifyAuthCode(verify VerifyRequest) (string, error)
 	signIn(request SignInRequest) (string, error)
+	getSuperAgencis() ([]GetSuperResponse, error)
 	resetPassword(request LoginRequest) (string, error)
 	saveUser(request SaveUserRequest) (string, error)
 	searchUsers(request SearchUserRequest) ([]SearchUserResponse, error)
@@ -42,6 +44,13 @@ type AdminService interface {
 
 	searchDiary(request SearchDiaryRequest) ([]SearchDiaryResponse, error)
 	saveDiary(request SaveDiaryRequest) (string, error)
+	getExerciseMeasure() ([]ExerciseMeasureResponse, error)
+	getAllUsers(id uint) ([]GetAllUsersResponse, error)
+	getUser(adminId, uid uint) (GetAllUsersResponse, error)
+	searchMachines(request SearchMachineRequest) ([]SearchMachineResponse, error)
+	getMachines(id uint) ([]GetMachineResponse, error)
+	saveMachines(request PostMachineRequest) (string, error)
+	removeMachines(request PostMachineRequest) (string, error)
 }
 
 type adminService struct {
@@ -73,6 +82,10 @@ func (service *adminService) login(request LoginRequest) (string, error) {
 	// 비밀번호 비교
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(request.Password)); err != nil {
 		return "", errors.New("invalid credentials")
+	}
+
+	if u.RoleID == 0 {
+		return "", errors.New("-1")
 	}
 
 	// 새로운 JWT 토큰 생성
@@ -205,7 +218,6 @@ func (service *adminService) signIn(request SignInRequest) (string, error) {
 	}
 
 	admin.Password = string(hashedPassword)
-	admin.RoleID = 1
 	if err := tx.Create(&admin).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error3")
@@ -263,16 +275,39 @@ func (service *adminService) resetPassword(request LoginRequest) (string, error)
 	return "200", nil
 }
 
-func (service *adminService) saveUser(request SaveUserRequest) (string, error) {
-	if result, err := checkFamily(service, request.Uid, request.ID); err != nil || !result {
-		if !result {
-			return "", errors.New("not family")
-		}
+func (service *adminService) getSuperAgencis() ([]GetSuperResponse, error) {
+	var response []GetSuperResponse
+
+	var superAgencies []model.SuperAgency
+	if err := service.db.Preload("Agencies").Find(&superAgencies).Error; err != nil {
+		return nil, errors.New("db error")
 	}
 
+	for _, super := range superAgencies {
+		var agencies []SingInAgencyResponse
+		for _, agency := range super.Agencies {
+			agencies = append(agencies, SingInAgencyResponse{Id: agency.ID, Name: agency.Name})
+		}
+		response = append(response, GetSuperResponse{SuperAgencyName: super.Name, Agencies: agencies})
+	}
+	return response, nil
+}
+
+func (service *adminService) saveUser(request SaveUserRequest) (string, error) {
 	if err := validateSaveUser(request); err != nil {
 		return "", err
 	}
+
+	if request.ID != 0 {
+		if result, err := checkFamily(service, request.Uid, request.ID); err != nil || !result {
+			if !result {
+				return "", errors.New("not family")
+			} else {
+				return "", err
+			}
+		}
+	}
+
 	if len(request.VisitPurposeIDs) == 0 {
 		return "", errors.New("visit err")
 	}
@@ -421,19 +456,19 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 	if len(request.Afcs) > 0 {
 		for _, afc := range request.Afcs {
 			if afc.BodyCompositionID != 0 {
-				query = query.Where("users.id IN (SELECT uid FROM user_joint_actions WHERE body_composition_id = ?)", afc.BodyCompositionID)
+				query = query.Where("users.id IN (SELECT uid FROM user_afcs WHERE body_composition_id = ?)", afc.BodyCompositionID)
 			}
 			if afc.JointActionID != 0 {
-				query = query.Where("users.id IN (SELECT uid FROM user_joint_actions WHERE joint_action_id = ?)", afc.JointActionID)
+				query = query.Where("users.id IN (SELECT uid FROM user_afcs WHERE joint_action_id = ?)", afc.JointActionID)
 			}
 			if afc.RomID != 0 {
-				query = query.Where("users.id IN (SELECT uid FROM user_joint_actions WHERE rom_id = ?)", afc.RomID)
+				query = query.Where("users.id IN (SELECT uid FROM user_afcs WHERE rom_id = ?)", afc.RomID)
 			}
 			if afc.ClinicalFeatureID != 0 {
-				query = query.Where("users.id IN (SELECT uid FROM user_joint_actions WHERE clinical_feature_id = ?)", afc.ClinicalFeatureID)
+				query = query.Where("users.id IN (SELECT uid FROM user_afcs WHERE clinical_feature_id = ?)", afc.ClinicalFeatureID)
 			}
 			if afc.DegreeID != 0 {
-				query = query.Where("users.id IN (SELECT uid FROM user_joint_actions WHERE degree_id = ?)", afc.DegreeID)
+				query = query.Where("users.id IN (SELECT uid FROM user_afcs WHERE degree_id = ?)", afc.DegreeID)
 			}
 		}
 	}
@@ -585,7 +620,7 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 			Phone:          user.Phone,
 			AgeCode:        ageCode,
 			RegistDay:      user.RegistDay.String(),
-			AgencyId:       user.AdminID,
+			AgencyId:       user.AgencyID,
 			AgencyName:     user.Agency.Name,
 			AdminId:        user.AdminID,
 			AdminName:      user.Admin.Name,
@@ -673,6 +708,8 @@ func (service *adminService) getAfcs(id, uid uint) (GetAfcResponse, error) {
 	if result, err := checkFamily(service, id, uid); err != nil || !result {
 		if !result {
 			return GetAfcResponse{}, errors.New("not family")
+		} else {
+			return GetAfcResponse{}, err
 		}
 	}
 	var afcs []model.UserAfc
@@ -706,6 +743,8 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 	if result, err := checkFamily(service, request.Id, request.Uid); err != nil || !result {
 		if !result {
 			return "", errors.New("not family")
+		} else {
+			return "", err
 		}
 	}
 	if !validateAfc(request.Afcs) {
@@ -810,6 +849,8 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 	if result, err := checkFamily(service, request.Id, request.Uid); err != nil || !result {
 		if !result {
 			return "", errors.New("not family")
+		} else {
+			return "", err
 		}
 	}
 	if !validateAfc(request.Afcs) {
@@ -891,6 +932,8 @@ func (service *adminService) getAfcHistoris(id, uid uint) ([]GetAfcResponse, err
 	if result, err := checkFamily(service, id, uid); err != nil || !result {
 		if !result {
 			return nil, errors.New("not family")
+		} else {
+			return nil, err
 		}
 	}
 	var groups []model.UserAfcHistoryGroup
@@ -963,6 +1006,8 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 	if result, err := checkFamily(service, request.Id, group.Uid); err != nil || !result {
 		if !result {
 			return "", errors.New("not family")
+		} else {
+			return "", err
 		}
 	}
 
@@ -1037,10 +1082,11 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 	offset := int(request.Page) * pageSize
 
 	var diaris []model.Diary
-	query := service.db.Model(&model.Diary{})
+	query := service.db.Model(&model.Diary{}).
+		Joins("JOIN users ON users.id = diaries.uid")
 
 	if strings.TrimSpace(request.Name) != "" {
-		query = query.Where("name LIKE ?", "%"+request.Name+"%")
+		query = query.Where("users.name LIKE ?", "%"+request.Name+"%")
 	}
 	if request.AdminID != 0 {
 		query = query.Where("admin_id = ?", request.AdminID)
@@ -1116,8 +1162,8 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 	}
 
 	for _, v := range diaris {
-		var quillJson []QuillJson
-		if err := json.Unmarshal(v.Explain, &quillJson); err != nil {
+		var explain []Explain
+		if err := json.Unmarshal(v.Explain, &explain); err != nil {
 			return nil, err
 		}
 
@@ -1129,7 +1175,7 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 			}
 		}
 		response = append(response, SearchDiaryResponse{ID: v.ID, CreatedAt: v.CreatedAt.Format("2006-01-02"), UpdatedAt: v.UpdatedAt.Format("2006-01-02"), Uid: v.Uid, UserName: v.User.Name,
-			DiaryName: v.Title, ClassName: v.ClassName, ClassType: v.ClassType, ClassDate: v.ClassDate.Format("2006-01-02"), AdminName: v.User.Admin.Name, Explain: quillJson,
+			DiaryName: v.Title, ClassName: v.ClassName, ClassType: v.ClassType, ClassDate: v.ClassDate.Format("2006-01-02"), AdminName: v.User.Admin.Name, Explain: explain,
 			ClassPurposes: purposeMap[v.ID], ExerciseMeasures: exerciseMeasures})
 	}
 
@@ -1144,6 +1190,8 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	if result, err := checkFamily(service, request.AdminId, request.Uid); err != nil || !result {
 		if !result {
 			return "", errors.New("not family")
+		} else {
+			return "", err
 		}
 	}
 
@@ -1199,24 +1247,16 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 		return "", err
 	}
 
-	tx := service.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			log.Printf("Recovered from panic: %v", r)
-		}
-	}()
-
 	var diary model.Diary
 	if request.Id != 0 {
 		// ID가 주어졌을 때 기존 다이어리를 찾습니다.
-		if err := tx.First(&diary, request.Id).Error; err != nil {
+		if err := service.db.First(&diary, request.Id).Error; err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				tx.Rollback()
 				return "", errors.New("db error")
 			}
 		}
 	}
+
 	diary.Title = request.Title
 	diary.Uid = request.Uid
 	diary.ClassDate = classDate
@@ -1224,6 +1264,14 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	diary.ClassType = request.ClassType
 	diary.AdminID = request.AdminId
 	diary.Explain = explainJson
+
+	tx := service.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Recovered from panic: %v", r)
+		}
+	}()
 
 	if err := tx.Save(&diary).Error; err != nil {
 		tx.Rollback()
@@ -1235,13 +1283,13 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 		diaryClassPurposes = append(diaryClassPurposes, model.DiaryClassPurpose{ClassPurposeID: v, DiaryID: diary.ID})
 	}
 
-	if err := tx.Where("diary_id = ?", diary.ID).Delete(&model.DiaryClassPurpose{}).Error; err != nil {
+	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.DiaryClassPurpose{}).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error2")
+		return "", errors.New("db error4")
 	}
 	if err := tx.Create(&diaryClassPurposes).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error3")
+		return "", errors.New("db error5")
 	}
 
 	var exerciseDairis []model.ExerciseDiary
@@ -1251,16 +1299,330 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 		}
 	}
 
-	if err := tx.Where("diary_id = ?", diary.ID).Delete(&model.ExerciseDiary{}).Error; err != nil {
+	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.ExerciseDiary{}).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error4")
+		return "", errors.New("db error6")
 	}
 
 	if err := tx.Create(&exerciseDairis).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error5")
+		return "", errors.New("db error7")
+	}
+
+	// history 저장
+
+	var userAfcs []model.UserAfc
+	if err := service.db.Where("uid = ?", request.Uid).Find(&userAfcs).Error; err != nil {
+		return "", errors.New("db error0")
+	}
+
+	var historis []model.History
+	for _, exercise := range request.ExerciseMeasures {
+		for _, v := range userAfcs {
+			historis = append(historis, model.History{ExerciseID: exercise.ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: *v.JointActionID,
+				RomID: *v.RomID, ClinicalFeatureID: *v.ClinicalFeatureID, DegreeId: *v.DegreeID, DiaryID: diary.ID})
+		}
+	}
+
+	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.History{}).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error2")
+	}
+
+	if err := tx.Create(&historis).Error; err != nil {
+		tx.Rollback()
+		return "", errors.New("db error3")
 	}
 
 	tx.Commit()
+	return "200", nil
+}
+
+func (service *adminService) getExerciseMeasure() ([]ExerciseMeasureResponse, error) {
+	var response []ExerciseMeasureResponse
+
+	var exerciseMeasures []model.ExerciseMeasure
+	if err := service.db.Preload("Exercise").Preload("Measure").Find(&exerciseMeasures).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
+	exerciseMap := make(map[uint]*ExerciseMeasureResponse)
+	for _, em := range exerciseMeasures {
+		if _, exists := exerciseMap[em.ExerciseID]; !exists {
+			exerciseMap[em.ExerciseID] = &ExerciseMeasureResponse{
+				ExerciseID:   em.ExerciseID,
+				ExerciseName: em.Exercise.Name,
+				Measures:     []MeasureResponseNoValue{},
+			}
+		}
+		exerciseMap[em.ExerciseID].Measures = append(exerciseMap[em.ExerciseID].Measures, MeasureResponseNoValue{
+			MeasureID:   em.MeasureID,
+			MeasureName: em.Measure.Name,
+		})
+	}
+
+	for _, value := range exerciseMap {
+		response = append(response, *value)
+	}
+
+	// ExerciseName을 기준으로 사전순으로 정렬
+	sort.Slice(response, func(i, j int) bool {
+		return response[i].ExerciseName < response[j].ExerciseName
+	})
+
+	return response, nil
+}
+
+func (service *adminService) getAllUsers(id uint) ([]GetAllUsersResponse, error) {
+
+	var superAgencyID uint
+	if err := service.db.Table("admins").
+		Select("agencies.super_agency_id").
+		Joins("JOIN agencies ON agencies.id = admins.agency_id").
+		Where("admins.id = ?", id).
+		Scan(&superAgencyID).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
+	var users []model.User
+	query := service.db.Model(&model.User{}).
+		Joins("JOIN agencies ON agencies.id = users.agency_id").
+		Where("agencies.super_agency_id = ?", superAgencyID).Order("name ASC")
+
+	if err := query.Preload("Agency").Preload("Admin").Preload("UseStatus").Find(&users).Error; err != nil {
+		return nil, errors.New("db error2")
+	}
+
+	// 사용자 ID 리스트 가져오기
+	userIDs := make([]uint, len(users))
+	for i, user := range users {
+		userIDs[i] = user.ID
+	}
+
+	// DisableTypeNames, VisitPurposeNames, DisableDetailNames을 가져오기 위한 쿼리
+	var userDisables []model.UserDisable
+	var userVisits []model.UserVisit
+	var userDisableDetails []model.UserDisableDetail
+	var userAfcs []model.UserAfc
+
+	service.db.Where("uid IN ?", userIDs).Preload("DisableType").Find(&userDisables)
+	service.db.Where("uid IN ?", userIDs).Preload("VisitPurpose").Find(&userVisits)
+	service.db.Where("uid IN ?", userIDs).Preload("DisableDetail").Find(&userDisableDetails)
+	service.db.Where("uid IN ?", userIDs).Preload("ClinicalFeature").Find(&userAfcs)
+	// 사용자 ID를 키로 하는 맵 생성
+	disableTypeNamesMap := make(map[uint][]IdNameResponse)
+	visitPurposeNamesMap := make(map[uint][]IdNameResponse)
+	disableDetailNamesMap := make(map[uint][]IdNameResponse)
+
+	for _, ud := range userDisables {
+		disableTypeNamesMap[ud.UID] = append(disableTypeNamesMap[ud.UID], IdNameResponse{Id: ud.DisableTypeID, Name: ud.DisableType.Name})
+	}
+
+	for _, uv := range userVisits {
+		visitPurposeNamesMap[uv.UID] = append(visitPurposeNamesMap[uv.UID], IdNameResponse{Id: uv.VisitPurposeID, Name: uv.VisitPurpose.Name})
+	}
+
+	for _, udd := range userDisableDetails {
+		disableDetailNamesMap[udd.UID] = append(disableDetailNamesMap[udd.UID], IdNameResponse{Id: udd.DisableDetailID, Name: udd.DisableDetail.Name})
+	}
+
+	var response []GetAllUsersResponse
+
+	for _, user := range users {
+		ageCode := calculateAgeCode(user.Birthday)
+
+		response = append(response, GetAllUsersResponse{
+			ID:             user.ID,
+			Name:           user.Name,
+			Gender:         user.Gender,
+			Phone:          user.Phone,
+			AgeCode:        ageCode,
+			RegistDay:      user.RegistDay.String(),
+			AgencyId:       user.AgencyID,
+			AgencyName:     user.Agency.Name,
+			AdminId:        user.AdminID,
+			AdminName:      user.Admin.Name,
+			UseStatusId:    user.UseStatusID,
+			UseStatusName:  user.UseStatus.Name,
+			DisableTypes:   disableTypeNamesMap[user.ID],
+			VisitPurposes:  visitPurposeNamesMap[user.ID],
+			DisableDetails: disableDetailNamesMap[user.ID],
+			Addr:           user.Addr + " " + user.AddrDetail,
+			Birthday:       user.Birthday.Format("2006-01-02"),
+			Memo:           user.Memo,
+		})
+	}
+
+	return response, nil
+}
+
+func (service *adminService) getUser(adminId, uid uint) (GetAllUsersResponse, error) {
+	if result, err := checkFamily(service, adminId, uid); err != nil || !result {
+		if !result {
+			return GetAllUsersResponse{}, errors.New("not family")
+		} else {
+			return GetAllUsersResponse{}, err
+		}
+	}
+
+	var user model.User
+	if err := service.db.Where("id = ?", uid).Preload("Agency").Preload("Admin").Preload("UseStatus").Find(&user).Error; err != nil {
+		return GetAllUsersResponse{}, errors.New("db error2")
+	}
+
+	// DisableTypeNames, VisitPurposeNames, DisableDetailNames을 가져오기 위한 쿼리
+	var userDisables []model.UserDisable
+	var userVisits []model.UserVisit
+	var userDisableDetails []model.UserDisableDetail
+	var userAfcs []model.UserAfc
+
+	service.db.Where("uid = ?", uid).Preload("DisableType").Find(&userDisables)
+	service.db.Where("uid = ?", uid).Preload("VisitPurpose").Find(&userVisits)
+	service.db.Where("uid = ?", uid).Preload("DisableDetail").Find(&userDisableDetails)
+	service.db.Where("uid = ?", uid).Preload("ClinicalFeature").Find(&userAfcs)
+	// 사용자 ID를 키로 하는 맵 생성
+	disableTypeNamesMap := make(map[uint][]IdNameResponse)
+	visitPurposeNamesMap := make(map[uint][]IdNameResponse)
+	disableDetailNamesMap := make(map[uint][]IdNameResponse)
+
+	for _, ud := range userDisables {
+		disableTypeNamesMap[ud.UID] = append(disableTypeNamesMap[ud.UID], IdNameResponse{Id: ud.DisableTypeID, Name: ud.DisableType.Name})
+	}
+
+	for _, uv := range userVisits {
+		visitPurposeNamesMap[uv.UID] = append(visitPurposeNamesMap[uv.UID], IdNameResponse{Id: uv.VisitPurposeID, Name: uv.VisitPurpose.Name})
+	}
+
+	for _, udd := range userDisableDetails {
+		disableDetailNamesMap[udd.UID] = append(disableDetailNamesMap[udd.UID], IdNameResponse{Id: udd.DisableDetailID, Name: udd.DisableDetail.Name})
+	}
+
+	var response GetAllUsersResponse
+
+	ageCode := calculateAgeCode(user.Birthday)
+
+	response = GetAllUsersResponse{
+		ID:             user.ID,
+		Name:           user.Name,
+		Gender:         user.Gender,
+		Phone:          user.Phone,
+		AgeCode:        ageCode,
+		RegistDay:      user.RegistDay.String(),
+		AgencyId:       user.AgencyID,
+		AgencyName:     user.Agency.Name,
+		AdminId:        user.AdminID,
+		AdminName:      user.Admin.Name,
+		UseStatusId:    user.UseStatusID,
+		UseStatusName:  user.UseStatus.Name,
+		DisableTypes:   disableTypeNamesMap[user.ID],
+		VisitPurposes:  visitPurposeNamesMap[user.ID],
+		DisableDetails: disableDetailNamesMap[user.ID],
+		Addr:           user.Addr + " " + user.AddrDetail,
+		Birthday:       user.Birthday.Format("2006-01-02"),
+		Memo:           user.Memo,
+	}
+
+	return response, nil
+
+}
+
+func (service *adminService) searchMachines(request SearchMachineRequest) ([]SearchMachineResponse, error) {
+	var response []SearchMachineResponse
+
+	pageSize := 10
+	offset := int(request.Page) * pageSize
+
+	// Admin의 소속된 Agency ID를 조회하고, 해당 Agency에 속한 Machine ID를 조회하는 쿼리
+	var agencyMachineIDs []uint
+	err := service.db.Table("agency_machines").
+		Select("agency_machines.machine_id").
+		Joins("JOIN admins ON admins.agency_id = agency_machines.agency_id").
+		Where("admins.id = ?", request.ID).
+		Pluck("machine_id", &agencyMachineIDs).Error
+
+	if err != nil {
+		return nil, errors.New("db error")
+	}
+
+	agencyMachineIDMap := make(map[uint]bool)
+	for _, id := range agencyMachineIDs {
+		agencyMachineIDMap[id] = true
+	}
+
+	// 전체 Machine을 조회하고, 해당 Machine이 Agency에 포함되는지 여부를 설정
+	var machines []model.Machine
+	if err := service.db.Offset(offset).Limit(pageSize).Find(&machines).Error; err != nil {
+		return nil, errors.New("db error2")
+	}
+
+	for _, machine := range machines {
+		response = append(response, SearchMachineResponse{
+			ID:        machine.ID,
+			Name:      machine.Name,
+			IsContain: agencyMachineIDMap[machine.ID],
+		})
+	}
+
+	return response, nil
+}
+
+func (service *adminService) getMachines(id uint) ([]GetMachineResponse, error) {
+	var response []GetMachineResponse
+
+	// Admin의 소속된 Agency ID를 조회하고, 해당 Agency에 속한 Machine ID를 조회하는 쿼리
+	var agencyMachineIDs []uint
+	err := service.db.Table("agency_machines").
+		Select("agency_machines.machine_id").
+		Joins("JOIN admins ON admins.agency_id = agency_machines.agency_id").
+		Where("admins.id = ?", id).
+		Pluck("machine_id", &agencyMachineIDs).Error
+
+	if err != nil {
+		return nil, errors.New("db error")
+	}
+
+	var machines []model.Machine
+	if err := service.db.Where("id IN ?", agencyMachineIDs).Find(&machines).Error; err != nil {
+		return nil, errors.New("db error2")
+	}
+
+	for _, machine := range machines {
+		response = append(response, GetMachineResponse{
+			ID:   machine.ID,
+			Name: machine.Name,
+		})
+	}
+	return response, nil
+}
+
+func (service *adminService) saveMachines(request PostMachineRequest) (string, error) {
+
+	// Admin의 소속된 Agency ID를 조회
+	var admin model.Admin
+	if err := service.db.Where("id = ?", request.AdminID).First(&admin).Error; err != nil {
+		return "", errors.New("db error")
+	}
+	agencyID := admin.AgencyID
+
+	// AgencyMachine 추가
+	var agencyMachines []model.AgencyMachine
+	for _, machineID := range request.ID {
+		agencyMachines = append(agencyMachines, model.AgencyMachine{
+			AgencyID:  agencyID,
+			MachineID: machineID,
+		})
+	}
+
+	if err := service.db.Create(&agencyMachines).Error; err != nil {
+		return "", errors.New("db error2")
+	}
+
+	return "200", nil
+}
+
+func (service *adminService) removeMachines(request PostMachineRequest) (string, error) {
+	if err := service.db.Where("agency_id = (SELECT agency_id FROM admins WHERE id = ?) AND machine_id IN ?", request.AdminID, request.ID).Unscoped().Delete(&model.AgencyMachine{}).Error; err != nil {
+		return "", errors.New("db error")
+	}
 	return "200", nil
 }

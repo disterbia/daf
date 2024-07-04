@@ -51,6 +51,17 @@ definitions:
           $ref: '#/definitions/core.MeasureResponse'
         type: array
     type: object
+  core.ExerciseMeasureResponse:
+    properties:
+      exercise_id:
+        type: integer
+      exercise_name:
+        type: string
+      measures:
+        items:
+          $ref: '#/definitions/core.MeasureResponseNoValue'
+        type: array
+    type: object
   core.GetAfcResponse:
     properties:
       created:
@@ -63,6 +74,70 @@ definitions:
         items:
           $ref: '#/definitions/core.UserAfcResponse'
         type: array
+    type: object
+  core.GetAllUsersResponse:
+    properties:
+      addr:
+        type: string
+      admin_id:
+        type: integer
+      admin_name:
+        type: string
+      age_code:
+        type: integer
+      agency_id:
+        type: integer
+      ageny_name:
+        type: string
+      birthday:
+        example: yyyy-mm-dd
+        type: string
+      disable_details:
+        items:
+          $ref: '#/definitions/core.IdNameResponse'
+        type: array
+      disable_types:
+        items:
+          $ref: '#/definitions/core.IdNameResponse'
+        type: array
+      gender:
+        type: integer
+      id:
+        type: integer
+      memo:
+        type: string
+      name:
+        type: string
+      phone:
+        example: "01000000000"
+        type: string
+      regist_day:
+        example: yyyy-mm-dd
+        type: string
+      use_status_id:
+        type: integer
+      use_status_name:
+        type: string
+      visit_purposes:
+        items:
+          $ref: '#/definitions/core.IdNameResponse'
+        type: array
+    type: object
+  core.GetMachineResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  core.GetSuperResponse:
+    properties:
+      agencies:
+        items:
+          $ref: '#/definitions/core.SingInAgencyResponse'
+        type: array
+      super_agency_name:
+        type: string
     type: object
   core.IdNameResponse:
     properties:
@@ -80,12 +155,26 @@ definitions:
     type: object
   core.MeasureResponse:
     properties:
-      measureID:
+      measure_id:
         type: integer
-      measureName:
+      measure_name:
         type: string
       value:
         type: integer
+    type: object
+  core.MeasureResponseNoValue:
+    properties:
+      measure_id:
+        type: integer
+      measure_name:
+        type: string
+    type: object
+  core.PostMachineRequest:
+    properties:
+      id:
+        items:
+          type: integer
+        type: array
     type: object
   core.QuillJson:
     properties:
@@ -249,6 +338,22 @@ definitions:
       user_name:
         type: string
     type: object
+  core.SearchMachineRequest:
+    properties:
+      name:
+        type: string
+      page:
+        type: integer
+    type: object
+  core.SearchMachineResponse:
+    properties:
+      id:
+        type: integer
+      is_contain:
+        type: boolean
+      name:
+        type: string
+    type: object
   core.SearchUserRequest:
     properties:
       admin_id:
@@ -356,6 +461,13 @@ definitions:
         type: string
       tel:
         example: "0510000000"
+        type: string
+    type: object
+  core.SingInAgencyResponse:
+    properties:
+      id:
+        type: integer
+      name:
         type: string
     type: object
   core.SuccessResponse:
@@ -522,6 +634,37 @@ paths:
       summary: 등록매장 조회
       tags:
       - 회원검색 /admin
+  /get-all-users:
+    get:
+      consumes:
+      - application/json
+      description: 운동일지 내용 입력 시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.GetAllUsersResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 리스트 조회
+      tags:
+      - 운동일지 /admin
   /get-details:
     get:
       consumes:
@@ -553,6 +696,37 @@ paths:
       summary: 기타 장애유형 조회
       tags:
       - 회원검색 /admin
+  /get-exercise-measures:
+    get:
+      consumes:
+      - application/json
+      description: 운동일지 내용 입력 시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.ExerciseMeasureResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동,측정항목 조회
+      tags:
+      - 운동일지 /admin
   /get-historis/{id}:
     get:
       consumes:
@@ -589,6 +763,101 @@ paths:
       summary: 회원 Afc history 조회
       tags:
       - 회원 Afc /admin
+  /get-machines/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 지점에 등록된 운동기구 조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.GetMachineResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 등록된 운동기구 조회
+      tags:
+      - 운동기구 /admin
+  /get-supers:
+    get:
+      consumes:
+      - application/json
+      description: 회원 가입시 호출
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.GetSuperResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 매장정보 검색
+      tags:
+      - 관리자 회원가입 /admin
+  /get-user/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 운동일지 상세조회시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            $ref: '#/definitions/core.GetAllUsersResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원 정보 조회
+      tags:
+      - 운동일지 /admin
   /login:
     post:
       consumes:
@@ -621,6 +890,41 @@ paths:
       summary: 관리자 로그인
       tags:
       - 관리자 로그인 /admin
+  /remove-machines:
+    post:
+      consumes:
+      - application/json
+      description: 지점에 등록된 운동기구 삭제시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.PostMachineRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동기구 삭제
+      tags:
+      - 운동기구 /admin
   /reset-password:
     post:
       consumes:
@@ -686,6 +990,41 @@ paths:
       summary: 운동일지 저장
       tags:
       - 운동일지 /admin
+  /save-machines:
+    post:
+      consumes:
+      - application/json
+      description: 지점에 운동기구 등록 시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.PostMachineRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 200 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동기구 등록
+      tags:
+      - 운동기구 /admin
   /save-user:
     post:
       consumes:
@@ -758,6 +1097,43 @@ paths:
       summary: 운동일지 찾기
       tags:
       - 운동일지 /admin
+  /search-machines:
+    get:
+      consumes:
+      - application/json
+      description: 운동기구 검색시 호출
+      parameters:
+      - description: Bearer {jwt_token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SearchMachineRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 응답 DTO
+          schema:
+            items:
+              $ref: '#/definitions/core.SearchMachineResponse'
+            type: array
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 운동기구 찾기
+      tags:
+      - 운동기구 /admin
   /search-users:
     post:
       consumes:
