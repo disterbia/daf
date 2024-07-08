@@ -49,7 +49,6 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	}
 	var ulav, urav, llav, lrav, tr, loco SearchData
 	for _, userAfc := range userAfcs {
-
 		// BodyCompositionID를 키로 사용하는 그룹에 데이터 추가
 		bodyCompId := userAfc.BodyCompositionID
 		data := groupData[bodyCompId]
@@ -118,15 +117,15 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 
 	for _, v := range searchDatas {
 		if v.amputation == 4 {
-			query = query.Or("body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ? AND amputation_code != 0 AND amputation_code <= 4 ", v.bodyType, v.clinic, v.degree)
+			query = query.Or("body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ? AND amputation_id != 0 AND amputation_id <= 4 ", v.bodyType, v.clinic, v.degree)
 		} else if v.amputation == 3 {
-			query = query.Or("body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ? AND amputation_code != 0 AND amputation_code <= 3", v.bodyType, v.clinic, v.degree)
+			query = query.Or("body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ? AND amputation_id != 0 AND amputation_id <= 3", v.bodyType, v.clinic, v.degree)
 		} else if v.amputation == 2 {
-			query = query.Or("body_type_id = ? AND amputation_code != 0 AND amputation_code <= 2", v.bodyType)
+			query = query.Or("body_type_id = ? AND amputation_id != 0 AND amputation_id <= 2", v.bodyType)
 		} else if v.amputation == 1 {
-			query = query.Or("body_type_id = ? AND amputation_code = 1", v.bodyType)
+			query = query.Or("body_type_id = ? AND amputation_id = 1", v.bodyType)
 		} else {
-			query = query.Or("body_type_id = ? AND clinical_feature_id = ? AND degree_code <= ?", v.bodyType, v.clinic, v.degree)
+			query = query.Or("body_type_id = ? AND clinical_feature_id = ? AND degree_id <= ?", v.bodyType, v.clinic, v.degree)
 		}
 	}
 

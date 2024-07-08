@@ -6,7 +6,6 @@ import (
 
 type UserAfc struct {
 	gorm.Model
-	Name              string
 	User              User `gorm:"foreignKey:Uid"`
 	Uid               uint
 	BodyComposition   BodyComposition `gorm:"foreignKey:BodyCompositionID"`

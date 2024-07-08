@@ -1089,23 +1089,23 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 		query = query.Where("users.name LIKE ?", "%"+request.Name+"%")
 	}
 	if request.AdminID != 0 {
-		query = query.Where("admin_id = ?", request.AdminID)
+		query = query.Where("diaries.admin_id = ?", request.AdminID)
 	}
 	if request.ClassType != 0 {
-		query = query.Where("class_type = ?", request.ClassType)
+		query = query.Where("diaries.class_type = ?", request.ClassType)
 	}
 	if len(request.DisableTypeIDs) > 0 {
-		query = query.Where("id IN (SELECT uid FROM user_disables WHERE disable_type_id IN ?)", request.DisableTypeIDs)
+		query = query.Where("diaries.uid IN (SELECT uid FROM user_disables WHERE disable_type_id IN ?)", request.DisableTypeIDs)
 	}
 	if len(request.VisitPurposeIDs) > 0 {
-		query = query.Where("id IN (SELECT uid FROM user_visits WHERE visit_purpose_id IN ?)", request.VisitPurposeIDs)
+		query = query.Where("diaries.uid IN (SELECT uid FROM user_visits WHERE visit_purpose_id IN ?)", request.VisitPurposeIDs)
 	}
 	if len(request.DisableDetailIDs) > 0 {
-		query = query.Where("id IN (SELECT uid FROM user_disable_details WHERE disable_detail_id IN ?)", request.DisableDetailIDs)
+		query = query.Where("diaries.uid IN (SELECT uid FROM user_disable_details WHERE disable_detail_id IN ?)", request.DisableDetailIDs)
 	}
 
 	if len(request.ClassPurposeIDs) > 0 {
-		query = query.Where("id IN (SELECT diary_id FROM diary_class_purposes WHERE class_purpose_id IN ?)", request.ClassPurposeIDs)
+		query = query.Where("diaries.id IN (SELECT diary_id FROM diary_class_purposes WHERE class_purpose_id IN ?)", request.ClassPurposeIDs)
 	}
 
 	if strings.TrimSpace(request.ClassDate) != "" {
@@ -1113,12 +1113,12 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 		if err != nil {
 			return nil, errors.New("invalid date format for ClassDate")
 		}
-		query = query.Where("class_date = ?", classDate)
+		query = query.Where("diaries.class_date = ?", classDate)
 	}
 
 	query = query.Offset(offset).Limit(pageSize)
 	if err := query.Preload("User.Admin").Find(&diaris).Error; err != nil {
-		return nil, err
+		return nil, errors.New("db error")
 	}
 
 	// 다이어리 ID 리스트 가져오기
@@ -1129,12 +1129,12 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 
 	var puposes []model.DiaryClassPurpose
 	if err := service.db.Where("diary_id IN ?", diaryIDs).Preload("ClassPurpose").Find(&puposes).Error; err != nil {
-		return nil, err
+		return nil, errors.New("db error2")
 	}
 
 	var exerciseDiarys []model.ExerciseDiary
 	if err := service.db.Where("diary_id IN ?", diaryIDs).Preload("Exercise").Preload("Measure").Find(&exerciseDiarys).Error; err != nil {
-		return nil, err
+		return nil, errors.New("db error3")
 	}
 
 	edrs := make(map[uint]map[uint]*ExerciseDiaryResponse)
@@ -1233,6 +1233,7 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 					return "", err
 				}
 				request.Explain[i].Insert = map[string]interface{}{"image": url}
+
 			}
 		case string:
 			// v.Insert is a string, nothing to do
@@ -1266,6 +1267,7 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	diary.Explain = explainJson
 
 	tx := service.db.Begin()
+
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -1277,12 +1279,10 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 		tx.Rollback()
 		return "", errors.New("db error1")
 	}
-
 	var diaryClassPurposes []model.DiaryClassPurpose
 	for _, v := range request.ClassPurposeIDs {
 		diaryClassPurposes = append(diaryClassPurposes, model.DiaryClassPurpose{ClassPurposeID: v, DiaryID: diary.ID})
 	}
-
 	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.DiaryClassPurpose{}).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error4")
@@ -1298,7 +1298,6 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 			exerciseDairis = append(exerciseDairis, model.ExerciseDiary{ExerciseID: v.ExerciseID, MeasureID: measure.MeasureID, DiaryID: diary.ID, Value: measure.Value})
 		}
 	}
-
 	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.ExerciseDiary{}).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error6")
@@ -1310,17 +1309,34 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	}
 
 	// history 저장
-
 	var userAfcs []model.UserAfc
 	if err := service.db.Where("uid = ?", request.Uid).Find(&userAfcs).Error; err != nil {
 		return "", errors.New("db error0")
 	}
 
+	if len(userAfcs) == 0 {
+		return "", errors.New("-1")
+	}
+
 	var historis []model.History
 	for _, exercise := range request.ExerciseMeasures {
 		for _, v := range userAfcs {
-			historis = append(historis, model.History{ExerciseID: exercise.ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: *v.JointActionID,
-				RomID: *v.RomID, ClinicalFeatureID: *v.ClinicalFeatureID, DegreeId: *v.DegreeID, DiaryID: diary.ID})
+			var jointActionID, romID, clinicalFeatureID, degreeID *uint
+			if v.JointActionID != nil {
+				jointActionID = v.JointActionID
+			}
+			if v.RomID != nil {
+				romID = v.RomID
+			}
+			if v.ClinicalFeatureID != nil {
+				clinicalFeatureID = v.ClinicalFeatureID
+			}
+			if v.DegreeID != nil {
+				degreeID = v.DegreeID
+			}
+
+			historis = append(historis, model.History{ExerciseID: exercise.ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: jointActionID,
+				RomID: romID, ClinicalFeatureID: clinicalFeatureID, DegreeID: degreeID, DiaryID: diary.ID})
 		}
 	}
 

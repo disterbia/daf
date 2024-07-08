@@ -22,19 +22,23 @@ type CategoryResponse struct {
 }
 
 type ExerciseRequest struct {
-	ID         uint   `json:"id"`
-	Name       string `json:"name"`
-	CategoryId uint   `json:"category_id"`
+	ID         uint      `json:"id"`
+	Name       string    `json:"name"`
+	CategoryId uint      `json:"category_id"`
+	Explain    []Explain `json:"explain"`
 }
 type ExerciseResponse struct {
-	ID       uint   `json:"id"`
-	Name     string `json:"name"`
-	BodyType uint   `json:"body_type"`
+	ID       uint      `json:"id"`
+	Name     string    `json:"name"`
+	BodyType uint      `json:"body_type"`
+	Explain  []Explain `json:"explain"`
 }
 
 type MachineDto struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	MachineType uint   `json:"machine_type"`
+	Memo        string `json:"memo"`
 }
 
 type PurposeDto struct {
@@ -59,9 +63,8 @@ type RecommendRequest struct {
 	Locomotion          uint                            `json:"locomotion"`
 	UAmputation         uint                            `json:"u_amputation"`
 	LAmputation         uint                            `json:"l_amputation"`
-	QuillJson           []QuillJson                     `json:"quill_json"`
 }
-type QuillJson struct {
+type Explain struct {
 	Insert     interface{}            `json:"insert"`
 	Attributes map[string]interface{} `json:"attributes,omitempty"`
 }
@@ -77,7 +80,6 @@ type RecommendResponse struct {
 	Locomotion          uint                            `json:"locomotion"`
 	Amputation          uint                            `json:"amputation"`
 	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree,omitempty"`
-	QuillJson           []QuillJson                     `json:"quill_json"`
 }
 
 type SearchRequest struct {

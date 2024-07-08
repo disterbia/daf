@@ -40,8 +40,7 @@ func SaveCategoryEndpoint(s CoachService) endpoint.Endpoint {
 
 func SaveExerciseEndpoint(s CoachService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		dto := request.(ExerciseRequest)
-		msg, err := s.saveExercise(dto.ID, dto.CategoryId, dto.Name)
+		msg, err := s.saveExercise(request.(ExerciseRequest))
 		if err != nil {
 			return BasicResponse{Msg: err.Error()}, err
 		}
@@ -61,8 +60,7 @@ func GetMachinesEndpoint(s CoachService) endpoint.Endpoint {
 
 func SaveMachineEndpoint(s CoachService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		dto := request.(MachineDto)
-		msg, err := s.saveMachine(dto.ID, dto.Name)
+		msg, err := s.saveMachine(request.(MachineDto))
 		if err != nil {
 			return BasicResponse{Msg: err.Error()}, err
 		}

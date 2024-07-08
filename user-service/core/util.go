@@ -70,18 +70,18 @@ func decodeJwt(tokenString string) string {
 		log.Println(err)
 	}
 
-	// MapClaims 타입으로 주장(claims) 확인
+	// MapClaims 타입으로 claims 확인
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		// 'iss' 주장 확인
+		// 'iss' 확인
 		if iss, ok := claims["iss"].(string); ok {
 			fmt.Println("Issuer (iss):", iss)
 			return iss
 		} else {
-			fmt.Println("'iss' 주장이 없습니다.")
+			fmt.Println("'iss' 이 없습니다.")
 			return ""
 		}
 	} else {
-		log.Println("주장을 MapClaims로 변환할 수 없습니다.")
+		log.Println("클레임을 MapClaims로 변환할 수 없습니다.")
 		return ""
 	}
 }

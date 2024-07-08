@@ -7,8 +7,8 @@ import (
 type UserAfcHistory struct {
 	gorm.Model
 	Name                  string
-	BodyComposition       BodyComposition `gorm:"foreignKey:BodyCompositionID"`
-	BodyCompositionID     uint
+	BodyComposition       BodyComposition     `gorm:"foreignKey:BodyCompositionID"`
+	BodyCompositionID     uint                `gorm:"index"`
 	JointAction           JointAction         `gorm:"foreignKey:JointActionID"`
 	JointActionID         *uint               `gorm:"index"`
 	Rom                   Rom                 `gorm:"foreignKey:RomID"`
@@ -18,7 +18,7 @@ type UserAfcHistory struct {
 	Degree                Degree              `gorm:"foreignKey:DegreeID"`
 	DegreeID              *uint               `gorm:"index"`
 	UserAfcHistoryGroup   UserAfcHistoryGroup `gorm:"foreignKey:UserAfcHistoryGroupID"`
-	UserAfcHistoryGroupID uint
-	Admin                 Admin `gorm:"foreignKey:AdminID"`
-	AdminID               uint
+	UserAfcHistoryGroupID uint                `gorm:"index"`
+	Admin                 Admin               `gorm:"foreignKey:AdminID"`
+	AdminID               uint                `gorm:"index"`
 }

@@ -6,8 +6,8 @@ import (
 
 type UserAfcHistoryGroup struct {
 	gorm.Model
-	User    User `gorm:"foreignKey:Uid"`
-	Uid     uint
+	User    User  `gorm:"foreignKey:Uid"`
+	Uid     uint  `gorm:"index"`
 	Admin   Admin `gorm:"foreignKey:AdminID"`
-	AdminID uint
+	AdminID uint  `gorm:"index"`
 }

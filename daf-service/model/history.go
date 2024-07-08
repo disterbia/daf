@@ -6,6 +6,8 @@ type History struct {
 	gorm.Model
 	Exercise          Exercise `gorm:"foreignKey:ExerciseId"`
 	ExerciseId        uint
+	BodyComposition   BodyComposition `gorm:"foreignKey:BodyCompositionID"`
+	BodyCompositionID uint            `gorm:"index"`
 	JointActions      JointAction     `gorm:"foreignKey:JointActionID"`
 	JointActionID     uint            `gorm:"index"`
 	Rom               Rom             `gorm:"foreignKey:RomID"`

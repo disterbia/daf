@@ -6,12 +6,11 @@ import (
 
 type UserAfc struct {
 	gorm.Model
-	Name              string
 	User              User `gorm:"foreignKey:Uid"`
 	Uid               uint
 	BodyComposition   BodyComposition `gorm:"foreignKey:BodyCompositionID"`
 	BodyCompositionID uint
-	JointActions      JointAction     `gorm:"foreignKey:JointActionID"`
+	JointAction       JointAction     `gorm:"foreignKey:JointActionID"`
 	JointActionID     uint            `gorm:"index"`
 	Rom               Rom             `gorm:"foreignKey:RomID"`
 	RomID             uint            `gorm:"index"`

@@ -4,8 +4,7 @@ import "gorm.io/gorm"
 
 type Image struct {
 	gorm.Model
-	User `gorm:"foreignKey:Uid"`
-	Uid  uint
+	Uid uint
 
 	//부모 아이디
 	ParentId uint
