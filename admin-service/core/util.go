@@ -207,16 +207,82 @@ func getBirthdayRangeByAgeCode(ageCode uint) (time.Time, time.Time, error) {
 	return startDate, endDate, nil
 }
 
-func validateAfc(request []AfcRequest) bool {
-	for _, v := range request {
-		if v.BodyCompositionID == 0 {
-			return false
-		} else if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) && v.ClinicalFeatureID != uint(AC) &&
-			(v.JointActionID == 0 || v.RomID == 0 || v.ClinicalFeatureID == 0 || v.DegreeID == 0) {
-			return false
-		}
+func validateAfc(request []AfcRequest) string {
+	if len(request) != 14 {
+		return "all parts must fill"
 	}
-	return true
+	checkBodyJoint := make(map[uint]map[uint]bool)
+
+	for _, v := range request {
+		// BodyCompositionID 0을 허용하지 않음
+		if v.BodyCompositionID == 0 {
+			return "BodyCompositionID cannot be 0"
+		}
+
+		if checkBodyJoint[v.BodyCompositionID][v.JointActionID] {
+			return "duplicate parts"
+		}
+
+		isTRorLocomotion := v.BodyCompositionID == uint(TR) || v.BodyCompositionID == uint(LOCOMOTION)
+
+		// BodyCompositionID와 JointActionID 짝 검사
+		validJointAction := false
+		switch v.BodyCompositionID {
+		case uint(TR), uint(LOCOMOTION):
+			// TR이나 LOCOMOTION일 때 JointActionID는 0이어야 함
+			validJointAction = v.JointActionID == 0
+		case uint(UL), uint(UR):
+			validJointAction = v.JointActionID == 1 || v.JointActionID == 2 || v.JointActionID == 5
+		case uint(LL), uint(LR):
+			validJointAction = v.JointActionID == 3 || v.JointActionID == 4 || v.JointActionID == 6
+		default:
+			return "Invalid BodyCompositionID"
+		}
+
+		if !validJointAction {
+			return "Invalid JointActionID for given BodyCompositionID"
+		}
+
+		if isTRorLocomotion {
+			// TR이거나 LOCOMOTION일 때
+			if v.RomID == 0 {
+				return "RomID must not be 0 when BodyCompositionID is TR or LOCOMOTION"
+			}
+			if v.ClinicalFeatureID != 0 || v.DegreeID != 0 {
+				return "ClinicalFeatureID and DegreeID must be 0 when BodyCompositionID is TR or LOCOMOTION"
+			}
+		} else {
+			// TR이나 LOCOMOTION이 아닐 때
+			if v.JointActionID == 0 {
+				return "JointActionID cannot be 0 when BodyCompositionID is not TR or LOCOMOTION"
+			}
+			if v.JointActionID >= 5 {
+				// JointActionID가 5 이상일 때
+				if v.ClinicalFeatureID != 0 || v.DegreeID != 0 {
+					return "ClinicalFeatureID and DegreeID must be 0 when JointActionID is 5 or greater"
+				}
+				if v.RomID == 0 {
+					return "RomID cannot be 0 when JointActionID is 5 or greater"
+				}
+			} else {
+				// JointActionID가 4 이하일 때
+				if v.ClinicalFeatureID == uint(AC) {
+					// ClinicalFeatureID가 AC일 때
+					if v.RomID != 0 || v.DegreeID != 0 {
+						return "RomID and DegreeID must be 0 when ClinicalFeatureID is AC"
+					}
+				} else {
+					// ClinicalFeatureID가 AC가 아닐 때
+					if v.RomID == 0 || v.ClinicalFeatureID == 0 || v.DegreeID == 0 {
+						return "RomID, ClinicalFeatureID, and DegreeID cannot be 0 when JointActionID is 4 or less and ClinicalFeatureID is not AC"
+					}
+				}
+			}
+		}
+		checkBodyJoint[v.BodyCompositionID][v.JointActionID] = true
+	}
+
+	return "" // 모든 검증을 통과하면 빈 문자열 반환
 }
 func sum(slice []uint) uint {
 	total := uint(0)

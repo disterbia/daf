@@ -747,8 +747,8 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 			return "", err
 		}
 	}
-	if !validateAfc(request.Afcs) {
-		return "", errors.New("validate afc")
+	if msg := validateAfc(request.Afcs); msg != "" {
+		return "", errors.New(msg)
 	}
 
 	tx := service.db.Begin()
@@ -807,10 +807,8 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 					degree = &degreeID
 				}
 			} else {
-				if v.ClinicalFeatureID != 0 {
-					clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
-					clinic = &clinicalFeatureID
-				}
+				clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
+				clinic = &clinicalFeatureID
 			}
 		}
 
@@ -853,8 +851,8 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 			return "", err
 		}
 	}
-	if !validateAfc(request.Afcs) {
-		return "", errors.New("validate afc")
+	if msg := validateAfc(request.Afcs); msg != "" {
+		return "", errors.New(msg)
 	}
 
 	//기존의 히스토리그룹 id참조를 위해 afc 하나만가져옴
@@ -893,10 +891,10 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 					degree = &degreeID
 				}
 			} else {
-				if v.ClinicalFeatureID != 0 {
-					clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
-					clinic = &clinicalFeatureID
-				}
+
+				clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
+				clinic = &clinicalFeatureID
+
 			}
 		}
 
@@ -994,8 +992,8 @@ func (service *adminService) getAfcHistoris(id, uid uint) ([]GetAfcResponse, err
 }
 
 func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (string, error) {
-	if !validateAfc(request.Afcs) {
-		return "", errors.New("validate afc")
+	if msg := validateAfc(request.Afcs); msg != "" {
+		return "", errors.New(msg)
 	}
 
 	var group model.UserAfcHistoryGroup
@@ -1043,10 +1041,10 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 					degree = &degreeID
 				}
 			} else {
-				if v.ClinicalFeatureID != 0 {
-					clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
-					clinic = &clinicalFeatureID
-				}
+
+				clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
+				clinic = &clinicalFeatureID
+
 			}
 		}
 		historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: request.GroupId, AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: joint, RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
@@ -1204,35 +1202,38 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 		switch insertValue := v.Insert.(type) {
 		case map[string]interface{}:
 			if image, ok := insertValue["image"]; ok {
-				base64Image, ok := image.(string)
+				imageString, ok := image.(string)
 				if !ok {
 					return "", errors.New("image field is not a string")
 				}
-				imgData, err := base64.StdEncoding.DecodeString(base64Image)
-				if err != nil {
-					return "", err
-				}
 
-				// 이미지 포맷 체크
-				contentType, ext, err := getImageFormat(imgData)
-				if err != nil {
-					return "", err
-				}
-
-				// 이미지 크기 조정 (10MB 제한)
-				if len(imgData) > 10*1024*1024 {
-					imgData, err = reduceImageSize(imgData)
+				if !strings.HasPrefix(imageString, "http") {
+					imgData, err := base64.StdEncoding.DecodeString(imageString)
 					if err != nil {
 						return "", err
 					}
-				}
 
-				// S3에 이미지 및 썸네일 업로드
-				url, err := uploadImagesToS3(imgData, contentType, ext, service.s3svc, service.bucket, service.bucketUrl, strconv.FormatUint(uint64(request.Uid), 10))
-				if err != nil {
-					return "", err
+					// 이미지 포맷 체크
+					contentType, ext, err := getImageFormat(imgData)
+					if err != nil {
+						return "", err
+					}
+
+					// 이미지 크기 조정 (10MB 제한)
+					if len(imgData) > 10*1024*1024 {
+						imgData, err = reduceImageSize(imgData)
+						if err != nil {
+							return "", err
+						}
+					}
+
+					// S3에 이미지 및 썸네일 업로드
+					url, err := uploadImagesToS3(imgData, contentType, ext, service.s3svc, service.bucket, service.bucketUrl, strconv.FormatUint(uint64(request.Uid), 10))
+					if err != nil {
+						return "", err
+					}
+					request.Explain[i].Insert = map[string]interface{}{"image": url}
 				}
-				request.Explain[i].Insert = map[string]interface{}{"image": url}
 
 			}
 		case string:

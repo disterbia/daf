@@ -28,10 +28,9 @@ type ExerciseRequest struct {
 	Explain    []Explain `json:"explain"`
 }
 type ExerciseResponse struct {
-	ID       uint      `json:"id"`
-	Name     string    `json:"name"`
-	BodyType uint      `json:"body_type"`
-	Explain  []Explain `json:"explain"`
+	ID      uint      `json:"id"`
+	Name    string    `json:"name"`
+	Explain []Explain `json:"explain"`
 }
 
 type MachineDto struct {
@@ -52,34 +51,41 @@ type MeasureDto struct {
 }
 
 type RecommendRequest struct {
-	ExerciseID          uint                            `json:"exercise_id"`            // 운동아이디
-	MachineIDs          []uint                          `json:"machine_ids"`            // 기구아이디
-	PurposeIDs          []uint                          `json:"purpose_ids"`            // 목적아이디
-	MeasureIds          []uint                          `json:"measure_ids"`            // 측정항목 아이디
-	IsAsymmetric        bool                            `json:"is_asymmetric"`          // 비대칭 여부
-	BodyType            uint                            `json:"body_type"`              // 전신,상체,하체
-	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
-	TrRom               uint                            `json:"tr_rom"`
-	Locomotion          uint                            `json:"locomotion"`
-	UAmputation         uint                            `json:"u_amputation"`
-	LAmputation         uint                            `json:"l_amputation"`
+	ExerciseID   uint   `json:"exercise_id"`   // 운동아이디
+	MachineIDs   []uint `json:"machine_ids"`   // 기구아이디
+	PurposeIDs   []uint `json:"purpose_ids"`   // 목적아이디
+	MeasureIds   []uint `json:"measure_ids"`   // 측정항목 아이디
+	IsAsymmetric bool   `json:"is_asymmetric"` // 비대칭 여부
+	BodyType     uint   `json:"body_type"`     // 전신,상체,하체
+	// BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
+	TrRom      uint           `json:"tr_rom"`
+	Locomotion uint           `json:"locomotion"`
+	Afcs       []RecommendAfc `json:"afcs"`
 }
+
+type RecommendAfc struct {
+	JointAction  uint          `json:"joint_action"`
+	Rom          uint          `json:"rom"`
+	ClinicDegree map[uint]uint `json:"clinic_degree"`
+}
+
 type Explain struct {
 	Insert     interface{}            `json:"insert"`
 	Attributes map[string]interface{} `json:"attributes,omitempty"`
 }
 
 type RecommendResponse struct {
-	Category            CategoryRequest                 `json:"category"`
-	Exercise            ExerciseResponse                `json:"exercise"`
-	Machines            []MachineDto                    `json:"machines"`
-	Purposes            []PurposeDto                    `json:"purposes"`
-	Measures            []MeasureDto                    `json:"measure"`
-	IsAsymmetric        bool                            `json:"is_asymmetric"`
-	TrRom               uint                            `json:"tr_rom"`
-	Locomotion          uint                            `json:"locomotion"`
-	Amputation          uint                            `json:"amputation"`
-	BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree,omitempty"`
+	Category     CategoryRequest  `json:"category"`
+	Exercise     ExerciseResponse `json:"exercise"`
+	Machines     []MachineDto     `json:"machines"`
+	Purposes     []PurposeDto     `json:"purposes"`
+	Measures     []MeasureDto     `json:"measure"`
+	BodyType     uint             `json:"body_type"`
+	IsAsymmetric bool             `json:"is_asymmetric"`
+	TrRom        uint             `json:"tr_rom"`
+	Locomotion   uint             `json:"locomotion"`
+	Afcs         []RecommendAfc   `json:"afcs"`
+	// BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree,omitempty"`
 }
 
 type SearchRequest struct {

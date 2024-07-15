@@ -22,7 +22,7 @@ func NewDB(dataSourceName string) (*gorm.DB, error) {
 	}
 
 	db.AutoMigrate(&Admin{}, &Agency{}, &AppVersion{}, &AuthCode{}, &BodyComposition{}, &BodyType{}, &Category{}, &ClinicalFeature{}, &Degree{}, &DisableDetail{}, &DisableType{}, &ExerciseMachine{},
-		&ExerciseMeasure{}, &ExercisePurpose{}, &Exercise{}, &History{}, &Image{}, &JointAction{}, &Machine{}, &Measure{}, &Purpose{}, &Recommended{}, &Role{}, &Rom{}, &UseStatus{},
+		&ExerciseMeasure{}, &ExercisePurpose{}, &Exercise{}, &History{}, &Image{}, &JointAction{}, &Machine{}, &Measure{}, &Purpose{}, &RecommendedClinicalDegree{}, &RecommendedJointRom{}, &Recommended{}, &Role{}, &Rom{}, &UseStatus{},
 		&UserDisableDetail{}, &UserDisable{}, &UserAfc{}, &UserVisit{}, &User{}, &VerifiedEmail{}, &VisitPurpose{})
 	return db, nil
 }

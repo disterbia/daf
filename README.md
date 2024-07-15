@@ -6,6 +6,8 @@ https 설정
 
 sudo certbot certonly --standalone -d haruharu-daf.com 
 
+sudo nano /etc/nginx/sites-available/default
+
 server {
     listen 80;
     server_name haruharu-daf.com;

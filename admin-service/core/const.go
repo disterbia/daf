@@ -17,12 +17,13 @@ const (
 )
 
 const (
-	NC level = iota + 1
+	AC level = iota + 1
 	TC
 	PC
 	CC
 	SC
-	AC
+	HC
+	FC
 )
 
-var CLINIC = [6]level{NC, TC, PC, CC, SC, AC}
+var CLINIC = [7]level{AC, TC, PC, CC, SC, HC, FC}

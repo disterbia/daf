@@ -31,6 +31,15 @@ const (
 
 var CLINIC = [6]level{NC, TC, PC, CC, SC, AC}
 
+const (
+	SHOULDER level = iota + 1
+	ELBOW
+	HIP
+	KNEE
+	HANDS
+	FOOT
+)
+
 // const (
 // 	ULS level = iota + 1
 // 	ULE

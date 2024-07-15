@@ -2,9 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
-	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -40,44 +37,41 @@ func verifyJWT(c *gin.Context) (uint, string, error) {
 	return id, email, nil
 }
 
-func validateRequest(request UserAfcRequest) error {
-	v := reflect.ValueOf(request)
-	t := v.Type()
+func intersect(slice1, slice2 []uint) []uint {
+	map1 := make(map[uint]bool)
+	for _, v := range slice1 {
+		map1[v] = true
+	}
 
-	// 정규 표현식으로 각 필드 유효성 검사
-	pattern := `(?i)^[1-5][ntpcswa][1-7]$`
-	re := regexp.MustCompile(pattern)
-
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-
-		// uint 타입 필드 또는 "-" 태그가 있는 필드는 건너뜁니다.
-		if fieldType.Type.Kind() == reflect.Uint || fieldType.Tag.Get("-") == "-" {
-			continue
-		}
-
-		// string 타입 필드에 대해서만 검증
-		if field.Type().Kind() == reflect.String {
-			str := field.String()
-			if str == "" {
-				continue
-			}
-			// 정규 표현식에 맞지 않는 경우
-			if fieldType.Name != "TR" && fieldType.Name != "LOCOMOTION" && !re.MatchString(str) {
-				errorMsg := fmt.Sprintf("Invalid field %s: %s", fieldType.Name, str)
-				return errors.New(errorMsg)
-			}
+	var intersection []uint
+	for _, v := range slice2 {
+		if _, found := map1[v]; found {
+			intersection = append(intersection, v)
 		}
 	}
 
-	return nil
+	return intersection
 }
 
-func sum(slice []uint) uint {
-	total := uint(0)
-	for _, value := range slice {
-		total += value
+func mergeAndRemoveDuplicates(slice1, slice2 []uint) []uint {
+	elementMap := make(map[uint]bool)
+	var result []uint
+
+	// 슬라이스1의 요소를 맵에 추가
+	for _, v := range slice1 {
+		if _, exists := elementMap[v]; !exists {
+			elementMap[v] = true
+			result = append(result, v)
+		}
 	}
-	return total
+
+	// 슬라이스2의 요소를 맵에 추가
+	for _, v := range slice2 {
+		if _, exists := elementMap[v]; !exists {
+			elementMap[v] = true
+			result = append(result, v)
+		}
+	}
+
+	return result
 }

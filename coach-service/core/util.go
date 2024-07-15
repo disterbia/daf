@@ -81,58 +81,63 @@ func copyStruct(input interface{}, output interface{}) error {
 }
 
 func validateRecommendRequest(request RecommendRequest) error {
-	if request.ExerciseID == 0 || request.MachineIDs == nil || request.PurposeIDs == nil || request.BodyRomClinicDegree == nil ||
-		len(request.MachineIDs) == 0 || len(request.PurposeIDs) == 0 || len(request.BodyRomClinicDegree) == 0 || request.BodyType > 3 {
+	if request.ExerciseID == 0 || request.MachineIDs == nil || request.PurposeIDs == nil || len(request.MachineIDs) == 0 || len(request.PurposeIDs) == 0 ||
+		request.BodyType > 3 || request.BodyType == 0 || request.TrRom == 0 || request.Locomotion == 0 || request.Afcs == nil || len(request.Afcs) == 0 {
 		return errors.New("check body")
 	}
-	return nil
-}
-func getChosung(input string) string {
-	var result []rune
-	for _, r := range input {
-		if r >= 0xAC00 && r <= 0xD7A3 {
-			// 음절을 초성으로 변환
-			initial := (r - 0xAC00) / 588
-			initialChar := rune(0x1100 + initial)
-			result = append(result, initialChar)
-		} else if r >= 0x3131 && r <= 0x318E {
-			// 자모 문자 처리
-			result = append(result, r)
-		} else {
-			// 기타 문자 처리
-			result = append(result, r)
+
+	if request.BodyType == uint(TBODY) && len(request.Afcs) != 4 {
+		return errors.New("afcs length must be 4")
+	}
+
+	if (request.BodyType == uint(UBODY) || request.BodyType == uint(LBODY)) && len(request.Afcs) != 2 {
+		return errors.New("afcs length must be 2")
+	}
+
+	var checkJoint = make(map[uint]bool)
+
+	for _, v := range request.Afcs {
+		if request.BodyType == uint(UBODY) && (v.JointAction == uint(HIP) || v.JointAction == uint(KNEE)) {
+			return errors.New("check body0")
 		}
+		if request.BodyType == uint(LBODY) && (v.JointAction == uint(SHOULDER) || v.JointAction == uint(ELBOW)) {
+			return errors.New("check body1")
+		}
+		if v.JointAction > 4 || v.JointAction == 0 {
+			return errors.New("check body2")
+		}
+
+		if v.Rom == 0 || v.ClinicDegree == nil || len(v.ClinicDegree) != len(CLINIC) {
+			return errors.New("check body3")
+		}
+
+		var checkClinic = make(map[uint]bool)
+		checkAC := true
+		for clinic, degree := range v.ClinicDegree {
+			if degree != 1 {
+				checkAC = false
+			}
+			if _, exists := checkClinic[clinic]; exists {
+				return errors.New("duplicate clinic") // 중복된 clinic인 경우 처리하지 않음
+			}
+			checkClinic[clinic] = true
+			if clinic == uint(AC) && !((degree == 1 && v.Rom == 1) || (degree == 5 && v.Rom == 5)) {
+				return errors.New("must 1 or 5") // 절단은 반드시 1 또는 5
+			}
+			if clinic == uint(AC) && degree == 1 && v.Rom == 1 {
+				if !checkAC { //ac일땐 반드시 모두 1
+					return errors.New("must 1")
+				}
+			}
+		}
+
+		if _, exists := checkJoint[v.JointAction]; exists {
+			return errors.New("duplicate joint") // 중복된 jointaction 경우 처리하지 않음
+		}
+		checkJoint[v.JointAction] = true
 	}
-	return string(result)
-}
 
-func uintPointer(u uint) *uint {
-	return &u
-}
-
-func deleteFromS3(fileKey string, s3Client *s3.S3, bucket string, bucketUrl string) error {
-
-	// URL에서 객체 키 추출
-	key := extractKeyFromUrl(fileKey, bucket, bucketUrl)
-	log.Println("key", fileKey)
-
-	_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-
-	// 에러 발생 시 처리 로직
-	if err != nil {
-		fmt.Printf("Failed to delete object from S3: %s, error: %v\n", fileKey, err)
-	}
-
-	return err
-}
-
-// URL에서 S3 객체 키를 추출하는 함수
-func extractKeyFromUrl(url, bucket string, bucketUrl string) string {
-	prefix := fmt.Sprintf("https://%s.%s/", bucket, bucketUrl)
-	return strings.TrimPrefix(url, prefix)
+	return nil
 }
 
 func uploadImagesToS3(imgData []byte, contentType string, ext string, s3Client *s3.S3, bucket string, bucketUrl string, uid string) (string, error) {
