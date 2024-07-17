@@ -90,7 +90,7 @@ func main() {
 		adminProxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-	coachServiceURL, _ := url.Parse("http://localhost:44401")
+	coachServiceURL, _ := url.Parse("http://coach:44401")
 	coachProxy := httputil.NewSingleHostReverseProxy(coachServiceURL)
 	router.Any("/coach/*path", func(c *gin.Context) {
 		c.Request.URL.Path = c.Param("path")
