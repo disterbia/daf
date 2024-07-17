@@ -284,15 +284,15 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		return "", errors.New("db error")
 	}
 
-	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.RecommendedClinicalDegree{}).Error; err != nil {
-		tx.Rollback()
-		return "", errors.New("db error")
-	}
+	// if err := tx.Where("recommended_id = ?", request.ExerciseID).Unscoped().Delete(&model.RecommendedClinicalDegree{}).Error; err != nil {
+	// 	tx.Rollback()
+	// 	return "", errors.New("db error")
+	// }
 
-	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.RecommendedJointRom{}).Error; err != nil {
-		tx.Rollback()
-		return "", errors.New("db error")
-	}
+	// if err := tx.Where("recommended_id = ?", request.ExerciseID).Unscoped().Delete(&model.RecommendedJointRom{}).Error; err != nil {
+	// 	tx.Rollback()
+	// 	return "", errors.New("db error")
+	// }
 
 	// 사용기구
 	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.ExerciseMachine{}).Error; err != nil {
@@ -413,7 +413,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 
 			jointClinicDegree := make(map[uint]map[uint]uint)
 			for _, w := range recommend.ClinicalDegrees {
-				if jointClinicDegree[w.JointActionID] != nil {
+				if jointClinicDegree[w.JointActionID] == nil {
 					jointClinicDegree[w.JointActionID] = make(map[uint]uint)
 				}
 				jointClinicDegree[w.JointActionID][w.ClinicalFeatureID] = w.DegreeID
@@ -533,7 +533,7 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 
 		jointClinicDegree := make(map[uint]map[uint]uint)
 		for _, w := range recommend.ClinicalDegrees {
-			if jointClinicDegree[w.JointActionID] != nil {
+			if jointClinicDegree[w.JointActionID] == nil {
 				jointClinicDegree[w.JointActionID] = make(map[uint]uint)
 			}
 			jointClinicDegree[w.JointActionID][w.ClinicalFeatureID] = w.DegreeID
@@ -649,7 +649,7 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 
 		jointClinicDegree := make(map[uint]map[uint]uint)
 		for _, w := range recommend.ClinicalDegrees {
-			if jointClinicDegree[w.JointActionID] != nil {
+			if jointClinicDegree[w.JointActionID] == nil {
 				jointClinicDegree[w.JointActionID] = make(map[uint]uint)
 			}
 			jointClinicDegree[w.JointActionID][w.ClinicalFeatureID] = w.DegreeID
