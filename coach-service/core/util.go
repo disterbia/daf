@@ -121,7 +121,7 @@ func validateRecommendRequest(request RecommendRequest) error {
 				return errors.New("duplicate clinic") // 중복된 clinic인 경우 처리하지 않음
 			}
 			checkClinic[clinic] = true
-			if clinic == uint(AC) && !((degree == 1 && v.Rom == 1) || (degree == 5 && v.Rom == 5)) {
+			if clinic == uint(AC) && !((degree == 1 && v.Rom == 1) || degree == 5) {
 				return errors.New("must 1 or 5") // 절단은 반드시 1 또는 5
 			}
 			if clinic == uint(AC) && degree == 1 && v.Rom == 1 {

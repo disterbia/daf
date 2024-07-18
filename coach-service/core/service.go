@@ -124,35 +124,37 @@ func (service *coachService) saveExercise(request ExerciseRequest) (string, erro
 		switch insertValue := v.Insert.(type) {
 		case map[string]interface{}:
 			if image, ok := insertValue["image"]; ok {
-				base64Image, ok := image.(string)
+				imageString, ok := image.(string)
 				if !ok {
 					return "", errors.New("image field is not a string")
 				}
-				imgData, err := base64.StdEncoding.DecodeString(base64Image)
-				if err != nil {
-					return "", err
-				}
-
-				// 이미지 포맷 체크
-				contentType, ext, err := getImageFormat(imgData)
-				if err != nil {
-					return "", err
-				}
-
-				// 이미지 크기 조정 (10MB 제한)
-				if len(imgData) > 10*1024*1024 {
-					imgData, err = reduceImageSize(imgData)
+				if !strings.HasPrefix(imageString, "http") {
+					imgData, err := base64.StdEncoding.DecodeString(imageString)
 					if err != nil {
 						return "", err
 					}
-				}
 
-				// S3에 이미지 및 썸네일 업로드
-				url, err := uploadImagesToS3(imgData, contentType, ext, service.s3svc, service.bucket, service.bucketUrl, strconv.FormatUint(uint64(request.ID), 10))
-				if err != nil {
-					return "", err
+					// 이미지 포맷 체크
+					contentType, ext, err := getImageFormat(imgData)
+					if err != nil {
+						return "", err
+					}
+
+					// 이미지 크기 조정 (10MB 제한)
+					if len(imgData) > 10*1024*1024 {
+						imgData, err = reduceImageSize(imgData)
+						if err != nil {
+							return "", err
+						}
+					}
+
+					// S3에 이미지 및 썸네일 업로드
+					url, err := uploadImagesToS3(imgData, contentType, ext, service.s3svc, service.bucket, service.bucketUrl, strconv.FormatUint(uint64(request.ID), 10))
+					if err != nil {
+						return "", err
+					}
+					request.Explain[i].Insert = map[string]interface{}{"image": url}
 				}
-				request.Explain[i].Insert = map[string]interface{}{"image": url}
 			}
 		case string:
 			// v.Insert is a string, nothing to do
@@ -327,26 +329,30 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 	var rcds []model.RecommendedClinicalDegree
 	var rjrs []model.RecommendedJointRom
 
-	for _, v := range request.Afcs {
+	for i, v := range request.Afcs {
 		rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: v.JointAction, RomID: v.Rom})
 		// 반대부위 추천운동 생성
-		if request.BodyType == uint(UBODY) {
-			rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(HIP), RomID: 1})
-			rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(KNEE), RomID: 1})
-		} else if request.BodyType == uint(LBODY) {
-			rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(SHOULDER), RomID: 1})
-			rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(ELBOW), RomID: 1})
+		if i == 1 {
+			if request.BodyType == uint(UBODY) {
+				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(HIP), RomID: 1})
+				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(KNEE), RomID: 1})
+			} else if request.BodyType == uint(LBODY) {
+				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(SHOULDER), RomID: 1})
+				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(ELBOW), RomID: 1})
+			}
 		}
 
 		for clinic, degree := range v.ClinicDegree {
 			rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: v.JointAction, ClinicalFeatureID: clinic, DegreeID: degree})
 			// 반대부위 추천운동 생성
-			if request.BodyType == uint(UBODY) {
-				rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(HIP), ClinicalFeatureID: clinic, DegreeID: 1})
-				rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(KNEE), ClinicalFeatureID: clinic, DegreeID: 1})
-			} else if request.BodyType == uint(LBODY) {
-				rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(SHOULDER), ClinicalFeatureID: clinic, DegreeID: 1})
-				rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(ELBOW), ClinicalFeatureID: clinic, DegreeID: 1})
+			if i == 1 {
+				if request.BodyType == uint(UBODY) {
+					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(HIP), ClinicalFeatureID: clinic, DegreeID: 1})
+					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(KNEE), ClinicalFeatureID: clinic, DegreeID: 1})
+				} else if request.BodyType == uint(LBODY) {
+					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(SHOULDER), ClinicalFeatureID: clinic, DegreeID: 1})
+					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(ELBOW), ClinicalFeatureID: clinic, DegreeID: 1})
+				}
 			}
 		}
 	}
@@ -540,7 +546,18 @@ func (service *coachService) getRecommends(page uint) ([]RecommendResponse, erro
 		}
 
 		for _, v := range recommend.JointRoms {
-			afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+			if recommend.BodyTypeID == uint(UBODY) {
+				if v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
+					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+				}
+			} else if recommend.BodyTypeID == uint(LBODY) {
+				if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
+					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+				}
+			} else {
+				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+			}
+
 		}
 		exerciseIDToRecommend[recommend.ExerciseID].Afcs = afcs
 

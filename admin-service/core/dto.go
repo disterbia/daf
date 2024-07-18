@@ -262,7 +262,7 @@ type GetMachineResponse struct {
 	ID          uint   `json:"id"`
 	Name        string `json:"name"`
 	MachineType uint   `json:"machine_type"`
-	Memo        string `json:"json"`
+	Memo        string `json:"memo"`
 }
 
 type PostMachineRequest struct {
