@@ -396,43 +396,43 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 
 func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, error) {
 	var response RecommendResponse
-
 	// 추천운동 정보 가져오기
 	var recommend model.Recommended
 	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Exercise.Category").Preload("ClinicalDegrees").Preload("JointRoms").First(&recommend).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return response, errors.New("db error")
 		} else {
-			var explain []Explain
-			if len(recommend.Exercise.Explain) > 0 {
-				if err := json.Unmarshal(recommend.Exercise.Explain, &explain); err != nil {
-					return RecommendResponse{}, err
-				}
-			}
-			var afcs []RecommendAfc
-
-			jointClinicDegree := make(map[uint]map[uint]uint)
-			for _, w := range recommend.ClinicalDegrees {
-				if jointClinicDegree[w.JointActionID] == nil {
-					jointClinicDegree[w.JointActionID] = make(map[uint]uint)
-				}
-				jointClinicDegree[w.JointActionID][w.ClinicalFeatureID] = w.DegreeID
-			}
-
-			for _, v := range recommend.JointRoms {
-				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
-			}
-
-			response = RecommendResponse{Category: CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
-				Exercise:     ExerciseResponse{ID: recommend.Exercise.ID, Name: recommend.Exercise.Name, Explain: explain},
-				IsAsymmetric: recommend.IsAsymmetric,
-				TrRom:        recommend.TRomID,
-				Locomotion:   recommend.LocoRomID,
-				BodyType:     recommend.BodyTypeID,
-				Afcs:         afcs}
+			return response, errors.New("not found")
 		}
-
 	}
+
+	var explain []Explain
+	if len(recommend.Exercise.Explain) > 0 {
+		if err := json.Unmarshal(recommend.Exercise.Explain, &explain); err != nil {
+			return RecommendResponse{}, err
+		}
+	}
+	var afcs []RecommendAfc
+
+	jointClinicDegree := make(map[uint]map[uint]uint)
+	for _, w := range recommend.ClinicalDegrees {
+		if jointClinicDegree[w.JointActionID] == nil {
+			jointClinicDegree[w.JointActionID] = make(map[uint]uint)
+		}
+		jointClinicDegree[w.JointActionID][w.ClinicalFeatureID] = w.DegreeID
+	}
+
+	for _, v := range recommend.JointRoms {
+		afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+	}
+
+	response = RecommendResponse{Category: CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
+		Exercise:     ExerciseResponse{ID: recommend.Exercise.ID, Name: recommend.Exercise.Name, Explain: explain},
+		IsAsymmetric: recommend.IsAsymmetric,
+		TrRom:        recommend.TRomID,
+		Locomotion:   recommend.LocoRomID,
+		BodyType:     recommend.BodyTypeID,
+		Afcs:         afcs}
 
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine

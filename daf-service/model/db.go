@@ -21,6 +21,12 @@ func NewDB(dataSourceName string) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	// lock_timeout 설정
+	err = db.Exec("SET lock_timeout = '1s'").Error
+	if err != nil {
+		return nil, err
+	}
+
 	db.AutoMigrate(&Admin{}, &Agency{}, &AppVersion{}, &AuthCode{}, &BodyComposition{}, &BodyType{}, &Category{}, &ClinicalFeature{}, &Degree{}, &DisableDetail{}, &DisableType{}, &ExerciseMachine{},
 		&ExercisePurpose{}, &Exercise{}, &History{}, &Image{}, &JointAction{}, &Machine{}, &Purpose{}, &RecommendedClinicalDegree{}, &RecommendedJointRom{}, &Recommended{}, &Role{}, &Rom{}, &UseStatus{}, &UserAfcHistoryGroup{}, &UserAfcHistory{},
 		&UserDisableDetail{}, &UserDisable{}, &UserAfc{}, &UserVisit{}, &User{}, &VerifiedEmail{}, &VisitPurpose{})

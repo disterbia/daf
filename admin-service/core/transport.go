@@ -614,6 +614,13 @@ func SaveDiaryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
+
 		var req SaveDiaryRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -1312,10 +1312,12 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	// history 저장
 	var userAfcs []model.UserAfc
 	if err := service.db.Where("uid = ?", request.Uid).Find(&userAfcs).Error; err != nil {
+		tx.Rollback()
 		return "", errors.New("db error0")
 	}
 
 	if len(userAfcs) == 0 {
+		tx.Rollback()
 		return "", errors.New("-1")
 	}
 
