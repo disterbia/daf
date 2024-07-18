@@ -48,7 +48,7 @@ func main() {
 	getCategorisEndpoint := core.GetCategorisEndpoint(svc)
 	saveCategoryEndpoint := core.SaveCategoryEndpoint(svc)
 	getRecommendEndpoint := core.GetRecommendEndpoint(svc)
-	getRecommendsEndpoint := core.GetRecommendsEndpoint(svc)
+	// getRecommendsEndpoint := core.GetRecommendsEndpoint(svc)
 	saveExerciseEndpoint := core.SaveExerciseEndpoint(svc)
 	getMachinesEndpoint := core.GetMachinesEndpoint(svc)
 	saveMachineEndpoint := core.SaveMachineEndpoint(svc)
@@ -68,7 +68,7 @@ func main() {
 
 	router.POST("/save-recommend", core.SaveRecommendHandler(saveRecommendEndpint))
 	router.GET("/get-exercise/:exercise_id", core.GetRecommendHandler(getRecommendEndpoint))
-	router.GET("/get-recommends", core.GetRecommendsHandler(getRecommendsEndpoint))
+	// router.GET("/get-recommends", core.GetRecommendsHandler(getRecommendsEndpoint))
 	router.GET("/search-recommends", core.SearchRecommendsHandler(searchRecommendsEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

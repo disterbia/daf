@@ -100,15 +100,15 @@ func GetRecommendEndpoint(s CoachService) endpoint.Endpoint {
 	}
 }
 
-func GetRecommendsEndpoint(s CoachService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		recommends, err := s.getRecommends(request.(uint))
-		if err != nil {
-			return BasicResponse{Msg: err.Error()}, err
-		}
-		return recommends, nil
-	}
-}
+// func GetRecommendsEndpoint(s CoachService) endpoint.Endpoint {
+// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
+// 		recommends, err := s.getRecommends(request.(uint))
+// 		if err != nil {
+// 			return BasicResponse{Msg: err.Error()}, err
+// 		}
+// 		return recommends, nil
+// 	}
+// }
 
 func SearchRecommendsEndpoint(s CoachService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
