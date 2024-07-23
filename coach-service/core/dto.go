@@ -60,6 +60,7 @@ type RecommendRequest struct {
 	// BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
 	TrRom      uint           `json:"tr_rom"`
 	Locomotion uint           `json:"locomotion"`
+	IsGrip     bool           `json:"is_grip"`
 	Afcs       []RecommendAfc `json:"afcs"`
 }
 

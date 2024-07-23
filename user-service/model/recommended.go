@@ -13,6 +13,7 @@ type Recommended struct {
 	LocoRom         Rom      `gorm:"foreignKey:LocoRomID"`
 	LocoRomID       uint     `gorm:"index"`
 	IsAsymmetric    bool
+	IsGrip          *bool
 	ClinicalDegrees []RecommendedClinicalDegree `gorm:"foreignKey:RecommendedID"`
 	JointRoms       []RecommendedJointRom       `gorm:"foreignKey:RecommendedID"`
 }

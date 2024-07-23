@@ -17,13 +17,20 @@ const (
 )
 
 const (
+	SHOULDER level = iota + 1
+	ELBOW
+	WRIST
+	FINGER
+	HIP
+	KNEE
+	ANKLE
+)
+
+const (
 	AC level = iota + 1
 	TC
 	PC
 	CC
 	SC
-	HC
-	FC
+	MC
 )
-
-var CLINIC = [7]level{AC, TC, PC, CC, SC, HC, FC}

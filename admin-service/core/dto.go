@@ -103,6 +103,8 @@ type AfcRequest struct {
 	RomID             uint `json:"rom_id"`
 	ClinicalFeatureID uint `json:"clinical_feature_id"`
 	DegreeID          uint `json:"degree_id"`
+	IsGrip            bool `json:"is_grip"`
+	Pain              uint `json:"pain"`
 }
 
 type AfcResponse struct {
@@ -127,6 +129,8 @@ type UserAfcResponse struct {
 	RomID             *uint  `json:"rom_id"`
 	ClinicalFeatureID *uint  `json:"clinical_feature_id"`
 	DegreeID          *uint  `json:"degree_id"`
+	IsGrip            bool   `json:"is_grip"`
+	Pain              uint   `json:"pain"`
 }
 
 type SaveAfcRequest struct {

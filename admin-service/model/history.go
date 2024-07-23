@@ -18,4 +18,5 @@ type History struct {
 	DegreeID          *uint           `gorm:"index"`
 	Diary             Diary           `gorm:"foreignKey:DiaryID"`
 	DiaryID           uint            `gorm:"index"`
+	IsGrip            *bool
 }

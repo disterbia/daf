@@ -208,9 +208,10 @@ func getBirthdayRangeByAgeCode(ageCode uint) (time.Time, time.Time, error) {
 }
 
 func validateAfc(request []AfcRequest) string {
-	if len(request) != 14 {
+	if len(request) != 16 {
 		return "all parts must fill"
 	}
+
 	checkBodyJoint := make(map[uint]map[uint]bool)
 
 	for _, v := range request {
@@ -223,6 +224,10 @@ func validateAfc(request []AfcRequest) string {
 			return "duplicate parts"
 		}
 
+		if v.Pain == 0 || v.Pain > 5 {
+			return "check pain"
+		}
+
 		isTRorLocomotion := v.BodyCompositionID == uint(TR) || v.BodyCompositionID == uint(LOCOMOTION)
 
 		// BodyCompositionID와 JointActionID 짝 검사
@@ -232,9 +237,9 @@ func validateAfc(request []AfcRequest) string {
 			// TR이나 LOCOMOTION일 때 JointActionID는 0이어야 함
 			validJointAction = v.JointActionID == 0
 		case uint(UL), uint(UR):
-			validJointAction = v.JointActionID == 1 || v.JointActionID == 2 || v.JointActionID == 5
+			validJointAction = v.JointActionID == 1 || v.JointActionID == 2 || v.JointActionID == 3 || v.JointActionID == 4
 		case uint(LL), uint(LR):
-			validJointAction = v.JointActionID == 3 || v.JointActionID == 4 || v.JointActionID == 6
+			validJointAction = v.JointActionID == 5 || v.JointActionID == 6 || v.JointActionID == 9
 		default:
 			return "Invalid BodyCompositionID"
 		}
@@ -256,26 +261,20 @@ func validateAfc(request []AfcRequest) string {
 			if v.JointActionID == 0 {
 				return "JointActionID cannot be 0 when BodyCompositionID is not TR or LOCOMOTION"
 			}
-			if v.JointActionID >= 5 {
-				// JointActionID가 5 이상일 때
-				if v.ClinicalFeatureID != 0 || v.DegreeID != 0 {
-					return "ClinicalFeatureID and DegreeID must be 0 when JointActionID is 5 or greater"
-				}
-				if v.RomID == 0 {
-					return "RomID cannot be 0 when JointActionID is 5 or greater"
+			if v.ClinicalFeatureID == uint(AC) {
+				// ClinicalFeatureID가 AC일 때
+				if v.RomID != 0 || v.DegreeID != 0 {
+					return "RomID and DegreeID must be 0 when ClinicalFeatureID is AC"
 				}
 			} else {
-				// JointActionID가 4 이하일 때
-				if v.ClinicalFeatureID == uint(AC) {
-					// ClinicalFeatureID가 AC일 때
-					if v.RomID != 0 || v.DegreeID != 0 {
-						return "RomID and DegreeID must be 0 when ClinicalFeatureID is AC"
-					}
-				} else {
-					// ClinicalFeatureID가 AC가 아닐 때
-					if v.RomID == 0 || v.ClinicalFeatureID == 0 || v.DegreeID == 0 {
-						return "RomID, ClinicalFeatureID, and DegreeID cannot be 0 when JointActionID is 4 or less and ClinicalFeatureID is not AC"
-					}
+				// ClinicalFeatureID가 AC가 아닐 때
+				if v.RomID == 0 || v.ClinicalFeatureID == 0 || v.DegreeID == 0 {
+					return "RomID, ClinicalFeatureID, and DegreeID cannot be 0 when JointActionID is 4 or less and ClinicalFeatureID is not AC"
+				}
+			}
+			if v.ClinicalFeatureID == uint(MC) {
+				if !(v.DegreeID == 1 || v.DegreeID == 5) {
+					return "muscular force must 1 or 5"
 				}
 			}
 		}

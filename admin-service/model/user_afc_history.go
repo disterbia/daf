@@ -21,4 +21,6 @@ type UserAfcHistory struct {
 	UserAfcHistoryGroupID uint                `gorm:"index"`
 	Admin                 Admin               `gorm:"foreignKey:AdminID"`
 	AdminID               uint                `gorm:"index"`
+	IsGrip                *bool
+	Pain                  uint
 }

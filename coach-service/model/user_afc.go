@@ -18,4 +18,6 @@ type UserAfc struct {
 	ClinicalFeatureID *uint           `gorm:"index"`
 	Degree            Degree          `gorm:"foreignKey:DegreeId"`
 	DegreeId          *uint           `gorm:"index"`
+	Pain              uint
+	IsGrip            *bool
 }

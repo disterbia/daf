@@ -30,24 +30,28 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		return nil, errors.New("db error")
 	}
 	type SearchData struct {
+		locomotion      uint
 		bodyComposition uint
-		joitnAction     uint
+		jointAction     uint
 		rom             uint
 		clinic          uint
 		degree          uint
+		isGrip          bool
 	}
 
 	var searchDatas []SearchData
 	var trom, locoRom uint
+
 	for _, userAfc := range userAfcs {
 		if userAfc.BodyCompositionID == uint(TR) {
 			trom = *userAfc.RomID
 		} else if userAfc.BodyCompositionID == uint(LOCOMOTION) {
 			locoRom = *userAfc.RomID
 		} else {
-			if userAfc.JointActionID != uint(HANDS) && userAfc.JointActionID != uint(FOOT) {
+			if userAfc.JointActionID != uint(WRIST) && userAfc.JointActionID != uint(FINGER) && userAfc.JointActionID != uint(ANKLE) {
 				rom := userAfc.RomID
 				degree := userAfc.DegreeID
+				isGrip := userAfc.IsGrip
 				if rom == nil {
 					temp := uint(1)
 					rom = &temp
@@ -56,8 +60,12 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 					temp := uint(1)
 					degree = &temp
 				}
-				searchDatas = append(searchDatas, SearchData{bodyComposition: userAfc.BodyCompositionID, joitnAction: userAfc.JointActionID, rom: *rom,
-					clinic: *userAfc.ClinicalFeatureID, degree: *degree})
+				if isGrip == nil {
+					temp := true
+					isGrip = &temp
+				}
+				searchDatas = append(searchDatas, SearchData{bodyComposition: userAfc.BodyCompositionID, jointAction: userAfc.JointActionID, rom: *rom, isGrip: *isGrip,
+					clinic: *userAfc.ClinicalFeatureID, degree: *degree, locomotion: locoRom})
 			}
 		}
 	}
@@ -95,12 +103,68 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	var asymmetrics []uint
 	for _, afc := range searchDatas {
 		for _, jointRom := range jointRoms {
-			if afc.joitnAction == jointRom.JointActionID {
+			if afc.jointAction == uint(HIP) || afc.jointAction == uint(KNEE) {
+				if afc.locomotion < 3 {
+					if jointRom.JointActionID == uint(SUBHIP) || jointRom.JointActionID == uint(SUBKNEE) {
+						if afc.rom >= jointRom.RomID {
+							for _, clinicDegree := range clinicalDegrees {
+								if afc.clinic == uint(MC) { // 힘은 추천에서 제외하기에
+									for _, recommend := range recommends {
+										if clinicDegree.RecommendedID == recommend.ID {
+											if recommend.IsAsymmetric {
+												asymmetrics = append(asymmetrics, recommend.ID)
+											} else {
+												recommendMap[afc.bodyComposition] = append(recommendMap[afc.bodyComposition], clinicDegree.RecommendedID)
+											}
+										}
+									}
+								}
+								if afc.clinic == clinicDegree.ClinicalFeatureID {
+									if afc.degree >= clinicDegree.DegreeID {
+										for _, recommend := range recommends {
+											if clinicDegree.RecommendedID == recommend.ID {
+												if recommend.IsAsymmetric {
+													asymmetrics = append(asymmetrics, recommend.ID)
+												} else {
+													recommendMap[afc.bodyComposition] = append(recommendMap[afc.bodyComposition], clinicDegree.RecommendedID)
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					continue
+				}
+			}
+			if afc.jointAction == jointRom.JointActionID {
 				if afc.rom >= jointRom.RomID {
 					for _, clinicDegree := range clinicalDegrees {
+						if afc.clinic == uint(MC) { // 힘은 추천에서 제외하기에
+							for _, recommend := range recommends {
+								if !afc.isGrip && recommend.IsGrip != nil {
+									if *recommend.IsGrip {
+										continue
+									}
+								}
+								if clinicDegree.RecommendedID == recommend.ID {
+									if recommend.IsAsymmetric {
+										asymmetrics = append(asymmetrics, recommend.ID)
+									} else {
+										recommendMap[afc.bodyComposition] = append(recommendMap[afc.bodyComposition], clinicDegree.RecommendedID)
+									}
+								}
+							}
+						}
 						if afc.clinic == clinicDegree.ClinicalFeatureID {
 							if afc.degree >= clinicDegree.DegreeID {
 								for _, recommend := range recommends {
+									if !afc.isGrip && recommend.IsGrip != nil {
+										if *recommend.IsGrip {
+											continue
+										}
+									}
 									if clinicDegree.RecommendedID == recommend.ID {
 										if recommend.IsAsymmetric {
 											asymmetrics = append(asymmetrics, recommend.ID)

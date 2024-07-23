@@ -782,6 +782,12 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 		var rom *uint = nil
 		var clinic *uint = nil
 		var degree *uint = nil
+		var isGrip *bool = nil
+
+		if v.JointActionID == uint(UL) || v.JointActionID == uint(UR) {
+			temp := v.IsGrip
+			isGrip = &temp
+		}
 
 		if v.JointActionID != 0 {
 			jointID := v.JointActionID
@@ -813,7 +819,7 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 		}
 
 		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: group.ID, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID,
-			JointActionID: joint, RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
+			JointActionID: joint, RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree, IsGrip: isGrip, Pain: v.Pain})
 	}
 	result := tx.Where("uid = ? ", request.Uid).Unscoped().Delete(&model.UserAfc{})
 	if result.Error != nil {
@@ -830,7 +836,7 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 	if deletedRows != 0 {
 		var historis []model.UserAfcHistory
 		for _, v := range originAfcs {
-			historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: v.UserAfcHistoryGroupID, AdminID: request.Id,
+			historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: v.UserAfcHistoryGroupID, AdminID: request.Id, IsGrip: v.IsGrip, Pain: v.Pain,
 				BodyCompositionID: v.BodyCompositionID, JointActionID: v.JointActionID, RomID: v.RomID, ClinicalFeatureID: v.ClinicalFeatureID, DegreeID: v.DegreeID})
 		}
 		if err := tx.Create(&historis).Error; err != nil {
@@ -868,7 +874,12 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 		var rom *uint = nil
 		var clinic *uint = nil
 		var degree *uint = nil
+		var isGrip *bool = nil
 
+		if v.JointActionID == uint(UL) || v.JointActionID == uint(UR) {
+			temp := v.IsGrip
+			isGrip = &temp
+		}
 		if v.JointActionID != 0 {
 			jointID := v.JointActionID
 			joint = &jointID
@@ -899,7 +910,7 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 		}
 
 		ujas = append(ujas, model.UserAfc{UserAfcHistoryGroupID: groupId, AdminID: request.Id, Uid: request.Uid, BodyCompositionID: v.BodyCompositionID, JointActionID: joint,
-			RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
+			RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree, IsGrip: isGrip, Pain: v.Pain})
 	}
 
 	tx := service.db.Begin()
@@ -979,6 +990,8 @@ func (service *adminService) getAfcHistoris(id, uid uint) ([]GetAfcResponse, err
 			RomID:             v.RomID,
 			ClinicalFeatureID: v.ClinicalFeatureID,
 			DegreeID:          v.DegreeID,
+			IsGrip:            *v.IsGrip,
+			Pain:              v.Pain,
 		})
 	}
 
@@ -1016,6 +1029,12 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 		var rom *uint = nil
 		var clinic *uint = nil
 		var degree *uint = nil
+		var isGrip *bool = nil
+
+		if v.JointActionID == uint(UL) || v.JointActionID == uint(UR) {
+			temp := v.IsGrip
+			isGrip = &temp
+		}
 
 		if v.JointActionID != 0 {
 			jointID := v.JointActionID
@@ -1047,7 +1066,8 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 
 			}
 		}
-		historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: request.GroupId, AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: joint, RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree})
+		historis = append(historis, model.UserAfcHistory{UserAfcHistoryGroupID: request.GroupId, AdminID: request.Id, BodyCompositionID: v.BodyCompositionID, JointActionID: joint,
+			RomID: rom, ClinicalFeatureID: clinic, DegreeID: degree, IsGrip: isGrip, Pain: v.Pain})
 	}
 
 	tx := service.db.Begin()
@@ -1325,6 +1345,7 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	for _, exercise := range request.ExerciseMeasures {
 		for _, v := range userAfcs {
 			var jointActionID, romID, clinicalFeatureID, degreeID *uint
+			var isGrip *bool
 			if v.JointActionID != nil {
 				jointActionID = v.JointActionID
 			}
@@ -1337,9 +1358,12 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 			if v.DegreeID != nil {
 				degreeID = v.DegreeID
 			}
+			if v.IsGrip != nil {
+				isGrip = v.IsGrip
+			}
 
 			historis = append(historis, model.History{ExerciseID: exercise.ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: jointActionID,
-				RomID: romID, ClinicalFeatureID: clinicalFeatureID, DegreeID: degreeID, DiaryID: diary.ID})
+				RomID: romID, ClinicalFeatureID: clinicalFeatureID, DegreeID: degreeID, DiaryID: diary.ID, IsGrip: isGrip})
 		}
 	}
 
@@ -1634,6 +1658,15 @@ func (service *adminService) saveMachines(request PostMachineRequest) (string, e
 		return "", errors.New("db error")
 	}
 	agencyID := admin.AgencyID
+
+	var temp []model.AgencyMachine
+	if err := service.db.Where("agency_id=? AND machine_id IN ?", agencyID, request.ID).Find(&temp).Error; err != nil {
+		return "", errors.New("db error2")
+	}
+
+	if len(temp) != 0 {
+		return "", errors.New("already exist")
+	}
 
 	// AgencyMachine 추가
 	var agencyMachines []model.AgencyMachine

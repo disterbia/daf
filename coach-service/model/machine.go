@@ -7,6 +7,6 @@ import (
 type Machine struct {
 	gorm.Model
 	Name        string `gorm:"unique"`
-	MachineType uint
+	MachineType uint   `json:"machine_type"`
 	Memo        string
 }

@@ -20,4 +20,6 @@ type UserAfc struct {
 	DegreeID          *uint           `gorm:"index"`
 	Admin             Admin           `gorm:"foreignKey:AdminID"`
 	AdminID           uint
+	Pain              uint
+	IsGrip            *bool
 }

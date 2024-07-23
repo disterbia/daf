@@ -75,3 +75,5 @@ func mergeAndRemoveDuplicates(slice1, slice2 []uint) []uint {
 
 	return result
 }
+
+func recommend() {}

@@ -152,7 +152,7 @@ func main() {
 	router.GET("/get-historis/:id", core.GetAfcHistorisHandler(getAfcHistorisEndpoint))
 	router.GET("/get-all-users", core.GetAllUsersHandler(getAllUsersEndpoint))
 	router.GET("/get-exercise-measures", core.GetExerciseMeasuresHandler(getExerciseMeasuresEndpoint))
-	router.GET("/get-machines/:id", core.GetMachinesHandler(getMachinesEndpoint))
+	router.GET("/get-machines", core.GetMachinesHandler(getMachinesEndpoint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

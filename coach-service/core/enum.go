@@ -12,10 +12,13 @@ const (
 const (
 	SHOULDER level = iota + 1
 	ELBOW
+	WRIST
+	FINGER
 	HIP
 	KNEE
-	HANDS
-	FOOT
+	SUBHIP
+	SUBKNEE
+	ANKLE
 )
 
 const (
@@ -24,11 +27,9 @@ const (
 	PC
 	CC
 	SC
-	HC
-	FC
 )
 
-var CLINIC = [7]level{AC, TC, PC, CC, SC, HC, FC}
+var CLINIC = [5]level{AC, TC, PC, CC, SC}
 
 // const (
 // 	ULS level = iota + 1

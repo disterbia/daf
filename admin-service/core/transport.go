@@ -744,7 +744,7 @@ func GetUserHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Success 200 {object} []SearchMachineResponse "응답 DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /search-machines [get]
+// @Router /search-machines [post]
 func SearchMachinesHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _, err := verifyJWT(c)
@@ -777,11 +777,10 @@ func SearchMachinesHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Accept  json
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
-// @Param id path string true "id"
 // @Success 200 {object} []GetMachineResponse "응답 DTO"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /get-machines/{id} [get]
+// @Router /get-machines [get]
 func GetMachinesHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _, err := verifyJWT(c)

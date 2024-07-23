@@ -21,23 +21,26 @@ const (
 const RECOMMENDCOUNT = 3
 
 const (
-	NC level = iota + 1
+	AC level = iota + 1
 	TC
 	PC
 	CC
 	SC
-	AC
+	MC
 )
 
-var CLINIC = [6]level{NC, TC, PC, CC, SC, AC}
+var CLINIC = [5]level{AC, TC, PC, CC, SC}
 
 const (
 	SHOULDER level = iota + 1
 	ELBOW
+	WRIST
+	FINGER
 	HIP
 	KNEE
-	HANDS
-	FOOT
+	SUBHIP
+	SUBKNEE
+	ANKLE
 )
 
 // const (

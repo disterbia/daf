@@ -17,4 +17,5 @@ type Recommended struct {
 	IsAsymmetric    bool
 	ClinicalDegrees []RecommendedClinicalDegree `gorm:"foreignKey:RecommendedID"`
 	JointRoms       []RecommendedJointRom       `gorm:"foreignKey:RecommendedID"`
+	IsGrip          *bool
 }

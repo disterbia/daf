@@ -86,30 +86,37 @@ func validateRecommendRequest(request RecommendRequest) error {
 		return errors.New("check body")
 	}
 
-	if request.BodyType == uint(TBODY) && len(request.Afcs) != 4 {
-		return errors.New("afcs length must be 4")
+	if request.BodyType == uint(TBODY) && len(request.Afcs) != 6 {
+		return errors.New("afcs length must be 6")
 	}
 
-	if (request.BodyType == uint(UBODY) || request.BodyType == uint(LBODY)) && len(request.Afcs) != 2 {
+	if request.BodyType == uint(UBODY) && len(request.Afcs) != 2 {
 		return errors.New("afcs length must be 2")
+	}
+	if request.BodyType == uint(LBODY) && len(request.Afcs) != 4 {
+		return errors.New("afcs length must be 4")
 	}
 
 	var checkJoint = make(map[uint]bool)
 
 	for _, v := range request.Afcs {
-		if request.BodyType == uint(UBODY) && (v.JointAction == uint(HIP) || v.JointAction == uint(KNEE)) {
+		if request.BodyType == uint(UBODY) && (v.JointAction == uint(HIP) || v.JointAction == uint(KNEE) || v.JointAction == uint(SUBHIP) || v.JointAction == uint(SUBKNEE)) {
 			return errors.New("check body0")
 		}
 		if request.BodyType == uint(LBODY) && (v.JointAction == uint(SHOULDER) || v.JointAction == uint(ELBOW)) {
 			return errors.New("check body1")
 		}
-		if v.JointAction > 4 || v.JointAction == 0 {
+		if v.JointAction == 0 || v.JointAction == uint(WRIST) || v.JointAction == uint(FINGER) || v.JointAction == uint(ANKLE) {
 			return errors.New("check body2")
 		}
-
 		if v.Rom == 0 || v.ClinicDegree == nil || len(v.ClinicDegree) != len(CLINIC) {
 			return errors.New("check body3")
 		}
+
+		if _, exists := checkJoint[v.JointAction]; exists {
+			return errors.New("duplicate joint") // 중복된 jointaction 경우 처리하지 않음
+		}
+		checkJoint[v.JointAction] = true
 
 		var checkClinic = make(map[uint]bool)
 		checkAC := true
@@ -131,10 +138,6 @@ func validateRecommendRequest(request RecommendRequest) error {
 			}
 		}
 
-		if _, exists := checkJoint[v.JointAction]; exists {
-			return errors.New("duplicate joint") // 중복된 jointaction 경우 처리하지 않음
-		}
-		checkJoint[v.JointAction] = true
 	}
 
 	return nil
