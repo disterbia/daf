@@ -16,6 +16,6 @@ type Recommended struct {
 	LocoRomID       uint     `gorm:"index"`
 	IsAsymmetric    bool
 	IsGrip          *bool
-	ClinicalDegrees []RecommendedClinicalDegree `gorm:"foreignKey:RecommendedID"`
-	JointRoms       []RecommendedJointRom       `gorm:"foreignKey:RecommendedID"`
+	ClinicalDegrees []RecommendedClinicalDegree `gorm:"foreignKey:RecommendedID;constraint:OnDelete:CASCADE;"`
+	JointRoms       []RecommendedJointRom       `gorm:"foreignKey:RecommendedID;constraint:OnDelete:CASCADE;"`
 }

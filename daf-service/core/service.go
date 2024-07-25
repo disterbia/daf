@@ -234,16 +234,20 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	} else {
 		log.Println("교집합이 많음")
 		var exercises []model.Exercise
-		var histories []model.History
+		var uniqueExerciseIds []uint
 		if err := service.db.Where("id IN ? ", exerciseIds).Find(&exercises).Error; err != nil {
 			return nil, errors.New("db error2")
 		}
-		if err := service.db.Where("exercise_id IN ? ", exerciseIds).Find(&histories).Error; err != nil {
+		if err := service.db.Model(&model.History{}).
+			Select("DISTINCT exercise_id").
+			Where("exercise_id IN ?", exerciseIds).
+			Pluck("exercise_id", &uniqueExerciseIds).Error; err != nil {
 			return nil, errors.New("db error3")
 		}
+
 		exerciseCount := make(map[uint]int)
-		for _, history := range histories {
-			exerciseCount[history.ExerciseId]++
+		for _, id := range uniqueExerciseIds {
+			exerciseCount[id]++
 		}
 
 		for _, id := range categoryIds {

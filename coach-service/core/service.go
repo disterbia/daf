@@ -286,31 +286,21 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		return "", errors.New("db error")
 	}
 
-	// if err := tx.Where("recommended_id = ?", request.ExerciseID).Unscoped().Delete(&model.RecommendedClinicalDegree{}).Error; err != nil {
-	// 	tx.Rollback()
-	// 	return "", errors.New("db error")
-	// }
-
-	// if err := tx.Where("recommended_id = ?", request.ExerciseID).Unscoped().Delete(&model.RecommendedJointRom{}).Error; err != nil {
-	// 	tx.Rollback()
-	// 	return "", errors.New("db error")
-	// }
-
 	// 사용기구
 	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.ExerciseMachine{}).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error3")
+		return "", errors.New("db error2")
 	}
 	// 운동목적
 	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.ExercisePurpose{}).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error5")
+		return "", errors.New("db error3")
 	}
 
 	// 측정항목
 	if err := tx.Where("exercise_id = ?", request.ExerciseID).Unscoped().Delete(&model.ExerciseMeasure{}).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error5")
+		return "", errors.New("db error4")
 	}
 
 	var temp *bool
@@ -331,7 +321,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 
 	if err := tx.Create(&recommend).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error6")
+		return "", errors.New("db error5")
 	}
 
 	var rcds []model.RecommendedClinicalDegree
@@ -389,7 +379,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 	}
 	if err := tx.Create(&exerciseMachines).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error4")
+		return "", errors.New("db error8")
 	}
 
 	var exercisePurposes []model.ExercisePurpose
@@ -398,7 +388,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 	}
 	if err := tx.Create(&exercisePurposes).Error; err != nil {
 		tx.Rollback()
-		return "", errors.New("db error6")
+		return "", errors.New("db error9")
 	}
 
 	var exerciseMeasure []model.ExerciseMeasure
@@ -409,7 +399,7 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 	if len(exerciseMeasure) != 0 {
 		if err := tx.Create(&exerciseMeasure).Error; err != nil {
 			tx.Rollback()
-			return "", errors.New("db error7")
+			return "", errors.New("db error10")
 		}
 	}
 
@@ -446,7 +436,17 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 	}
 
 	for _, v := range recommend.JointRoms {
-		afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+		if recommend.BodyTypeID == uint(UBODY) {
+			if v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
+				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+			}
+		} else if recommend.BodyTypeID == uint(LBODY) {
+			if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) || v.JointActionID == uint(SUBHIP) || v.JointActionID == uint(SUBKNEE) {
+				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+			}
+		} else {
+			afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+		}
 	}
 
 	response = RecommendResponse{Category: CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
@@ -609,7 +609,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 func (service *coachService) searchRecommend(page uint, name string) ([]RecommendResponse, error) {
 	log.Println("Original name:", name)
 	var responses []RecommendResponse
-	pageSize := 30
+	pageSize := 20
 	offset := int(page) * pageSize
 
 	// 1. 전체 ExerciseID 목록 가져오기
@@ -690,7 +690,17 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 		}
 
 		for _, v := range recommend.JointRoms {
-			afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+			if recommend.BodyTypeID == uint(UBODY) {
+				if v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
+					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+				}
+			} else if recommend.BodyTypeID == uint(LBODY) {
+				if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) || v.JointActionID == uint(SUBHIP) || v.JointActionID == uint(SUBKNEE) {
+					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+				}
+			} else {
+				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
+			}
 		}
 		exerciseIDToRecommend[recommend.ExerciseID].Afcs = afcs
 

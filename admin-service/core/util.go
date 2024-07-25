@@ -208,11 +208,13 @@ func getBirthdayRangeByAgeCode(ageCode uint) (time.Time, time.Time, error) {
 }
 
 func validateAfc(request []AfcRequest) string {
+	log.Println(len(request))
 	if len(request) != 16 {
 		return "all parts must fill"
 	}
 
 	checkBodyJoint := make(map[uint]map[uint]bool)
+	checkIsGrip := make(map[uint]*bool)
 
 	for _, v := range request {
 		// BodyCompositionID 0을 허용하지 않음
@@ -220,12 +222,24 @@ func validateAfc(request []AfcRequest) string {
 			return "BodyCompositionID cannot be 0"
 		}
 
+		if checkBodyJoint[v.BodyCompositionID] == nil {
+			checkBodyJoint[v.BodyCompositionID] = make(map[uint]bool)
+		}
+
 		if checkBodyJoint[v.BodyCompositionID][v.JointActionID] {
 			return "duplicate parts"
 		}
 
-		if v.Pain == 0 || v.Pain > 5 {
-			return "check pain"
+		if checkIsGrip[v.BodyCompositionID] != nil {
+			if checkIsGrip[v.BodyCompositionID] != &v.IsGrip {
+				return "is_grip must same"
+			}
+		}
+
+		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+			if v.Pain == 0 || v.Pain > 5 {
+				return "check pain"
+			}
 		}
 
 		isTRorLocomotion := v.BodyCompositionID == uint(TR) || v.BodyCompositionID == uint(LOCOMOTION)
@@ -237,6 +251,9 @@ func validateAfc(request []AfcRequest) string {
 			// TR이나 LOCOMOTION일 때 JointActionID는 0이어야 함
 			validJointAction = v.JointActionID == 0
 		case uint(UL), uint(UR):
+			if v.JointActionID != uint(FINGER) && v.ClinicalFeatureID == uint(AC) && v.IsGrip {
+				return "isGrip must false"
+			}
 			validJointAction = v.JointActionID == 1 || v.JointActionID == 2 || v.JointActionID == 3 || v.JointActionID == 4
 		case uint(LL), uint(LR):
 			validJointAction = v.JointActionID == 5 || v.JointActionID == 6 || v.JointActionID == 9
@@ -277,8 +294,10 @@ func validateAfc(request []AfcRequest) string {
 					return "muscular force must 1 or 5"
 				}
 			}
+
 		}
 		checkBodyJoint[v.BodyCompositionID][v.JointActionID] = true
+		checkIsGrip[v.BodyCompositionID] = &v.IsGrip
 	}
 
 	return "" // 모든 검증을 통과하면 빈 문자열 반환
@@ -318,6 +337,15 @@ func validateDiary(request SaveDiaryRequest) bool {
 	if request.Uid == 0 || request.Title == "" || request.ClassDate == "" || request.ClassName == "" || len(request.ClassPurposeIDs) == 0 || request.ClassType == 0 ||
 		len(request.ExerciseMeasures) == 0 {
 		return false
+	}
+	checkDuplicate := make(map[uint]bool)
+	for _, v := range request.ExerciseMeasures {
+		for _, w := range v.Measures {
+			if checkDuplicate[w.MeasureID] {
+				return false
+			}
+			checkDuplicate[w.MeasureID] = true
+		}
 	}
 	return true
 }

@@ -727,6 +727,8 @@ func (service *adminService) getAfcs(id, uid uint) (GetAfcResponse, error) {
 			RomID:             v.RomID,
 			ClinicalFeatureID: v.ClinicalFeatureID,
 			DegreeID:          v.DegreeID,
+			Pain:              v.Pain,
+			IsGrip:            v.IsGrip,
 		})
 	}
 	if len(afcs) != 0 {
@@ -784,7 +786,7 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 		var degree *uint = nil
 		var isGrip *bool = nil
 
-		if v.JointActionID == uint(UL) || v.JointActionID == uint(UR) {
+		if v.BodyCompositionID == uint(UL) || v.BodyCompositionID == uint(UR) {
 			temp := v.IsGrip
 			isGrip = &temp
 		}
@@ -876,7 +878,7 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 		var degree *uint = nil
 		var isGrip *bool = nil
 
-		if v.JointActionID == uint(UL) || v.JointActionID == uint(UR) {
+		if v.BodyCompositionID == uint(UL) || v.BodyCompositionID == uint(UR) {
 			temp := v.IsGrip
 			isGrip = &temp
 		}
@@ -990,7 +992,7 @@ func (service *adminService) getAfcHistoris(id, uid uint) ([]GetAfcResponse, err
 			RomID:             v.RomID,
 			ClinicalFeatureID: v.ClinicalFeatureID,
 			DegreeID:          v.DegreeID,
-			IsGrip:            *v.IsGrip,
+			IsGrip:            v.IsGrip,
 			Pain:              v.Pain,
 		})
 	}
@@ -1031,7 +1033,7 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 		var degree *uint = nil
 		var isGrip *bool = nil
 
-		if v.JointActionID == uint(UL) || v.JointActionID == uint(UR) {
+		if v.BodyCompositionID == uint(UL) || v.BodyCompositionID == uint(UR) {
 			temp := v.IsGrip
 			isGrip = &temp
 		}
@@ -1342,29 +1344,32 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 	}
 
 	var historis []model.History
-	for _, exercise := range request.ExerciseMeasures {
-		for _, v := range userAfcs {
-			var jointActionID, romID, clinicalFeatureID, degreeID *uint
-			var isGrip *bool
-			if v.JointActionID != nil {
-				jointActionID = v.JointActionID
-			}
-			if v.RomID != nil {
-				romID = v.RomID
-			}
-			if v.ClinicalFeatureID != nil {
-				clinicalFeatureID = v.ClinicalFeatureID
-			}
-			if v.DegreeID != nil {
-				degreeID = v.DegreeID
-			}
-			if v.IsGrip != nil {
-				isGrip = v.IsGrip
-			}
+	for _, v := range userAfcs {
+		var jointActionID, romID, clinicalFeatureID, degreeID *uint
+		var isGrip *bool
 
-			historis = append(historis, model.History{ExerciseID: exercise.ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: jointActionID,
-				RomID: romID, ClinicalFeatureID: clinicalFeatureID, DegreeID: degreeID, DiaryID: diary.ID, IsGrip: isGrip})
+		if v.JointActionID != nil {
+			jointActionID = v.JointActionID
 		}
+		if v.RomID != nil {
+			romID = v.RomID
+		}
+		if v.ClinicalFeatureID != nil {
+			clinicalFeatureID = v.ClinicalFeatureID
+		}
+		if v.DegreeID != nil {
+			degreeID = v.DegreeID
+		}
+		if v.IsGrip != nil {
+			isGrip = v.IsGrip
+		}
+
+		if v.BodyCompositionID == uint(TR) || v.BodyCompositionID == uint(LOCOMOTION) ||
+			(v.JointActionID != nil && (*v.JointActionID == uint(SHOULDER) || *v.JointActionID == uint(ELBOW) || *v.JointActionID == uint(HIP) || *v.JointActionID == uint(KNEE))) {
+			historis = append(historis, model.History{ExerciseID: request.ExerciseMeasures[0].ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: jointActionID,
+				RomID: romID, ClinicalFeatureID: clinicalFeatureID, DegreeID: degreeID, IsGrip: isGrip, DiaryID: diary.ID})
+		}
+
 	}
 
 	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.History{}).Error; err != nil {
