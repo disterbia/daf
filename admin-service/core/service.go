@@ -76,15 +76,15 @@ func (service *adminService) login(request LoginRequest) (string, error) {
 
 	// 이메일로 사용자 조회
 	if err := service.db.Where("email = ?", request.Email).First(&u).Error; err != nil {
-		return "", err
+		return "", errors.New("-2")
 	}
 
 	// 비밀번호 비교
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(request.Password)); err != nil {
-		return "", errors.New("invalid credentials")
+		return "", errors.New("-2")
 	}
 
-	if u.RoleID == 0 {
+	if !u.IsApproval {
 		return "", errors.New("-1")
 	}
 
@@ -145,6 +145,9 @@ func (service *adminService) verifyAuthCode(verify VerifyRequest) (string, error
 	var authCode model.AuthCode
 
 	if err := service.db.Where("email = ? ", verify.Email).Last(&authCode).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", errors.New("-1")
+		}
 		return "", errors.New("db error")
 	}
 	if authCode.Code != verify.Code {
@@ -218,6 +221,7 @@ func (service *adminService) signIn(request SignInRequest) (string, error) {
 	}
 
 	admin.Password = string(hashedPassword)
+	admin.RoleID = 1
 	if err := tx.Create(&admin).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error3")
@@ -237,6 +241,9 @@ func (service *adminService) resetPassword(request LoginRequest) (string, error)
 	var verify model.VerifiedEmail
 	result := service.db.Where("email=?", request.Email).Find(&verify)
 	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return "", errors.New("-1")
+		}
 		return "", errors.New("db error")
 
 	} else if result.RowsAffected == 0 {
@@ -610,6 +617,7 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 
 	}
 	var response []SearchUserResponse
+
 	for _, user := range users {
 		ageCode := calculateAgeCode(user.Birthday)
 
@@ -1136,7 +1144,7 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 		query = query.Where("diaries.class_date = ?", classDate)
 	}
 
-	query = query.Offset(offset).Limit(pageSize)
+	query = query.Offset(offset).Limit(pageSize).Order("id DESC")
 	if err := query.Preload("User.Admin").Find(&diaris).Error; err != nil {
 		return nil, errors.New("db error")
 	}
