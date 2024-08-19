@@ -225,6 +225,48 @@ func SaveMachineHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 }
 
 // @Tags 코치 /coach
+// @Summary 운동목적 생성/수정
+// @Description 운동목적 생성/수정시 호출
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Param request body PurposeDto true "요청 DTO - 생성시 id 생략"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /save-purpose [post]
+func SavePurposeHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// 사용자별 잠금 시작
+		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
+			return
+		}
+		defer userLocks.Delete(id)
+
+		var req PurposeDto
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := saveEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 코치 /coach
 // @Summary 운동목적 조회
 // @Description 운동목적 리스트 조회시 호출
 // @Produce  json
@@ -376,7 +418,7 @@ func GetRecommendsHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
 // @Success 200 {object} []RecommendResponse "운동 리스트"
-// @Param  page  query uint false  "페이지 번호 default 0 30개씩"
+// @Param  page  query uint false  "페이지 번호 default 0 12개씩"
 // @Param  name  query string false "검색명"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"

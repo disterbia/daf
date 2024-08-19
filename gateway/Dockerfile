@@ -2,7 +2,7 @@
 FROM golang:1.21.5 AS builder
 
 # 작업 디렉토리 설정
-WORKDIR /msa
+WORKDIR /daf
 
 # 나머지 소스 코드 및 go.mod, go.sum 파일 복사
 COPY . .
@@ -23,10 +23,10 @@ FROM ubuntu:latest
 RUN apt-get update && apt-get install -y tzdata ca-certificates && update-ca-certificates
 
 # 작업 디렉토리 설정
-WORKDIR /msa
+WORKDIR /daf
 
 # 빌더 스테이지에서 생성된 실행 파일 복사
-COPY --from=builder /msa/gateway .
+COPY --from=builder /daf/gateway .
 
 # 애플리케이션 실행
 CMD ["./gateway"]

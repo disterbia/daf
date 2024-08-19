@@ -68,6 +68,16 @@ func SaveMachineEndpoint(s CoachService) endpoint.Endpoint {
 	}
 }
 
+func SavePurposeEndpoint(s CoachService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		msg, err := s.savePurpose(request.(PurposeDto))
+		if err != nil {
+			return BasicResponse{Msg: err.Error()}, err
+		}
+		return BasicResponse{Msg: msg}, nil
+	}
+}
+
 func GetPurposesEndpoint(s CoachService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		purposes, err := s.getPurposes()

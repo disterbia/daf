@@ -40,6 +40,13 @@ type MachineDto struct {
 	Memo        string `json:"memo"`
 }
 
+type PurposeRequest struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	MachineType uint   `json:"machine_type"`
+	Memo        string `json:"memo"`
+}
+
 type PurposeDto struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`

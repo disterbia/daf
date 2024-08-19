@@ -23,6 +23,7 @@ type CoachService interface {
 	saveExercise(ExerciseRequest) (string, error)
 	getMachines() ([]MachineDto, error)
 	saveMachine(request MachineDto) (string, error)
+	savePurpose(request PurposeDto) (string, error)
 	getPurposes() ([]PurposeDto, error)
 	getRecommend(exerciseID uint) (RecommendResponse, error)
 	// getRecommends(page uint) ([]RecommendResponse, error)
@@ -244,6 +245,40 @@ func (service *coachService) saveMachine(request MachineDto) (string, error) {
 		// 새로운 machine 저장
 		machine := model.Machine{Name: request.Name, MachineType: request.MachineType, Memo: request.Memo}
 		if err := service.db.Create(&machine).Error; err != nil {
+			return "", errors.New("db error3")
+		}
+
+		return "200", nil // 새로운 레코드 생성 성공
+	}
+
+	return "200", nil // 기존 레코드 업데이트 성공
+}
+
+func (service *coachService) savePurpose(request PurposeDto) (string, error) {
+	updates := map[string]interface{}{
+		"name": request.Name,
+	}
+	result := service.db.Model(&model.Purpose{}).Where("id = ?", request.ID).Updates(updates)
+	if result.Error != nil {
+		return "", errors.New("db error")
+	}
+
+	if result.RowsAffected == 0 {
+		// 공백 제거한 name 생성
+		trimmedName := strings.ReplaceAll(request.Name, " ", "")
+
+		// 기존에 동일한 name이 있는지 확인
+		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Purpose{}).Error; err == nil {
+			// 동일한 name이 존재하는 경우
+			return "", errors.New("exist")
+		} else if err != gorm.ErrRecordNotFound {
+			// 데이터베이스 조회 중 오류가 발생한 경우
+			return "", errors.New("db error2")
+		}
+
+		// 새로운 purpose 저장
+		purpose := model.Purpose{Name: request.Name}
+		if err := service.db.Create(&purpose).Error; err != nil {
 			return "", errors.New("db error3")
 		}
 
@@ -609,7 +644,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 func (service *coachService) searchRecommend(page uint, name string) ([]RecommendResponse, error) {
 	log.Println("Original name:", name)
 	var responses []RecommendResponse
-	pageSize := 20
+	pageSize := 12
 	offset := int(page) * pageSize
 
 	// 1. 전체 ExerciseID 목록 가져오기

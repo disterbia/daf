@@ -13,8 +13,8 @@ type Admin struct {
 	Name        string
 	EnglishName string
 	Phone       string `gorm:"unique"`
-	Tel         string `gorm:"unique"`
-	Fax         string `gorm:"unique"`
+	Tel         string
+	Fax         string
 	IsApproval  bool
 	Role        Role `gorm:"foreignKey:RoleID"`
 	RoleID      uint `gorm:"index"`

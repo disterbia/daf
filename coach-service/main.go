@@ -52,6 +52,7 @@ func main() {
 	saveExerciseEndpoint := core.SaveExerciseEndpoint(svc)
 	getMachinesEndpoint := core.GetMachinesEndpoint(svc)
 	saveMachineEndpoint := core.SaveMachineEndpoint(svc)
+	savePurposeEndpoint := core.SavePurposeEndpoint(svc)
 	getPurposesEndpoint := core.GetPurposesEndpoint(svc)
 	saveRecommendEndpint := core.SaveRecommendEndpoint(svc)
 	searchRecommendsEndpoint := core.SearchRecommendsEndpoint(svc)
@@ -65,6 +66,7 @@ func main() {
 	router.GET("/get-machines", core.GetMachinesHandler(getMachinesEndpoint))
 	router.POST("/save-machine", core.SaveMachineHandler(saveMachineEndpoint))
 	router.GET("/get-purposes", core.GetPurposesHandler(getPurposesEndpoint))
+	router.POST("/save-purpose", core.SavePurposeHandler(savePurposeEndpoint))
 
 	router.POST("/save-recommend", core.SaveRecommendHandler(saveRecommendEndpint))
 	router.GET("/get-exercise/:exercise_id", core.GetRecommendHandler(getRecommendEndpoint))
