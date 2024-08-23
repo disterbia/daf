@@ -349,7 +349,6 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 		ExerciseID:   request.ExerciseID,
 		IsAsymmetric: request.IsAsymmetric,
 		BodyTypeID:   request.BodyType,
-		TRomID:       request.TrRom,
 		LocoRomID:    request.Locomotion,
 		IsGrip:       temp,
 	}
@@ -363,19 +362,13 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 	var rjrs []model.RecommendedJointRom
 
 	for i, v := range request.Afcs {
-		if request.BodyType == uint(UBODY) {
-			rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: v.JointAction, RomID: v.Rom})
-		} else {
-			rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: v.JointAction, RomID: v.Rom})
-		}
+		rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: v.JointAction, RomID: v.Rom})
 
 		// 반대부위 추천운동 생성
 		if i == 1 {
 			if request.BodyType == uint(UBODY) {
 				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(HIP), RomID: 1})
 				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(KNEE), RomID: 1})
-				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(SUBHIP), RomID: 1})
-				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(SUBKNEE), RomID: 1})
 			} else if request.BodyType == uint(LBODY) {
 				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(SHOULDER), RomID: 1})
 				rjrs = append(rjrs, model.RecommendedJointRom{RecommendedID: recommend.ID, JointActionID: uint(ELBOW), RomID: 1})
@@ -389,8 +382,6 @@ func (service *coachService) saveRecommend(request RecommendRequest) (string, er
 				if request.BodyType == uint(UBODY) {
 					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(HIP), ClinicalFeatureID: clinic, DegreeID: 1})
 					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(KNEE), ClinicalFeatureID: clinic, DegreeID: 1})
-					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(SUBHIP), ClinicalFeatureID: clinic, DegreeID: 1})
-					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(SUBKNEE), ClinicalFeatureID: clinic, DegreeID: 1})
 				} else if request.BodyType == uint(LBODY) {
 					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(SHOULDER), ClinicalFeatureID: clinic, DegreeID: 1})
 					rcds = append(rcds, model.RecommendedClinicalDegree{RecommendedID: recommend.ID, JointActionID: uint(ELBOW), ClinicalFeatureID: clinic, DegreeID: 1})
@@ -476,7 +467,7 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 			}
 		} else if recommend.BodyTypeID == uint(LBODY) {
-			if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) || v.JointActionID == uint(SUBHIP) || v.JointActionID == uint(SUBKNEE) {
+			if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
 				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 			}
 		} else {
@@ -487,9 +478,9 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 	response = RecommendResponse{Category: CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 		Exercise:     ExerciseResponse{ID: recommend.Exercise.ID, Name: recommend.Exercise.Name, Explain: explain},
 		IsAsymmetric: recommend.IsAsymmetric,
-		TrRom:        recommend.TRomID,
 		Locomotion:   recommend.LocoRomID,
 		BodyType:     recommend.BodyTypeID,
+		IsGrip:       recommend.IsGrip,
 		Afcs:         afcs}
 
 	// 사용기구 정보 가져오기
@@ -524,122 +515,6 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 
 	return response, nil
 }
-
-// func (service *coachService) getRecommends(page uint) ([]RecommendResponse, error) {
-// 	var responses []RecommendResponse
-// 	pageSize := 30
-// 	offset := int(page) * pageSize
-
-// 	// 1. 전체 ExerciseID 목록 가져오기
-// 	var exerciseIDs []uint
-// 	if err := service.db.Model(&model.Recommended{}).Distinct("exercise_id").Offset(offset).Limit(pageSize).Pluck("exercise_id", &exerciseIDs).Error; err != nil {
-// 		return nil, errors.New("db error")
-// 	}
-
-// 	if len(exerciseIDs) == 0 {
-// 		return nil, nil
-// 	}
-
-// 	// 2. 선택된 ExerciseID에 해당하는 추천 운동 데이터 가져오기
-// 	var recommends []model.Recommended
-// 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Order("id DESC").Preload("Exercise.Category").Preload("ClinicalDegrees").Preload("JointRoms").Find(&recommends).Error; err != nil {
-// 		return nil, errors.New("db error1")
-// 	}
-
-// 	// 사용기구 정보 가져오기
-// 	var exerciseMachines []model.ExerciseMachine
-// 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
-// 		return nil, errors.New("db error2")
-// 	}
-
-// 	// 운동목적 정보 가져오기
-// 	var exercisePurposes []model.ExercisePurpose
-// 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Purpose").Find(&exercisePurposes).Error; err != nil {
-// 		return nil, errors.New("db error3")
-// 	}
-
-// 	// 운동목적 정보 가져오기
-// 	var exerciseMeasures []model.ExerciseMeasure
-// 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Measure").Find(&exerciseMeasures).Error; err != nil {
-// 		return nil, errors.New("db error4")
-// 	}
-
-// 	// 응답 구조체 생성
-// 	exerciseIDToRecommend := make(map[uint]*RecommendResponse)
-// 	var sortedResponses []*RecommendResponse
-// 	for _, recommend := range recommends {
-// 		var explain []Explain
-// 		if len(recommend.Exercise.Explain) > 0 {
-// 			if err := json.Unmarshal(recommend.Exercise.Explain, &explain); err != nil {
-// 				return nil, err
-// 			}
-// 		}
-// 		if _, exists := exerciseIDToRecommend[recommend.ExerciseID]; !exists {
-// 			response := &RecommendResponse{
-// 				Category:     CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
-// 				Exercise:     ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, Explain: explain},
-// 				IsAsymmetric: recommend.IsAsymmetric,
-// 				TrRom:        recommend.TRomID,
-// 				Locomotion:   recommend.LocoRomID,
-// 				BodyType:     recommend.BodyTypeID,
-// 			}
-// 			exerciseIDToRecommend[recommend.ExerciseID] = response
-// 			sortedResponses = append(sortedResponses, response)
-// 		}
-
-// 		var afcs []RecommendAfc
-
-// 		jointClinicDegree := make(map[uint]map[uint]uint)
-// 		for _, w := range recommend.ClinicalDegrees {
-// 			if jointClinicDegree[w.JointActionID] == nil {
-// 				jointClinicDegree[w.JointActionID] = make(map[uint]uint)
-// 			}
-// 			jointClinicDegree[w.JointActionID][w.ClinicalFeatureID] = w.DegreeID
-// 		}
-
-// 		for _, v := range recommend.JointRoms {
-// 			if recommend.BodyTypeID == uint(UBODY) {
-// 				if v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
-// 					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
-// 				}
-// 			} else if recommend.BodyTypeID == uint(LBODY) {
-// 				if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
-// 					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
-// 				}
-// 			} else {
-// 				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
-// 			}
-
-// 		}
-// 		exerciseIDToRecommend[recommend.ExerciseID].Afcs = afcs
-
-// 	}
-
-// 	for _, machine := range exerciseMachines {
-// 		if recommend, exists := exerciseIDToRecommend[machine.ExerciseID]; exists {
-// 			recommend.Machines = append(recommend.Machines, MachineDto{ID: machine.MachineID, Name: machine.Machine.Name})
-// 		}
-// 	}
-
-// 	for _, purpose := range exercisePurposes {
-// 		if recommend, exists := exerciseIDToRecommend[purpose.ExerciseID]; exists {
-// 			recommend.Purposes = append(recommend.Purposes, PurposeDto{ID: purpose.PurposeID, Name: purpose.Purpose.Name})
-// 		}
-// 	}
-
-// 	for _, measure := range exerciseMeasures {
-// 		if recommend, exists := exerciseIDToRecommend[measure.ExerciseID]; exists {
-// 			recommend.Measures = append(recommend.Measures, MeasureDto{ID: measure.MeasureID, Name: measure.Measure.Name})
-// 		}
-// 	}
-
-// 	// 최종 응답에 추가
-// 	for _, response := range sortedResponses {
-// 		responses = append(responses, *response)
-// 	}
-
-// 	return responses, nil
-// }
 
 func (service *coachService) searchRecommend(page uint, name string) ([]RecommendResponse, error) {
 	log.Println("Original name:", name)
@@ -706,9 +581,9 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 				Category:     CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 				Exercise:     ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, Explain: explain},
 				IsAsymmetric: recommend.IsAsymmetric,
-				TrRom:        recommend.TRomID,
 				Locomotion:   recommend.LocoRomID,
 				BodyType:     recommend.BodyTypeID,
+				IsGrip:       recommend.IsGrip,
 			}
 			exerciseIDToRecommend[recommend.ExerciseID] = response
 			sortedResponses = append(sortedResponses, response)
@@ -730,7 +605,7 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 				}
 			} else if recommend.BodyTypeID == uint(LBODY) {
-				if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) || v.JointActionID == uint(SUBHIP) || v.JointActionID == uint(SUBKNEE) {
+				if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
 					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 				}
 			} else {

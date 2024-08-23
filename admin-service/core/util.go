@@ -236,27 +236,27 @@ func validateAfc(request []AfcRequest) string {
 			}
 		}
 
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+		if v.BodyCompositionID != uint(LOCOMOTION) {
 			if v.Pain == 0 || v.Pain > 5 {
 				return "check pain"
 			}
 		}
 
-		isTRorLocomotion := v.BodyCompositionID == uint(TR) || v.BodyCompositionID == uint(LOCOMOTION)
-
 		// BodyCompositionID와 JointActionID 짝 검사
 		validJointAction := false
 		switch v.BodyCompositionID {
-		case uint(TR), uint(LOCOMOTION):
-			// TR이나 LOCOMOTION일 때 JointActionID는 0이어야 함
+		case uint(LOCOMOTION):
+			// LOCOMOTION일 때 JointActionID는 0이어야 함
 			validJointAction = v.JointActionID == 0
+		case uint(TR):
+			validJointAction = v.JointActionID == uint(TR)
 		case uint(UL), uint(UR):
 			if v.JointActionID != uint(FINGER) && v.ClinicalFeatureID == uint(AC) && v.IsGrip {
 				return "isGrip must false"
 			}
-			validJointAction = v.JointActionID == 1 || v.JointActionID == 2 || v.JointActionID == 3 || v.JointActionID == 4
+			validJointAction = v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) || v.JointActionID == uint(WRIST) || v.JointActionID == uint(FINGER)
 		case uint(LL), uint(LR):
-			validJointAction = v.JointActionID == 5 || v.JointActionID == 6 || v.JointActionID == 9
+			validJointAction = v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) || v.JointActionID == uint(ANKLE)
 		default:
 			return "Invalid BodyCompositionID"
 		}
@@ -265,18 +265,18 @@ func validateAfc(request []AfcRequest) string {
 			return "Invalid JointActionID for given BodyCompositionID"
 		}
 
-		if isTRorLocomotion {
-			// TR이거나 LOCOMOTION일 때
+		if v.BodyCompositionID == uint(LOCOMOTION) {
+			// LOCOMOTION일 때
 			if v.RomID == 0 {
-				return "RomID must not be 0 when BodyCompositionID is TR or LOCOMOTION"
+				return "RomID must not be 0 when BodyCompositionID is LOCOMOTION"
 			}
 			if v.ClinicalFeatureID != 0 || v.DegreeID != 0 {
-				return "ClinicalFeatureID and DegreeID must be 0 when BodyCompositionID is TR or LOCOMOTION"
+				return "ClinicalFeatureID and DegreeID must be 0 when BodyCompositionID is  LOCOMOTION"
 			}
 		} else {
-			// TR이나 LOCOMOTION이 아닐 때
+			//  LOCOMOTION이 아닐 때
 			if v.JointActionID == 0 {
-				return "JointActionID cannot be 0 when BodyCompositionID is not TR or LOCOMOTION"
+				return "JointActionID cannot be 0 when BodyCompositionID is not  LOCOMOTION"
 			}
 			if v.ClinicalFeatureID == uint(AC) {
 				// ClinicalFeatureID가 AC일 때

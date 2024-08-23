@@ -51,17 +51,15 @@ type MeasureDto struct {
 }
 
 type RecommendRequest struct {
-	ExerciseID   uint   `json:"exercise_id"`   // 운동아이디
-	MachineIDs   []uint `json:"machine_ids"`   // 기구아이디
-	PurposeIDs   []uint `json:"purpose_ids"`   // 목적아이디
-	MeasureIds   []uint `json:"measure_ids"`   // 측정항목 아이디
-	IsAsymmetric bool   `json:"is_asymmetric"` // 비대칭 여부
-	BodyType     uint   `json:"body_type"`     // 전신,상체,하체
-	// BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree"` // 증상id : 정도
-	TrRom      uint           `json:"tr_rom"`
-	Locomotion uint           `json:"locomotion"`
-	IsGrip     bool           `json:"is_grip"`
-	Afcs       []RecommendAfc `json:"afcs"`
+	ExerciseID   uint           `json:"exercise_id"`   // 운동아이디
+	MachineIDs   []uint         `json:"machine_ids"`   // 기구아이디
+	PurposeIDs   []uint         `json:"purpose_ids"`   // 목적아이디
+	MeasureIds   []uint         `json:"measure_ids"`   // 측정항목 아이디
+	IsAsymmetric bool           `json:"is_asymmetric"` // 비대칭 여부
+	BodyType     uint           `json:"body_type"`     // 전신,상체,하체
+	Locomotion   uint           `json:"locomotion"`
+	IsGrip       bool           `json:"is_grip"`
+	Afcs         []RecommendAfc `json:"afcs"`
 }
 
 type RecommendAfc struct {
@@ -83,9 +81,9 @@ type RecommendResponse struct {
 	Measures     []MeasureDto     `json:"measure"`
 	BodyType     uint             `json:"body_type"`
 	IsAsymmetric bool             `json:"is_asymmetric"`
-	TrRom        uint             `json:"tr_rom"`
 	Locomotion   uint             `json:"locomotion"`
 	Afcs         []RecommendAfc   `json:"afcs"`
+	IsGrip       *bool            `json:"is_grip"`
 	// BodyRomClinicDegree map[uint]map[uint]map[uint]uint `json:"body_rom_clinic_degree,omitempty"`
 }
 

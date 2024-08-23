@@ -17,7 +17,8 @@ const (
 )
 
 const (
-	SHOULDER level = iota + 1
+	TRUNK level = iota + 1
+	SHOULDER
 	ELBOW
 	WRIST
 	FINGER
@@ -32,5 +33,6 @@ const (
 	PC
 	CC
 	SC
+	NC
 	MC
 )

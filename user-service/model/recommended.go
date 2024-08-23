@@ -8,8 +8,6 @@ type Recommended struct {
 	ExerciseID      uint     `gorm:"index"`
 	BodyType        BodyType `gorm:"foreignKey:BodyTypeID"`
 	BodyTypeID      uint     `gorm:"index"`
-	TRom            Rom      `gorm:"foreignKey:TRomID"`
-	TRomID          uint     `gorm:"index"`
 	LocoRom         Rom      `gorm:"foreignKey:LocoRomID"`
 	LocoRomID       uint     `gorm:"index"`
 	IsAsymmetric    bool

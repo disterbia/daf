@@ -82,25 +82,22 @@ func copyStruct(input interface{}, output interface{}) error {
 
 func validateRecommendRequest(request RecommendRequest) error {
 	if request.ExerciseID == 0 || request.MachineIDs == nil || request.PurposeIDs == nil || len(request.MachineIDs) == 0 || len(request.PurposeIDs) == 0 ||
-		request.BodyType > 3 || request.BodyType == 0 || request.TrRom == 0 || request.Locomotion == 0 || request.Afcs == nil || len(request.Afcs) == 0 {
+		request.BodyType > 3 || request.BodyType == 0 || request.Locomotion == 0 || request.Afcs == nil || len(request.Afcs) == 0 {
 		return errors.New("check body")
 	}
 
-	if request.BodyType == uint(TBODY) && len(request.Afcs) != 6 {
-		return errors.New("afcs length must be 6")
+	if request.BodyType == uint(ABODY) && len(request.Afcs) != 5 {
+		return errors.New("afcs length must be 5")
 	}
 
-	if request.BodyType == uint(UBODY) && len(request.Afcs) != 2 {
-		return errors.New("afcs length must be 2")
-	}
-	if request.BodyType == uint(LBODY) && len(request.Afcs) != 4 {
-		return errors.New("afcs length must be 4")
+	if (request.BodyType == uint(UBODY) || request.BodyType == uint(LBODY)) && len(request.Afcs) != 3 {
+		return errors.New("afcs length must be 3")
 	}
 
 	var checkJoint = make(map[uint]bool)
 
 	for _, v := range request.Afcs {
-		if request.BodyType == uint(UBODY) && (v.JointAction == uint(HIP) || v.JointAction == uint(KNEE) || v.JointAction == uint(SUBHIP) || v.JointAction == uint(SUBKNEE)) {
+		if request.BodyType == uint(UBODY) && (v.JointAction == uint(HIP) || v.JointAction == uint(KNEE)) {
 			return errors.New("check body0")
 		}
 		if request.BodyType == uint(LBODY) && (v.JointAction == uint(SHOULDER) || v.JointAction == uint(ELBOW)) {

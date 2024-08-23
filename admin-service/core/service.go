@@ -811,7 +811,7 @@ func (service *adminService) createAfc(request SaveAfcRequest) (string, error) {
 			}
 		}
 
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+		if v.BodyCompositionID != uint(LOCOMOTION) {
 
 			if v.ClinicalFeatureID != uint(AC) {
 				if v.ClinicalFeatureID != 0 {
@@ -901,7 +901,7 @@ func (service *adminService) updateAfc(request SaveAfcRequest) (string, error) {
 				rom = &romID
 			}
 		}
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+		if v.BodyCompositionID != uint(LOCOMOTION) {
 			if v.ClinicalFeatureID != uint(AC) {
 				if v.ClinicalFeatureID != 0 {
 					clinicalFeatureID := v.ClinicalFeatureID // 새로운 변수를 생성하여 값을 복사합니다.
@@ -1058,7 +1058,7 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 			}
 		}
 
-		if v.BodyCompositionID != uint(TR) && v.BodyCompositionID != uint(LOCOMOTION) {
+		if v.BodyCompositionID != uint(LOCOMOTION) {
 
 			if v.ClinicalFeatureID != uint(AC) {
 				if v.ClinicalFeatureID != 0 {

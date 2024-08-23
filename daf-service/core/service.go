@@ -40,12 +40,10 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	}
 
 	var searchDatas []SearchData
-	var trom, locoRom uint
+	var locoRom uint
 
 	for _, userAfc := range userAfcs {
-		if userAfc.BodyCompositionID == uint(TR) {
-			trom = *userAfc.RomID
-		} else if userAfc.BodyCompositionID == uint(LOCOMOTION) {
+		if userAfc.BodyCompositionID == uint(LOCOMOTION) {
 			locoRom = *userAfc.RomID
 		} else {
 			if userAfc.JointActionID != uint(WRIST) && userAfc.JointActionID != uint(FINGER) && userAfc.JointActionID != uint(ANKLE) {
@@ -72,7 +70,7 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 
 	var recommends []model.Recommended
 
-	if err := service.db.Where("t_rom_id <= ? OR loco_rom_id <= ?", trom, locoRom).Find(&recommends).Error; err != nil {
+	if err := service.db.Where("loco_rom_id <= ?", locoRom).Find(&recommends).Error; err != nil {
 		return nil, errors.New("db error")
 	}
 
@@ -103,41 +101,6 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	var asymmetrics []uint
 	for _, afc := range searchDatas {
 		for _, jointRom := range jointRoms {
-			if afc.jointAction == uint(HIP) || afc.jointAction == uint(KNEE) {
-				if afc.locomotion < 3 {
-					if jointRom.JointActionID == uint(SUBHIP) || jointRom.JointActionID == uint(SUBKNEE) {
-						if afc.rom >= jointRom.RomID {
-							for _, clinicDegree := range clinicalDegrees {
-								if afc.clinic == uint(MC) { // 힘은 추천에서 제외하기에
-									for _, recommend := range recommends {
-										if clinicDegree.RecommendedID == recommend.ID {
-											if recommend.IsAsymmetric {
-												asymmetrics = append(asymmetrics, recommend.ID)
-											} else {
-												recommendMap[afc.bodyComposition] = append(recommendMap[afc.bodyComposition], clinicDegree.RecommendedID)
-											}
-										}
-									}
-								}
-								if afc.clinic == clinicDegree.ClinicalFeatureID {
-									if afc.degree >= clinicDegree.DegreeID {
-										for _, recommend := range recommends {
-											if clinicDegree.RecommendedID == recommend.ID {
-												if recommend.IsAsymmetric {
-													asymmetrics = append(asymmetrics, recommend.ID)
-												} else {
-													recommendMap[afc.bodyComposition] = append(recommendMap[afc.bodyComposition], clinicDegree.RecommendedID)
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-					continue
-				}
-			}
 			if afc.jointAction == jointRom.JointActionID {
 				if afc.rom >= jointRom.RomID {
 					for _, clinicDegree := range clinicalDegrees {
@@ -185,8 +148,9 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	intersectionU := intersect(recommendMap[uint(UL)], recommendMap[uint(UR)])
 	intersectionL := intersect(recommendMap[uint(LL)], recommendMap[uint(LR)])
 	interserctionAll := intersect(intersectionU, intersectionL)
+	interserctionALLTr := intersect(interserctionAll, recommendMap[uint(TR)])
 
-	recommendIds := mergeAndRemoveDuplicates(interserctionAll, asymmetrics)
+	recommendIds := mergeAndRemoveDuplicates(interserctionALLTr, asymmetrics)
 
 	var exerciseIds []uint
 	for _, v := range recommends {

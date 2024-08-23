@@ -3,21 +3,19 @@ package core
 type level int
 
 const (
-	TBODY level = iota + 1
+	ABODY level = iota + 1
 	UBODY
 	LBODY
-	LOCOBODY
 )
 
 const (
-	SHOULDER level = iota + 1
+	TRUNK level = iota + 1
+	SHOULDER
 	ELBOW
 	WRIST
 	FINGER
 	HIP
 	KNEE
-	SUBHIP
-	SUBKNEE
 	ANKLE
 )
 
@@ -27,9 +25,10 @@ const (
 	PC
 	CC
 	SC
+	NC
 )
 
-var CLINIC = [5]level{AC, TC, PC, CC, SC}
+var CLINIC = [6]level{AC, TC, PC, CC, SC, NC}
 
 // const (
 // 	ULS level = iota + 1
