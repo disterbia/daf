@@ -8,8 +8,6 @@ import (
 
 type Exercise struct {
 	gorm.Model
-	Name       string          `gorm:"unique"`
-	Category   Category        `gorm:"foreignKey:CategoryID"`
-	CategoryID uint            `gorm:"index"`
-	Explain    json.RawMessage `gorm:"type:jsonb"`
+	Name    string          `gorm:"unique"`
+	Explain json.RawMessage `gorm:"type:jsonb"`
 }

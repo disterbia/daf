@@ -30,7 +30,6 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		return nil, errors.New("db error")
 	}
 	type SearchData struct {
-		locomotion      uint
 		bodyComposition uint
 		jointAction     uint
 		rom             uint
@@ -63,7 +62,7 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 					isGrip = &temp
 				}
 				searchDatas = append(searchDatas, SearchData{bodyComposition: userAfc.BodyCompositionID, jointAction: userAfc.JointActionID, rom: *rom, isGrip: *isGrip,
-					clinic: *userAfc.ClinicalFeatureID, degree: *degree, locomotion: locoRom})
+					clinic: *userAfc.ClinicalFeatureID, degree: *degree})
 			}
 		}
 	}
@@ -178,16 +177,16 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		return nil, nil
 	} else if len(recommendIds) <= RECOMMENDCOUNT {
 		log.Println("운동 추천완료")
-		var exercises []model.Exercise
-		if err := service.db.Where("id IN ? ", exerciseIds).Find(&exercises).Error; err != nil {
+		var categoryExercises []model.CategoryExercise
+		if err := service.db.Where("exercise_id IN ? ", exerciseIds).Preload("Exercise").Find(&categoryExercises).Error; err != nil {
 			return nil, errors.New("db error2")
 		}
 
 		for _, id := range categoryIds {
-			for _, exercise := range exercises {
-				if exercise.CategoryId == id {
+			for _, categoryExercise := range categoryExercises {
+				if categoryExercise.CategoryID == id {
 					log.Println("데일리 카테고리에 해당하는지 분류")
-					ex := ExerciseResponse{ID: exercise.ID, Name: exercise.Name}
+					ex := ExerciseResponse{ID: categoryExercise.ExerciseID, Name: categoryExercise.Exercise.Name}
 					r := result[uint(id)]
 					r.First = append(r.First, ex)
 					result[uint(id)] = r
@@ -197,9 +196,9 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 
 	} else {
 		log.Println("교집합이 많음")
-		var exercises []model.Exercise
+		var categoryExercises []model.CategoryExercise
 		var uniqueExerciseIds []uint
-		if err := service.db.Where("id IN ? ", exerciseIds).Find(&exercises).Error; err != nil {
+		if err := service.db.Where("exercise_id IN ? ", exerciseIds).Preload("Exercise").Find(&categoryExercises).Error; err != nil {
 			return nil, errors.New("db error2")
 		}
 		if err := service.db.Model(&model.History{}).
@@ -215,10 +214,10 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		}
 
 		for _, id := range categoryIds {
-			for _, exercise := range exercises {
-				if exercise.CategoryId == uint(id) {
+			for _, categoryExercise := range categoryExercises {
+				if categoryExercise.CategoryID == uint(id) {
 					log.Println("데일리 카테고리에 해당하는지 분류")
-					ex := ExerciseResponse{ID: exercise.ID, Name: exercise.Name}
+					ex := ExerciseResponse{ID: categoryExercise.Exercise.ID, Name: categoryExercise.Exercise.Name}
 					r := result[uint(id)]
 					r.First = append(r.First, ex)
 					result[uint(id)] = r

@@ -46,6 +46,7 @@ func main() {
 	svc := core.NewCoachService(database, s3svc, bucket, bucketUrl)
 	loginEndpoint := core.LoginEndpoint(svc)
 	getCategorisEndpoint := core.GetCategorisEndpoint(svc)
+	getExercisesEndpoint := core.GetExercisesEndpoint(svc)
 	saveCategoryEndpoint := core.SaveCategoryEndpoint(svc)
 	getRecommendEndpoint := core.GetRecommendEndpoint(svc)
 	// getRecommendsEndpoint := core.GetRecommendsEndpoint(svc)
@@ -59,19 +60,23 @@ func main() {
 
 	router := gin.Default()
 
-	router.POST("/login", core.LoginHandler(loginEndpoint))
 	router.GET("/get-categories", core.GetCategorisHandler(getCategorisEndpoint))
-	router.POST("/save-category", core.SaveCategoryHandler(saveCategoryEndpoint))
-	router.POST("/save-exercise", core.SaveExerciseHandler(saveExerciseEndpoint))
+	router.GET("/get-exercises", core.GetExercisesHandler(getExercisesEndpoint))
 	router.GET("/get-machines", core.GetMachinesHandler(getMachinesEndpoint))
-	router.POST("/save-machine", core.SaveMachineHandler(saveMachineEndpoint))
 	router.GET("/get-purposes", core.GetPurposesHandler(getPurposesEndpoint))
-	router.POST("/save-purpose", core.SavePurposeHandler(savePurposeEndpoint))
-
-	router.POST("/save-recommend", core.SaveRecommendHandler(saveRecommendEndpint))
 	router.GET("/get-exercise/:exercise_id", core.GetRecommendHandler(getRecommendEndpoint))
 	// router.GET("/get-recommends", core.GetRecommendsHandler(getRecommendsEndpoint))
 	router.GET("/search-recommends", core.SearchRecommendsHandler(searchRecommendsEndpoint))
+
+	router.POST("/login", core.LoginHandler(loginEndpoint))
+	router.POST("/save-category", core.SaveCategoryHandler(saveCategoryEndpoint))
+	router.POST("/save-exercise", core.SaveExerciseHandler(saveExerciseEndpoint))
+
+	router.POST("/save-machine", core.SaveMachineHandler(saveMachineEndpoint))
+
+	router.POST("/save-purpose", core.SavePurposeHandler(savePurposeEndpoint))
+
+	router.POST("/save-recommend", core.SaveRecommendHandler(saveRecommendEndpint))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

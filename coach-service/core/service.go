@@ -18,15 +18,15 @@ import (
 
 type CoachService interface {
 	login(request LoginRequest) (string, error)
-	saveCategory(id uint, name string) (string, error)
-	getCategoris() ([]CategoryResponse, error)
-	saveExercise(ExerciseRequest) (string, error)
+	saveCategory(r CategoryRequest) (string, error)
+	getCategoris() ([]CategoryExerciseResponse, error)
+	getExercises() ([]ExerciseResponse, error)
+	saveExercise(r ExerciseRequest) (string, error)
 	getMachines() ([]MachineDto, error)
 	saveMachine(request MachineDto) (string, error)
 	savePurpose(request PurposeDto) (string, error)
 	getPurposes() ([]PurposeDto, error)
 	getRecommend(exerciseID uint) (RecommendResponse, error)
-	// getRecommends(page uint) ([]RecommendResponse, error)
 	saveRecommend(request RecommendRequest) (string, error)
 	searchRecommend(page uint, name string) ([]RecommendResponse, error)
 }
@@ -67,14 +67,26 @@ func (service *coachService) login(request LoginRequest) (string, error) {
 	return tokenString, nil
 }
 
-func (service *coachService) saveCategory(id uint, name string) (string, error) {
-	result := service.db.Model(&model.Category{}).Where("id = ?", id).Update("name", name)
+func (service *coachService) saveCategory(r CategoryRequest) (string, error) {
+	tx := service.db.Begin()
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Recovered from panic: %v", r)
+		}
+	}()
+
+	var categoryExercises []model.CategoryExercise
+
+	result := tx.Model(&model.Category{}).Where("id = ?", r.ID).Update("name", r.Name)
 	if result.Error != nil {
+		tx.Rollback()
 		return "", errors.New("db error")
 	}
 	if result.RowsAffected == 0 {
 		// 공백 제거한 name 생성
-		trimmedName := strings.ReplaceAll(name, " ", "")
+		trimmedName := strings.ReplaceAll(r.Name, " ", "")
 		// 기존에 동일한 name이 있는지 확인
 		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Category{}).Error; err == nil {
 			// 동일한 name이 존재하는 경우
@@ -83,41 +95,144 @@ func (service *coachService) saveCategory(id uint, name string) (string, error) 
 			// 데이터베이스 조회 중 오류가 발생한 경우
 			return "", errors.New("db error2")
 		}
+
 		// 새로운 category 저장
-		category := model.Category{Name: name}
-		if err := service.db.Create(&category).Error; err != nil {
+		category := model.Category{Name: r.Name}
+		if err := tx.Create(&category).Error; err != nil {
+			tx.Rollback()
 			return "", errors.New("db error3")
 		}
 
-		return "200", nil // 새로운 레코드 생성 성공
+		for _, v := range r.ExerciseIds {
+			categoryExercises = append(categoryExercises, model.CategoryExercise{CategoryID: category.ID, ExerciseID: v})
+		}
+		if err := tx.Create(&categoryExercises).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error4")
+		}
+	} else {
+		if err := tx.Where("category_id = ? ", r.ID).Unscoped().Delete(&model.CategoryExercise{}).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error5")
+		}
+
+		for _, v := range r.ExerciseIds {
+			categoryExercises = append(categoryExercises, model.CategoryExercise{CategoryID: r.ID, ExerciseID: v})
+		}
+
+		if err := tx.Create(&categoryExercises).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error6")
+		}
+
 	}
 
+	tx.Commit()
 	return "200", nil
 }
 
-func (service *coachService) getCategoris() ([]CategoryResponse, error) {
-	var categoies []model.Category
-	var categoyResponses []CategoryResponse
+func (service *coachService) getCategoris() ([]CategoryExerciseResponse, error) {
+	var categoryExercises []model.CategoryExercise
+	var responses []CategoryExerciseResponse
 
-	if err := service.db.Preload("Exercises").Order("id DESC").Find(&categoies).Error; err != nil {
+	// Fetch category exercises with associated Exercise and Category
+	if err := service.db.Preload("Exercise").Preload("Category").Order("id DESC").Find(&categoryExercises).Error; err != nil {
 		return nil, errors.New("db error")
 	}
 
-	for _, v := range categoies {
-		var exerciseResponses []ExerciseResponse
-		for _, e := range v.Exercises {
-			var explain []Explain
-			if len(e.Explain) > 0 { // 설명 필드가 비어 있지 않은지 확인
-				if err := json.Unmarshal(e.Explain, &explain); err != nil {
-					return nil, err
-				}
+	// Map to store categories and their corresponding exercises
+	categoryMap := make(map[uint]*CategoryExerciseResponse)
+
+	for _, ce := range categoryExercises {
+		// Check if the category already exists in the map
+		if _, exists := categoryMap[ce.CategoryID]; !exists {
+			// Initialize a new CategoryExerciseResponse if it doesn't exist
+			categoryMap[ce.CategoryID] = &CategoryExerciseResponse{
+				ID:        ce.CategoryID,
+				Name:      ce.Category.Name,
+				Exercises: []ExerciseCatregoryResponse{},
 			}
-			exerciseResponses = append(exerciseResponses, ExerciseResponse{ID: e.ID, Name: e.Name, Explain: explain})
 		}
-		categoyResponses = append(categoyResponses, CategoryResponse{ID: v.ID, Name: v.Name, Exercises: exerciseResponses})
+
+		// Create ExerciseCategoryResponse
+		exerciseResponse := ExerciseCatregoryResponse{
+			ID:   ce.ExerciseID,
+			Name: ce.Exercise.Name,
+			Explain: func() []Explain {
+				var explain []Explain
+				if err := json.Unmarshal(ce.Exercise.Explain, &explain); err != nil {
+					return nil
+				}
+				return explain
+			}(),
+			Categories: []CategoryResponse{},
+		}
+
+		// Populate Categories for each exercise
+		for _, innerCE := range categoryExercises {
+			if innerCE.ExerciseID == ce.ExerciseID {
+				exerciseResponse.Categories = append(exerciseResponse.Categories, CategoryResponse{
+					ID:   innerCE.CategoryID,
+					Name: innerCE.Category.Name,
+				})
+			}
+		}
+
+		// Append the exercise to the category's exercise list
+		categoryMap[ce.CategoryID].Exercises = append(categoryMap[ce.CategoryID].Exercises, exerciseResponse)
 	}
 
-	return categoyResponses, nil
+	// Convert the map to a slice
+	for _, response := range categoryMap {
+		responses = append(responses, *response)
+	}
+
+	return responses, nil
+}
+
+func (service *coachService) getExercises() ([]ExerciseResponse, error) {
+	var categoryExercises []model.CategoryExercise
+	var responses []ExerciseResponse
+
+	// Fetch category exercises with associated Exercise and Category
+	if err := service.db.Preload("Exercise").Preload("Category").Order("id DESC").Find(&categoryExercises).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
+	// Map to store exercises and their corresponding categories
+	exerciseMap := make(map[uint]*ExerciseResponse)
+
+	for _, ce := range categoryExercises {
+		// Check if the exercise already exists in the map
+		if _, exists := exerciseMap[ce.ExerciseID]; !exists {
+			// Initialize a new ExerciseResponse if it doesn't exist
+			exerciseMap[ce.ExerciseID] = &ExerciseResponse{
+				ID:   ce.ExerciseID,
+				Name: ce.Exercise.Name,
+				Explain: func() []Explain {
+					var explain []Explain
+					if err := json.Unmarshal(ce.Exercise.Explain, &explain); err != nil {
+						return nil
+					}
+					return explain
+				}(),
+				Categories: []CategoryResponse{},
+			}
+		}
+
+		// Append the category to the exercise's CategoryResponse list
+		exerciseMap[ce.ExerciseID].Categories = append(exerciseMap[ce.ExerciseID].Categories, CategoryResponse{
+			ID:   ce.CategoryID,
+			Name: ce.Category.Name,
+		})
+	}
+
+	// Convert the map to a slice
+	for _, response := range exerciseMap {
+		responses = append(responses, *response)
+	}
+
+	return responses, nil
 }
 
 func (service *coachService) saveExercise(request ExerciseRequest) (string, error) {
@@ -174,17 +289,27 @@ func (service *coachService) saveExercise(request ExerciseRequest) (string, erro
 		"explain": explainJson, // 여기에 업데이트할 다른 필드를 추가
 	}
 
-	result := service.db.Model(&model.Exercise{}).Where("id = ?", request.ID).Updates(updates)
+	tx := service.db.Begin()
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Recovered from panic: %v", r)
+		}
+	}()
+
+	result := tx.Model(&model.Exercise{}).Where("id = ?", request.ID).Updates(updates)
 	if result.Error != nil {
 		return "", errors.New("db error")
 	}
 
 	if result.RowsAffected == 0 {
+
 		// 공백 제거한 name 생성
 		trimmedName := strings.ReplaceAll(request.Name, " ", "")
 
 		// 기존에 동일한 name이 있는지 확인
-		if err := service.db.Where("category_id = ? AND REPLACE(name, ' ', '') = ?", request.CategoryId, trimmedName).First(&model.Exercise{}).Error; err == nil {
+		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Exercise{}).Error; err == nil {
 			// 동일한 name이 존재하는 경우
 			return "", errors.New("exist")
 		} else if err != gorm.ErrRecordNotFound {
@@ -193,15 +318,41 @@ func (service *coachService) saveExercise(request ExerciseRequest) (string, erro
 		}
 
 		// 새로운 exercise 저장
-		exercise := model.Exercise{CategoryID: request.CategoryId, Name: request.Name, Explain: explainJson}
-		if err := service.db.Create(&exercise).Error; err != nil {
+		exercise := model.Exercise{Name: request.Name, Explain: explainJson}
+		if err := tx.Create(&exercise).Error; err != nil {
+			tx.Rollback()
 			return "", errors.New("db error3")
 		}
 
-		return "200", nil // 새로운 레코드 생성 성공
+		var temps []model.CategoryExercise
+
+		for _, v := range request.CategoryIds {
+			temps = append(temps, model.CategoryExercise{CategoryID: v, ExerciseID: exercise.ID})
+		}
+		if err := tx.Create(&temps).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error4")
+		}
+
+	} else {
+		if err := tx.Where("exercise_id = ? ", request.ID).Unscoped().Delete(&model.CategoryExercise{}).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error5")
+		}
+
+		var temps []model.CategoryExercise
+
+		for _, v := range request.CategoryIds {
+			temps = append(temps, model.CategoryExercise{CategoryID: v, ExerciseID: request.ID})
+		}
+		if err := tx.Create(&temps).Error; err != nil {
+			tx.Rollback()
+			return "", errors.New("db error6")
+		}
 	}
 
-	return "200", nil // 기존 레코드 업데이트 성공
+	tx.Commit()
+	return "200", nil // 새로운 레코드 생성 성공
 }
 
 func (service *coachService) getMachines() ([]MachineDto, error) {
@@ -437,12 +588,17 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 	var response RecommendResponse
 	// 추천운동 정보 가져오기
 	var recommend model.Recommended
-	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Exercise.Category").Preload("ClinicalDegrees").Preload("JointRoms").First(&recommend).Error; err != nil {
+	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Exercise").Preload("ClinicalDegrees").Preload("JointRoms").First(&recommend).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return response, errors.New("db error")
 		} else {
 			return response, errors.New("not found")
 		}
+	}
+
+	var categoryExercises []model.CategoryExercise
+	if err := service.db.Where("exercise_id = ?", exerciseID).Preload("Category").Find(&categoryExercises).Error; err != nil {
+		return response, errors.New("db error2")
 	}
 
 	var explain []Explain
@@ -463,11 +619,11 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 
 	for _, v := range recommend.JointRoms {
 		if recommend.BodyTypeID == uint(UBODY) {
-			if v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
+			if v.JointActionID == uint(TRUNK) || v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
 				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 			}
 		} else if recommend.BodyTypeID == uint(LBODY) {
-			if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
+			if v.JointActionID == uint(TRUNK) || v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
 				afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 			}
 		} else {
@@ -475,8 +631,13 @@ func (service *coachService) getRecommend(exerciseID uint) (RecommendResponse, e
 		}
 	}
 
-	response = RecommendResponse{Category: CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
-		Exercise:     ExerciseResponse{ID: recommend.Exercise.ID, Name: recommend.Exercise.Name, Explain: explain},
+	var temp []CategoryResponse
+	for _, v := range categoryExercises {
+		temp = append(temp, CategoryResponse{ID: v.CategoryID, Name: v.Category.Name})
+	}
+
+	response = RecommendResponse{
+		Exercise:     ExerciseResponse{ID: recommend.Exercise.ID, Name: recommend.Exercise.Name, Explain: explain, Categories: temp},
 		IsAsymmetric: recommend.IsAsymmetric,
 		Locomotion:   recommend.LocoRomID,
 		BodyType:     recommend.BodyTypeID,
@@ -547,6 +708,11 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 		return responses, errors.New("db error1")
 	}
 
+	var categoryExercises []model.CategoryExercise
+	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Category").Find(&categoryExercises).Error; err != nil {
+		return responses, errors.New("db error0")
+	}
+
 	// 사용기구 정보 가져오기
 	var exerciseMachines []model.ExerciseMachine
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).Preload("Machine").Find(&exerciseMachines).Error; err != nil {
@@ -578,7 +744,6 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 		}
 		if _, exists := exerciseIDToRecommend[recommend.ExerciseID]; !exists {
 			response := &RecommendResponse{
-				Category:     CategoryRequest{ID: recommend.Exercise.CategoryID, Name: recommend.Exercise.Category.Name},
 				Exercise:     ExerciseResponse{ID: recommend.ExerciseID, Name: recommend.Exercise.Name, Explain: explain},
 				IsAsymmetric: recommend.IsAsymmetric,
 				Locomotion:   recommend.LocoRomID,
@@ -601,11 +766,11 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 
 		for _, v := range recommend.JointRoms {
 			if recommend.BodyTypeID == uint(UBODY) {
-				if v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
+				if v.JointActionID == uint(TRUNK) || v.JointActionID == uint(SHOULDER) || v.JointActionID == uint(ELBOW) {
 					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 				}
 			} else if recommend.BodyTypeID == uint(LBODY) {
-				if v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
+				if v.JointActionID == uint(TRUNK) || v.JointActionID == uint(HIP) || v.JointActionID == uint(KNEE) {
 					afcs = append(afcs, RecommendAfc{JointAction: v.JointActionID, Rom: v.RomID, ClinicDegree: jointClinicDegree[v.JointActionID]})
 				}
 			} else {
@@ -614,6 +779,15 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 		}
 		exerciseIDToRecommend[recommend.ExerciseID].Afcs = afcs
 
+	}
+
+	for _, categoryExercise := range categoryExercises {
+		if response, exists := exerciseIDToRecommend[categoryExercise.ExerciseID]; exists {
+			response.Exercise.Categories = append(response.Exercise.Categories, CategoryResponse{
+				ID:   categoryExercise.CategoryID,
+				Name: categoryExercise.Category.Name,
+			})
+		}
 	}
 
 	for _, machine := range exerciseMachines {

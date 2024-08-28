@@ -11,26 +11,39 @@ type LoginResponse struct {
 }
 
 type CategoryRequest struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	ExerciseIds []uint `json:"exercise_ids"`
+}
+type ExerciseRequest struct {
+	ID          uint      `json:"id"`
+	Name        string    `json:"name"`
+	CategoryIds []uint    `json:"category_ids"`
+	Explain     []Explain `json:"explain"`
+}
+
+type CategoryResponse struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
-type CategoryResponse struct {
-	ID        uint               `json:"id"`
-	Name      string             `json:"name"`
-	Exercises []ExerciseResponse `json:"exercises"`
+type ExerciseResponse struct {
+	ID         uint               `json:"id"`
+	Name       string             `json:"name"`
+	Explain    []Explain          `json:"explain"`
+	Categories []CategoryResponse `json:"categories"`
+}
+type CategoryExerciseResponse struct {
+	ID        uint                        `json:"id"`
+	Name      string                      `json:"name"`
+	Exercises []ExerciseCatregoryResponse `json:"exercises"`
 }
 
-type ExerciseRequest struct {
-	ID         uint      `json:"id"`
-	Name       string    `json:"name"`
-	CategoryId uint      `json:"category_id"`
-	Explain    []Explain `json:"explain"`
-}
-type ExerciseResponse struct {
-	ID      uint      `json:"id"`
-	Name    string    `json:"name"`
-	Explain []Explain `json:"explain"`
+type ExerciseCatregoryResponse struct {
+	ID         uint               `json:"id"`
+	Name       string             `json:"name"`
+	Explain    []Explain          `json:"explain"`
+	Categories []CategoryResponse `json:"categories"`
 }
 
 type MachineDto struct {
@@ -74,7 +87,6 @@ type Explain struct {
 }
 
 type RecommendResponse struct {
-	Category     CategoryRequest  `json:"category"`
 	Exercise     ExerciseResponse `json:"exercise"`
 	Machines     []MachineDto     `json:"machines"`
 	Purposes     []PurposeDto     `json:"purposes"`

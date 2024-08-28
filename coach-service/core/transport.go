@@ -90,7 +90,7 @@ func SaveCategoryHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Description 카테고리 조회시 호출
 // @Produce  json
 // @Param Authorization header string true "Bearer {jwt_token}"
-// @Success 200 {object} []CategoryResponse "카테고리 정보"
+// @Success 200 {object} []CategoryExerciseResponse "카테고리 정보"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /get-categoris [get]
@@ -108,7 +108,35 @@ func GetCategorisHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
-		resp := response.([]CategoryResponse)
+		resp := response.([]CategoryExerciseResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Tags 코치 /coach
+// @Summary 운동 조회
+// @Description 운동 조회시 호출
+// @Produce  json
+// @Param Authorization header string true "Bearer {jwt_token}"
+// @Success 200 {object} []ExerciseResponse "카테고리 정보"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /get-exercises [get]
+func GetExercisesHandler(getEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, _, err := verifyJWT(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := getEndpoint(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.([]ExerciseResponse)
 		c.JSON(http.StatusOK, resp)
 	}
 }
