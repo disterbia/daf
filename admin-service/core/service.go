@@ -286,7 +286,7 @@ func (service *adminService) getSuperAgencis() ([]GetSuperResponse, error) {
 	var response []GetSuperResponse
 
 	var superAgencies []model.SuperAgency
-	if err := service.db.Preload("Agencies").Find(&superAgencies).Error; err != nil {
+	if err := service.db.Where("id != ?", 2).Preload("Agencies").Find(&superAgencies).Error; err != nil {
 		return nil, errors.New("db error")
 	}
 
@@ -1104,6 +1104,15 @@ func (service *adminService) updateAfcHistory(request SaveAfcHistoryRequest) (st
 }
 
 func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDiaryResponse, error) {
+	var superAgencyID uint
+	if err := service.db.Table("admins").
+		Select("agencies.super_agency_id").
+		Joins("JOIN agencies ON agencies.id = admins.agency_id").
+		Where("admins.id = ?", request.Id).
+		Scan(&superAgencyID).Error; err != nil {
+		return nil, errors.New("db error")
+	}
+
 	var response []SearchDiaryResponse
 
 	pageSize := 10
@@ -1111,13 +1120,14 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 
 	var diaris []model.Diary
 	query := service.db.Model(&model.Diary{}).
-		Joins("JOIN users ON users.id = diaries.uid")
+		Joins("JOIN users ON users.id = diaries.uid").Joins("JOIN agencies ON agencies.id = users.agency_id").
+		Where("agencies.super_agency_id = ?", superAgencyID)
 
 	if strings.TrimSpace(request.Name) != "" {
 		query = query.Where("users.name LIKE ?", "%"+request.Name+"%")
 	}
 	if request.AdminID != 0 {
-		query = query.Where("diaries.admin_id = ?", request.AdminID)
+		query = query.Where("users.admin_id = ?", request.AdminID) //담당코치. 생성자는 diaries.admin_id
 	}
 	if request.ClassType != 0 {
 		query = query.Where("diaries.class_type = ?", request.ClassType)
@@ -1145,7 +1155,7 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 	}
 
 	query = query.Offset(offset).Limit(pageSize).Order("id DESC")
-	if err := query.Preload("User.Admin").Find(&diaris).Error; err != nil {
+	if err := query.Preload("User.Admin").Preload("Admin").Find(&diaris).Error; err != nil {
 		return nil, errors.New("db error")
 	}
 
@@ -1203,7 +1213,7 @@ func (service *adminService) searchDiary(request SearchDiaryRequest) ([]SearchDi
 			}
 		}
 		response = append(response, SearchDiaryResponse{ID: v.ID, CreatedAt: v.CreatedAt.Format("2006-01-02"), UpdatedAt: v.UpdatedAt.Format("2006-01-02"), Uid: v.Uid, UserName: v.User.Name,
-			DiaryName: v.Title, ClassName: v.ClassName, ClassType: v.ClassType, ClassDate: v.ClassDate.Format("2006-01-02"), AdminName: v.User.Admin.Name, Explain: explain,
+			DiaryName: v.Title, ClassName: v.ClassName, ClassType: v.ClassType, ClassDate: v.ClassDate.Format("2006-01-02"), AdminName: v.User.Admin.Name, Explain: explain, CreateName: v.Admin.Name,
 			ClassPurposes: purposeMap[v.ID], ExerciseMeasures: exerciseMeasures})
 	}
 

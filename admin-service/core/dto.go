@@ -180,6 +180,7 @@ type SearchDiaryResponse struct {
 	ClassType        uint                    `json:"class_type"`
 	ClassDate        string                  `json:"class_date" example:"yyyy-mm-dd"`
 	AdminName        string                  `json:"admin_name"`
+	CreateName       string                  `json:"create_name"`
 	ClassPurposes    []IdNameResponse        `json:"class_purposes"`
 	ExerciseMeasures []ExerciseDiaryResponse `json:"exercise_measures"`
 	Explain          []Explain               `json:"explain"`
