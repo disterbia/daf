@@ -369,6 +369,9 @@ func (service *adminService) saveUser(request SaveUserRequest) (string, error) {
 
 	if err := tx.Save(&user).Error; err != nil {
 		tx.Rollback()
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return "", errors.New("-1")
+		}
 		return "", errors.New("db error1")
 	}
 

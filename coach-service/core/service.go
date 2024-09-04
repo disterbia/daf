@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -103,28 +104,32 @@ func (service *coachService) saveCategory(r CategoryRequest) (string, error) {
 			return "", errors.New("db error3")
 		}
 
-		for _, v := range r.ExerciseIds {
-			categoryExercises = append(categoryExercises, model.CategoryExercise{CategoryID: category.ID, ExerciseID: v})
-		}
-		if err := tx.Create(&categoryExercises).Error; err != nil {
-			tx.Rollback()
-			return "", errors.New("db error4")
+		if r.ExerciseIds != nil && len(r.ExerciseIds) != 0 {
+			for _, v := range r.ExerciseIds {
+				categoryExercises = append(categoryExercises, model.CategoryExercise{CategoryID: category.ID, ExerciseID: v})
+			}
+
+			if err := tx.Create(&categoryExercises).Error; err != nil {
+				tx.Rollback()
+				return "", errors.New("db error4")
+			}
 		}
 	} else {
-		if err := tx.Where("category_id = ? ", r.ID).Unscoped().Delete(&model.CategoryExercise{}).Error; err != nil {
-			tx.Rollback()
-			return "", errors.New("db error5")
-		}
+		if r.ExerciseIds != nil && len(r.ExerciseIds) != 0 {
+			if err := tx.Where("category_id = ? ", r.ID).Unscoped().Delete(&model.CategoryExercise{}).Error; err != nil {
+				tx.Rollback()
+				return "", errors.New("db error5")
+			}
 
-		for _, v := range r.ExerciseIds {
-			categoryExercises = append(categoryExercises, model.CategoryExercise{CategoryID: r.ID, ExerciseID: v})
-		}
+			for _, v := range r.ExerciseIds {
+				categoryExercises = append(categoryExercises, model.CategoryExercise{CategoryID: r.ID, ExerciseID: v})
+			}
 
-		if err := tx.Create(&categoryExercises).Error; err != nil {
-			tx.Rollback()
-			return "", errors.New("db error6")
+			if err := tx.Create(&categoryExercises).Error; err != nil {
+				tx.Rollback()
+				return "", errors.New("db error6")
+			}
 		}
-
 	}
 
 	tx.Commit()
@@ -134,6 +139,12 @@ func (service *coachService) saveCategory(r CategoryRequest) (string, error) {
 func (service *coachService) getCategoris() ([]CategoryExerciseResponse, error) {
 	var categoryExercises []model.CategoryExercise
 	var responses []CategoryExerciseResponse
+	var categories []model.Category
+
+	// Fetch all categories
+	if err := service.db.Order("id DESC").Find(&categories).Error; err != nil {
+		return nil, errors.New("db error")
+	}
 
 	// Fetch category exercises with associated Exercise and Category
 	if err := service.db.Preload("Exercise").Preload("Category").Order("id DESC").Find(&categoryExercises).Error; err != nil {
@@ -143,17 +154,17 @@ func (service *coachService) getCategoris() ([]CategoryExerciseResponse, error) 
 	// Map to store categories and their corresponding exercises
 	categoryMap := make(map[uint]*CategoryExerciseResponse)
 
-	for _, ce := range categoryExercises {
-		// Check if the category already exists in the map
-		if _, exists := categoryMap[ce.CategoryID]; !exists {
-			// Initialize a new CategoryExerciseResponse if it doesn't exist
-			categoryMap[ce.CategoryID] = &CategoryExerciseResponse{
-				ID:        ce.CategoryID,
-				Name:      ce.Category.Name,
-				Exercises: []ExerciseCatregoryResponse{},
-			}
+	// Initialize map with all categories
+	for _, category := range categories {
+		categoryMap[category.ID] = &CategoryExerciseResponse{
+			ID:        category.ID,
+			Name:      category.Name,
+			Exercises: []ExerciseCatregoryResponse{},
 		}
+	}
 
+	// Populate exercises for categories that have them
+	for _, ce := range categoryExercises {
 		// Create ExerciseCategoryResponse
 		exerciseResponse := ExerciseCatregoryResponse{
 			ID:   ce.ExerciseID,
@@ -186,6 +197,11 @@ func (service *coachService) getCategoris() ([]CategoryExerciseResponse, error) 
 	for _, response := range categoryMap {
 		responses = append(responses, *response)
 	}
+
+	// Sort the responses slice by category ID or name
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].ID < responses[j].ID
+	})
 
 	return responses, nil
 }
@@ -232,6 +248,10 @@ func (service *coachService) getExercises() ([]ExerciseResponse, error) {
 		responses = append(responses, *response)
 	}
 
+	// Sort the responses slice by exercise ID or name
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].ID < responses[j].ID // 또는 다른 기준으로 정렬
+	})
 	return responses, nil
 }
 
@@ -702,7 +722,7 @@ func (service *coachService) searchRecommend(page uint, name string) ([]Recommen
 	var recommends []model.Recommended
 	if err := service.db.Where("exercise_id IN (?)", exerciseIDs).
 		Joins("JOIN exercises ON exercises.id = recommendeds.exercise_id").
-		Preload("Exercise.Category").Preload("ClinicalDegrees").Preload("JointRoms").
+		Preload("Exercise").Preload("ClinicalDegrees").Preload("JointRoms").
 		Order("CASE WHEN exercises.name LIKE '" + name + "%' THEN 0 ELSE 1 END, exercises.name, recommendeds.id DESC").
 		Find(&recommends).Error; err != nil {
 		return responses, errors.New("db error1")

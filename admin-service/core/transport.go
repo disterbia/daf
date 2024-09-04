@@ -192,7 +192,7 @@ func ResetPasswordHandler(resetEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Param request body SaveUserRequest true "요청 DTO"
 // @Success 200 {object} BasicResponse "성공시 200 반환"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환 "-1": 휴대폰번호 중복 "
 // @Router /save-user [post]
 func SaveUserHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 	return func(c *gin.Context) {
