@@ -368,8 +368,9 @@ func (service *adminService) saveUser(request SaveUserRequest) (string, error) {
 	user.RegistDay = registday
 
 	if err := tx.Save(&user).Error; err != nil {
+		log.Println(err.Error())
 		tx.Rollback()
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		if strings.Contains(err.Error(), "duplicate") {
 			return "", errors.New("-1")
 		}
 		return "", errors.New("db error1")
