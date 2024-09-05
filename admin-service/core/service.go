@@ -1426,8 +1426,9 @@ func (service *adminService) getExerciseMeasure() ([]ExerciseMeasureResponse, er
 			}
 		}
 		exerciseMap[em.ExerciseID].Measures = append(exerciseMap[em.ExerciseID].Measures, MeasureResponseNoValue{
-			MeasureID:   em.MeasureID,
-			MeasureName: em.Measure.Name,
+			MeasureID:    em.MeasureID,
+			MeasureName:  em.Measure.Name,
+			MeasureValue: em.Measure.Value,
 		})
 	}
 

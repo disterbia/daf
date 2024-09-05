@@ -223,8 +223,9 @@ type ExerciseMeasureResponse struct {
 }
 
 type MeasureResponseNoValue struct {
-	MeasureID   uint   `json:"measure_id"`
-	MeasureName string `json:"measure_name"`
+	MeasureID    uint   `json:"measure_id"`
+	MeasureName  string `json:"measure_name"`
+	MeasureValue string `json:"measure_value"`
 }
 
 type GetAllUsersResponse struct {
