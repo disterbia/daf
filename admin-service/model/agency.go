@@ -9,7 +9,7 @@ type Agency struct {
 	Name          string
 	Tel           string      `gorm:"unique"`
 	SuperAgency   SuperAgency `gorm:"foreignKey:SuperAgencyID"`
-	SuperAgencyID uint
+	SuperAgencyID uint        `gorm:"index"`
 	Latitude      float64
 	Longitude     float64
 }

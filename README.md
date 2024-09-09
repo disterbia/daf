@@ -12,6 +12,10 @@ server {
     listen 80;
     server_name haruharu-daf.com;
 
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
     location / {
         return 301 https://$host$request_uri;
     }
@@ -35,3 +39,43 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+server {
+    listen 80;
+    server_name wellkinson.haruharu-daf.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name wellkinson.haruharu-daf.com;
+
+    ssl_certificate /etc/letsencrypt/live/haruharu-daf.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/haruharu-daf.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://localhost:50000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+인증서 갱신 : 
+
+sudo systemctl stop nginx
+sudo certbot renew --dry-run
+sudo nginx -t
+sudo systemctl restart nginx
+sudo certbot renew --webroot -w /var/www/html
