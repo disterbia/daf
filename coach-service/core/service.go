@@ -69,6 +69,11 @@ func (service *coachService) login(request LoginRequest) (string, error) {
 }
 
 func (service *coachService) saveCategory(r CategoryRequest) (string, error) {
+	// 공백 제거한 name 생성
+	trimmedName := strings.TrimSpace(r.Name)
+	if trimmedName == ""{
+		return "", errors.New("empty-name")
+	}
 	tx := service.db.Begin()
 
 	defer func() {
@@ -87,7 +92,6 @@ func (service *coachService) saveCategory(r CategoryRequest) (string, error) {
 	}
 	if result.RowsAffected == 0 {
 		// 공백 제거한 name 생성
-		trimmedName := strings.ReplaceAll(r.Name, " ", "")
 		// 기존에 동일한 name이 있는지 확인
 		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Category{}).Error; err == nil {
 			// 동일한 name이 존재하는 경우
@@ -256,6 +260,12 @@ func (service *coachService) getExercises() ([]ExerciseResponse, error) {
 }
 
 func (service *coachService) saveExercise(request ExerciseRequest) (string, error) {
+	// 공백 제거한 name 생성
+	trimmedName := strings.TrimSpace(request.Name)
+	if trimmedName == ""{
+		return "", errors.New("empty-name")
+	}
+
 	for i, v := range request.Explain {
 		switch insertValue := v.Insert.(type) {
 		case map[string]interface{}:
@@ -325,9 +335,6 @@ func (service *coachService) saveExercise(request ExerciseRequest) (string, erro
 
 	if result.RowsAffected == 0 {
 
-		// 공백 제거한 name 생성
-		trimmedName := strings.ReplaceAll(request.Name, " ", "")
-
 		// 기존에 동일한 name이 있는지 확인
 		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Exercise{}).Error; err == nil {
 			// 동일한 name이 존재하는 경우
@@ -390,6 +397,11 @@ func (service *coachService) getMachines() ([]MachineDto, error) {
 }
 
 func (service *coachService) saveMachine(request MachineDto) (string, error) {
+	// 공백 제거한 name 생성
+	trimmedName := strings.TrimSpace(request.Name)
+	if trimmedName == ""{
+			return "", errors.New("empty-name")
+	}
 	updates := map[string]interface{}{
 		"name":         request.Name,
 		"machine_type": request.MachineType,
@@ -401,9 +413,6 @@ func (service *coachService) saveMachine(request MachineDto) (string, error) {
 	}
 
 	if result.RowsAffected == 0 {
-		// 공백 제거한 name 생성
-		trimmedName := strings.ReplaceAll(request.Name, " ", "")
-
 		// 기존에 동일한 name이 있는지 확인
 		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Machine{}).Error; err == nil {
 			// 동일한 name이 존재하는 경우
@@ -426,6 +435,11 @@ func (service *coachService) saveMachine(request MachineDto) (string, error) {
 }
 
 func (service *coachService) savePurpose(request PurposeDto) (string, error) {
+	// 공백 제거한 name 생성
+	trimmedName := strings.TrimSpace(request.Name)
+	if trimmedName == ""{
+			return "", errors.New("empty-name")
+	}
 	updates := map[string]interface{}{
 		"name": request.Name,
 	}
@@ -435,9 +449,6 @@ func (service *coachService) savePurpose(request PurposeDto) (string, error) {
 	}
 
 	if result.RowsAffected == 0 {
-		// 공백 제거한 name 생성
-		trimmedName := strings.ReplaceAll(request.Name, " ", "")
-
 		// 기존에 동일한 name이 있는지 확인
 		if err := service.db.Where("REPLACE(name, ' ', '') = ?", trimmedName).First(&model.Purpose{}).Error; err == nil {
 			// 동일한 name이 존재하는 경우

@@ -29,14 +29,6 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	if err := service.db.Where("uid = ?", id).Find(&userAfcs).Error; err != nil {
 		return nil, errors.New("db error")
 	}
-	type SearchData struct {
-		bodyComposition uint
-		jointAction     uint
-		rom             uint
-		clinic          uint
-		degree          uint
-		isGrip          bool
-	}
 
 	var searchDatas []SearchData
 	var locoRom uint
@@ -78,19 +70,19 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		return nil, errors.New("-1")
 	}
 
-	// Extract recommend IDs
+	//recommendIDs 추출
 	recommendIDs := make([]uint, len(recommends))
 	for i, recommend := range recommends {
 		recommendIDs[i] = recommend.ID
 	}
 
-	// Step 2: Get RecommendedJointRom records based on recommended IDs
+	// RecommendedJointRom 레코드 based on recommendedIDs
 	var jointRoms []model.RecommendedJointRom
 	if err := service.db.Where("recommended_id IN ?", recommendIDs).Find(&jointRoms).Error; err != nil {
 		return nil, errors.New("db error2")
 	}
 
-	// Step 3: Get RecommendedClinicalDegree records based on recommended IDs
+	// RecommendedClinicalDegree 레코드 based on recommendedIDs
 	var clinicalDegrees []model.RecommendedClinicalDegree
 	if err := service.db.Where("recommended_id IN ?", recommendIDs).Find(&clinicalDegrees).Error; err != nil {
 		return nil, errors.New("db error3")
@@ -160,7 +152,7 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 		}
 	}
 
-	//daily 카테고리 선별 정책 필요함!!
+	//daily 카테고리 선별 정책 필요함 정책 확정 전까지 임시로 모든 카테고리
 	var categoris []model.Category
 	if err := service.db.Find(&categoris).Error; err != nil {
 		return nil, errors.New("db error4")
@@ -215,12 +207,12 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 
 		for _, id := range categoryIds {
 			for _, categoryExercise := range categoryExercises {
-				if categoryExercise.CategoryID == uint(id) {
+				if categoryExercise.CategoryID == id {
 					log.Println("데일리 카테고리에 해당하는지 분류")
 					ex := ExerciseResponse{ID: categoryExercise.Exercise.ID, Name: categoryExercise.Exercise.Name}
-					r := result[uint(id)]
+					r := result[id]
 					r.First = append(r.First, ex)
-					result[uint(id)] = r
+					result[id] = r
 				}
 			}
 		}
@@ -244,4 +236,13 @@ func (service *dafService) getRecommends(id uint) (map[uint]RecomendResponse, er
 	}
 
 	return result, nil
+}
+
+type SearchData struct {
+	bodyComposition uint
+	jointAction     uint
+	rom             uint
+	clinic          uint
+	degree          uint
+	isGrip          bool
 }

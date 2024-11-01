@@ -77,5 +77,5 @@ server {
 sudo systemctl stop nginx
 sudo certbot renew --dry-run
 sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl start nginx
 sudo certbot renew --webroot -w /var/www/html
