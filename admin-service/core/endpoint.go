@@ -271,3 +271,13 @@ func RemoveMachinesEndpoint(s AdminService) endpoint.Endpoint {
 		return BasicResponse{Code: result}, nil
 	}
 }
+
+func ApproveJoinEndpoint(s AdminService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		result, err := s.approveJoin(request.(ApproveRequest))
+		if err != nil {
+			return BasicResponse{Code: err.Error()}, err
+		}
+		return BasicResponse{Code: result}, nil
+	}
+}

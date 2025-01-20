@@ -5,6 +5,11 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type ApproveRequest struct {
+	Email string `json:"email"`
+	Code  uint   `json:"code"`
+}
+
 type SignInRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`

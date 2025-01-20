@@ -27,7 +27,7 @@ func NewDB(dataSourceName string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Admin{}, &Agency{}, &AgencyMachine{}, &AppVersion{}, &AuthCode{}, &BodyComposition{}, &BodyType{}, &Category{}, &ClassPurpose{}, &ClinicalFeature{}, &Degree{}, &Diary{},
+	db.AutoMigrate(&Admin{}, &Agency{}, &AgencyMachine{}, &AppVersion{}, &ApprovalCode{}, &AuthCode{}, &BodyComposition{}, &BodyType{}, &Category{}, &ClassPurpose{}, &ClinicalFeature{}, &Degree{}, &Diary{},
 		&DiaryClassPurpose{}, &DisableDetail{}, &DisableType{}, &ExerciseDiary{}, &ExerciseMachine{}, &ExercisePurpose{}, &ExerciseMeasure{}, &Exercise{}, &History{}, &Image{}, &JointAction{},
 		&Machine{}, &Measure{}, &Purpose{}, &RecommendedClinicalDegree{}, &RecommendedJointRom{}, &Recommended{}, &Role{}, &Rom{}, &SuperAgency{}, &UseStatus{}, &UserAfcHistoryGroup{}, &UserAfcHistory{}, &UserDisableDetail{}, &UserDisable{},
 		&UserAfc{}, &UserVisit{}, &User{}, &VerifiedEmail{}, &VisitPurpose{})

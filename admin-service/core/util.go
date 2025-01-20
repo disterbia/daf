@@ -107,7 +107,7 @@ func validateSignIn(request SignInRequest) error {
 	}
 
 	name := strings.TrimSpace(request.Name)
-	if utf8.RuneCountInString(name) > 5 || len(name) == 0 {
+	if utf8.RuneCountInString(name) > 50 || len(name) == 0 {
 		return errors.New("invalid name")
 	}
 	return nil
@@ -121,7 +121,7 @@ func validateSaveUser(request SaveUserRequest) error {
 	}
 
 	name := strings.TrimSpace(request.Name)
-	if utf8.RuneCountInString(name) > 5 || len(name) == 0 {
+	if utf8.RuneCountInString(name) > 50 || len(name) == 0 {
 		return errors.New("invalid name")
 	}
 	return nil
@@ -209,9 +209,9 @@ func getBirthdayRangeByAgeCode(ageCode uint) (time.Time, time.Time, error) {
 }
 
 func validateAfc(request []AfcRequest) string {
-	if len(request) != 16 {
-		return "all parts must fill"
-	}
+	// if len(request) != 16 {
+	// 	return "all parts must fill"
+	// }
 
 	checkBodyJoint := make(map[uint]map[uint]bool)
 	checkIsGrip := make(map[uint]*bool)

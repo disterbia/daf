@@ -122,6 +122,7 @@ func main() {
 	getMachinesEndpoint := core.GetMachinesEndpoint(svc)
 	saveMachinesEndpoint := core.SaveMachinesEndpoint(svc)
 	removeMachinesEndpoint := core.RemoveMachinesEndpoint(svc)
+	approveJoinEndpoint := core.ApproveJoinEndpoint(svc)
 
 	router := gin.Default()
 
@@ -142,6 +143,7 @@ func main() {
 	router.POST("/search-machines", core.SearchMachinesHandler(searchMachinesEndpoint))
 	router.POST("/save-machines", core.SaveMachinesHandler(saveMachinesEndpoint))
 	router.POST("/remove-machines", core.RemoveDiaryHandler(removeMachinesEndpoint))
+	router.POST("/approve-join", core.ApproveJoinHandler(approveJoinEndpoint))
 
 	router.GET("/get-supers", core.GetSupersHandler(getSupersEndpoint))
 	router.GET("/get-admins", core.GetAdminsHandler(getAdminsEndpoint))

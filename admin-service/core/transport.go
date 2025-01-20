@@ -875,3 +875,33 @@ func RemoveDiaryHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		c.JSON(http.StatusOK, resp)
 	}
 }
+
+// @Tags 관리자 회원가입 /admin
+// @Summary 회원가입 승인
+// @Description 임의로 승인할때 요청
+// @Accept  json
+// @Produce  json
+// @Param request body ApproveRequest true "요청 DTO"
+// @Success 200 {object} BasicResponse "성공시 200 반환"
+// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// @Router /approve-join [post]
+func ApproveJoinHandler(myEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		var req ApproveRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, err := myEndpoint(c.Request.Context(), req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := response.(BasicResponse)
+		c.JSON(http.StatusOK, resp)
+	}
+}

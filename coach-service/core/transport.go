@@ -61,6 +61,11 @@ func SaveCategoryHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
+		if id ==2 {
+			c.JSON(http.StatusInternalServerError, gin.H{"err": "permission denied"})
+			return
+		}
+
 		// 사용자별 잠금 시작
 		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
@@ -159,6 +164,11 @@ func SaveExerciseHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
+		if id ==2 {
+			c.JSON(http.StatusInternalServerError, gin.H{"err": "permission denied"})
+			return
+		}
+
 		// 사용자별 잠금 시작
 		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
@@ -228,6 +238,11 @@ func SaveMachineHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			return
 		}
 
+		if id ==2 {
+			c.JSON(http.StatusInternalServerError, gin.H{"err": "permission denied"})
+			return
+		}
+
 		// 사용자별 잠금 시작
 		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Concurrent request detected"})
@@ -267,6 +282,11 @@ func SavePurposeHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 		id, _, err := verifyJWT(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		if id ==2 {
+			c.JSON(http.StatusInternalServerError, gin.H{"err": "permission denied"})
 			return
 		}
 
@@ -338,7 +358,10 @@ func SaveRecommendHandler(saveEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"err": err.Error()})
 			return
 		}
-
+		if id ==2 {
+			c.JSON(http.StatusInternalServerError, gin.H{"err": "permission denied"})
+			return
+		}
 		// 사용자별 잠금 시작
 		if _, loaded := userLocks.LoadOrStore(id, true); loaded {
 			c.JSON(http.StatusTooManyRequests, gin.H{"err": "Concurrent request detected"})

@@ -51,6 +51,8 @@ type AdminService interface {
 	getMachines(id uint) ([]GetMachineResponse, error)
 	saveMachines(request PostMachineRequest) (string, error)
 	removeMachines(request PostMachineRequest) (string, error)
+
+	approveJoin(request ApproveRequest) (string, error)
 }
 
 type adminService struct {
@@ -502,7 +504,7 @@ func (service *adminService) searchUsers(request SearchUserRequest) ([]SearchUse
 
 	query = query.Offset(offset).Limit(pageSize)
 
-	if err := query.Preload("Agency").Preload("Admin").Preload("UseStatus").Find(&users).Error; err != nil {
+	if err := query.Preload("Agency").Preload("Admin").Preload("UseStatus").Order("id desc").Find(&users).Error; err != nil {
 		return nil, errors.New("db error")
 	}
 
@@ -1716,5 +1718,24 @@ func (service *adminService) removeMachines(request PostMachineRequest) (string,
 	if err := service.db.Where("agency_id = (SELECT agency_id FROM admins WHERE id = ?) AND machine_id IN ?", request.AdminID, request.ID).Unscoped().Delete(&model.AgencyMachine{}).Error; err != nil {
 		return "", errors.New("db error")
 	}
+	return "200", nil
+}
+
+func (service *adminService) approveJoin(request ApproveRequest) (string, error) {
+
+	var approvalCode model.ApprovalCode
+	if err := service.db.First(&approvalCode).Error; err != nil {
+		return "", errors.New("db error")
+	}
+
+	if request.Code != approvalCode.Code {
+		return "", errors.New("invalid code")
+	}
+
+	var admin model.Admin
+	if err := service.db.Model(&admin).Where("email = ?", request.Email).Update("is_approval", true).Error; err != nil {
+		return "", errors.New("check again")
+	}
+
 	return "200", nil
 }
