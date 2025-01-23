@@ -4,6 +4,8 @@ import "gorm.io/gorm"
 
 type History struct {
 	gorm.Model
+	User              User `gorm:"foreignKey:Uid"`
+	Uid               uint
 	Exercise          Exercise        `gorm:"foreignKey:ExerciseID"`
 	ExerciseID        uint            `gorm:"index"`
 	BodyComposition   BodyComposition `gorm:"foreignKey:BodyCompositionID"`

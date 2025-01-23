@@ -1367,7 +1367,7 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 		return "", errors.New("-1")
 	}
 
-	var historis []model.History
+	var historis []model.History //25/01/23 uid 칼럼추가. uid는 운동추천에 사실상 필요없지만 테스트유저 같은 운동추천 정확도에 악영향을 끼치는 데이터를 거르기 위해.
 	for _, v := range userAfcs {
 		var jointActionID, romID, clinicalFeatureID, degreeID *uint
 		var isGrip *bool
@@ -1390,7 +1390,7 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 
 		if v.BodyCompositionID == uint(TR) || v.BodyCompositionID == uint(LOCOMOTION) ||
 			(v.JointActionID != nil && (*v.JointActionID == uint(SHOULDER) || *v.JointActionID == uint(ELBOW) || *v.JointActionID == uint(HIP) || *v.JointActionID == uint(KNEE))) {
-			historis = append(historis, model.History{ExerciseID: request.ExerciseMeasures[0].ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: jointActionID,
+			historis = append(historis, model.History{Uid: v.Uid, ExerciseID: request.ExerciseMeasures[0].ExerciseID, BodyCompositionID: v.BodyCompositionID, JointActionID: jointActionID,
 				RomID: romID, ClinicalFeatureID: clinicalFeatureID, DegreeID: degreeID, IsGrip: isGrip, DiaryID: diary.ID})
 		}
 
