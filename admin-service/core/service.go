@@ -1396,6 +1396,11 @@ func (service *adminService) saveDiary(request SaveDiaryRequest) (string, error)
 
 	}
 
+	if len(historis) == 0 {
+		tx.Rollback()
+		return "", errors.New("-1")
+	}
+
 	if err := tx.Where("diary_id = ?", diary.ID).Unscoped().Delete(&model.History{}).Error; err != nil {
 		tx.Rollback()
 		return "", errors.New("db error2")

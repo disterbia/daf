@@ -26,20 +26,18 @@ const (
 	PC
 	CC
 	SC
+	NC
 	MC
 )
 
-var CLINIC = [5]level{AC, TC, PC, CC, SC}
-
 const (
-	SHOULDER level = iota + 1
+	TRUNK level = iota + 1
+	SHOULDER
 	ELBOW
 	WRIST
 	FINGER
 	HIP
 	KNEE
-	SUBHIP
-	SUBKNEE
 	ANKLE
 )
 
