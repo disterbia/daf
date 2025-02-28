@@ -329,3 +329,33 @@ func FacebookCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
 		return c.Redirect(redirectURL, fiber.StatusFound)
 	}
 }
+
+func NaverCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		code := c.Query("code")
+		state := c.Query("state")
+		log.Println("Naver Code:", code, "State:", state)
+
+		if code == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "authorization code is missing",
+			})
+		}
+
+		response, err := endpoint(context.Background(), CallbackRequest{Code: code, State: state})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		// 응답에서 JWT 추출
+		resp := response.(LoginResponse)
+		jwtToken := resp.Jwt
+		log.Println("JWT:", jwtToken)
+
+		// 클라이언트로 리다이렉트
+		redirectURL := fmt.Sprintf("https://localhost:64447/naver?jwt=%s&code=%s", jwtToken, code)
+		return c.Redirect(redirectURL, fiber.StatusFound)
+	}
+}
