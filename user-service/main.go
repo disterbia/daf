@@ -12,12 +12,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 
-	ginSwagger "github.com/swaggo/gin-swagger"
-
-	swaggerFiles "github.com/swaggo/files"
+	"github.com/gofiber/swagger"
 )
 
 func main() {
@@ -25,10 +25,8 @@ func main() {
 	if err != nil {
 		log.Println("Error loading .env file")
 	}
-	log.Println("aaa")
 	dbPath := os.Getenv("DB_PATH")
 	database, err := model.NewDB(dbPath)
-	log.Println("bbb")
 	if err != nil {
 		log.Println("Database connection error:", err)
 	}
@@ -46,26 +44,55 @@ func main() {
 	}
 	s3svc := s3.New(s3sess)
 
-	usvc := core.NewUserService(database, s3svc, bucket, bucketUrl)
+	// lis, err := net.Listen("tcp", ":50052")
+	// if err != nil {
+	// 	log.Fatalf("failed to listen: %v", err)
+	// }
 
-	snsLoginEndpoint := core.SnsLoginEndpoint(usvc)
-	autoLoginEndpoint := core.AutoLoginEndpoint(usvc)
-	getUserEndpoint := core.GetUserEndpoint(usvc)
-	setUserEndpoint := core.SetUserEndpoint(usvc)
-	removeEndpoint := core.RemoveEndpoint(usvc)
-	removeProfileEndpoint := core.RemoveProfileEndpoint(usvc)
-	getversionEndpoint := core.GetVersionEndpoint(usvc)
+	// grpcServer := grpc.NewServer()
+	// pb.RegisterUserServiceServer(grpcServer, &core.UserServer{DB: database, S3svc: s3svc, Bucket: bucket, BucketUrl: bucketUrl})
 
-	router := gin.Default()
-	router.POST("/sns-login", core.SnsLoginHandler(snsLoginEndpoint))
-	router.POST("/auto-login", core.AutoLoginHandler(autoLoginEndpoint))
-	router.POST("/set-user", core.SetUserHandler(setUserEndpoint))
-	router.GET("/get-user", core.GetUserHandler(getUserEndpoint))
-	router.POST("/remove-user", core.RemoveHandler(removeEndpoint))
-	router.POST("/remove-profile", core.RemoveProfileHandler(removeProfileEndpoint))
-	router.GET("/get-version", core.GetVersionHandeler(getversionEndpoint))
+	// if err := grpcServer.Serve(lis); err != nil {
+	// 	log.Fatalf("failed to serve: %v", err)
+	// }
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	svc := core.NewUserService(database, s3svc, bucket, bucketUrl)
 
-	router.Run(":44403")
+	// snsLoginEndpoint := core.SnsLoginEndpoint(svc)
+	// getUserEndpoint := core.GetUserEndpoint(svc)
+	// setUserEndpoint := core.SetUserEndpoint(svc)
+	// removeEndpoint := core.RemoveEndpoint(svc)
+	// removeProfileEndpoint := core.RemoveProfileEndpoint(svc)
+
+	appleCallbackEndpoint := core.AppleCallbackEndpoint(svc)
+	googleCallbackEndpoint := core.GoogleCallbackEndpoint(svc)
+	kakaoCallbackEndpoint := core.KakaoCallbackEndpoint(svc)
+	facebookCallbackEndpoint := core.FacebookCallbackEndpoint(svc)
+	naverCallbackEndpoint := core.NaverCallbackEndpoint(svc)
+	app := fiber.New()
+	app.Use(logger.New())
+
+	// Swagger 설정
+	app.Get("/swagger/*", swagger.HandlerDefault) // Swagger UI 경로 설정
+	app.Get("/swagger/doc.json", func(c *fiber.Ctx) error {
+		return c.SendFile("./docs/swagger.json")
+	})
+
+	// CORS 미들웨어 추가
+	app.Use(cors.New())
+
+	// app.Get("/get-user", core.GetUserHandler(getUserEndpoint))
+
+	// app.Post("/sns-login", core.SnsLoginHandler(snsLoginEndpoint))
+	// app.Post("/set-user", core.SetUserHandler(setUserEndpoint))
+	// app.Post("/remove-user", core.RemoveHandler(removeEndpoint))
+	// app.Post("/remove-profile", core.RemoveProfileHandler(removeProfileEndpoint))
+
+	app.Post("/apple/callback", core.AppleCallbackHandler(appleCallbackEndpoint))
+	app.Get("/google/callback", core.GoogleCallbackHandler(googleCallbackEndpoint))
+	app.Get("/kakao/callback", core.KakaoCallbackHandler(kakaoCallbackEndpoint))
+	app.Get("/facebook/callback", core.FacebookCallbackHandler(facebookCallbackEndpoint))
+	app.Get("/naver/callback", core.NaverCallbackHandler(naverCallbackEndpoint))
+
+	log.Fatal(app.Listen(":44403"))
 }

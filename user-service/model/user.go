@@ -30,6 +30,7 @@ type User struct {
 	DeviceID string
 	FCMToken string
 	SnsType  uint
+	UserType uint
 	Images   []Image   `gorm:"foreignKey:Uid"`
 	UserAfcs []UserAfc `gorm:"foreignKey:Uid"`
 }

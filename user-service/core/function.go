@@ -20,13 +20,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func appleLogin(request LoginRequest) (string, error) {
+func appleLogin(idToken string) (string, error) {
 	jwks, err := getApplePublicKeys()
 	if err != nil {
 		return "", err
 	}
 
-	parsedToken, err := verifyAppleIDToken(request.IdToken, jwks)
+	parsedToken, err := verifyAppleIDToken(idToken, jwks)
 	if err != nil {
 		return "", err
 	}
@@ -43,13 +43,13 @@ func appleLogin(request LoginRequest) (string, error) {
 	return "", errors.New("invalid token")
 
 }
-func kakaoLogin(request LoginRequest) (string, error) {
+func kakaoLogin(idToken string) (string, error) {
 	jwks, err := getKakaoPublicKeys()
 	if err != nil {
 		return "", err
 	}
 
-	parsedToken, err := verifyKakaoTokenSignature(request.IdToken, jwks)
+	parsedToken, err := verifyKakaoTokenSignature(idToken, jwks)
 	if err != nil {
 		return "", err
 	}
@@ -66,8 +66,8 @@ func kakaoLogin(request LoginRequest) (string, error) {
 
 }
 
-func googleLogin(request LoginRequest) (string, error) {
-	email, err := validateGoogleIDToken(request.IdToken)
+func googleLogin(idToken, clientID string) (string, error) {
+	email, err := validateGoogleIDToken(idToken, clientID)
 	if err != nil {
 		return "", err
 	}

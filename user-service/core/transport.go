@@ -1,12 +1,13 @@
 package core
 
 import (
-	"net/http"
+	"context"
+	"fmt"
+	"log"
 	"sync"
 
-	kitEndpoint "github.com/go-kit/kit/endpoint"
-
-	"github.com/gin-gonic/gin"
+	"github.com/go-kit/kit/endpoint"
+	"github.com/gofiber/fiber/v2"
 )
 
 var userLocks sync.Map
@@ -21,22 +22,20 @@ var userLocks sync.Map
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환: 오류메시지 "-1" = 인증필요 , "-2" = 이미 가입한 번호"
 // @Router /sns-login [post]
-func SnsLoginHandler(loginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func SnsLoginHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		var req LoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		response, err := loginEndpoint(c.Request.Context(), req)
+		response, err := endpoint(c.Context(), req)
 		resp := response.(LoginResponse)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		c.JSON(http.StatusOK, resp)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"jwt": resp.Jwt})
 	}
 }
 
@@ -51,30 +50,26 @@ func SnsLoginHandler(loginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Security jwt
 // @Router /auto-login [post]
-func AutoLoginHandler(autoLoginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func AutoLoginHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 토큰 검증 및 처리
 		_, email, err := verifyJWT(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		var req AutoLoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-
 		req.Email = email
-		response, err := autoLoginEndpoint(c.Request.Context(), req)
+		response, err := endpoint(c.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		resp := response.(LoginResponse)
-		c.JSON(http.StatusOK, resp)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 }
 
@@ -89,32 +84,28 @@ func AutoLoginHandler(autoLoginEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /set-user [post]
-func SetUserHandler(setUserEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func SetUserHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 토큰 검증 및 처리
 		id, _, err := verifyJWT(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		var req UserRequest
 
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-
 		req.ID = id
 
-		response, err := setUserEndpoint(c.Request.Context(), req)
+		response, err := endpoint(c.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 
+		}
 		resp := response.(BasicResponse)
-		c.JSON(http.StatusOK, resp)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 }
 
@@ -128,23 +119,21 @@ func SetUserHandler(setUserEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /get-user [post]
-func GetUserHandler(getUserEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func GetUserHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 토큰 검증 및 처리
 		id, _, err := verifyJWT(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		response, err := getUserEndpoint(c.Request.Context(), id)
+		response, err := endpoint(c.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		resp := response.(UserResponse)
-		c.JSON(http.StatusOK, resp)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 }
 
@@ -158,23 +147,21 @@ func GetUserHandler(getUserEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Security jwt
 // @Router /remove-profile [post]
-func RemoveProfileHandler(removeEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func RemoveProfileHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 토큰 검증 및 처리
 		id, _, err := verifyJWT(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		response, err := removeEndpoint(c.Request.Context(), id)
+		response, err := endpoint(c.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		resp := response.(BasicResponse)
-		c.JSON(http.StatusOK, resp)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 }
 
@@ -188,45 +175,157 @@ func RemoveProfileHandler(removeEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Router /remvoe-user [post]
-func RemoveHandler(removeEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func RemoveHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 토큰 검증 및 처리
 		id, _, err := verifyJWT(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		response, err := removeEndpoint(c.Request.Context(), id)
+		response, err := endpoint(c.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		resp := response.(BasicResponse)
-		c.JSON(http.StatusOK, resp)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 }
 
-// @Tags 공통 /user
-// @Summary 최신버전 조회
-// @Description 최신버전 조회시 호출
-// @Accept  json
-// @Produce  json
-// @Success 200 {object} AppVersionResponse "최신 버전 정보"
-// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /get-version [get]
-func GetVersionHandeler(getUserEndpoint kitEndpoint.Endpoint) gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		response, err := getUserEndpoint(c.Request.Context(), nil)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+func AppleCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		code := c.Query("code")
+		state := c.Query("state")
+		log.Println("code:", code, "state:", state)
+		// POST 요청에서 body 파싱
+		var req CallbackRequest
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "invalid request body",
+			})
 		}
 
-		resp := response.(AppVersionResponse)
-		c.JSON(http.StatusOK, resp)
+		if req.Code == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "authorization code is missing",
+			})
+		}
+
+		// 엔드포인트 호출
+		response, err := endpoint(context.Background(), req)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		// 응답에서 ID 토큰 추출
+		resp := response.(LoginResponse)
+		jwt := resp.Jwt
+		log.Println("jwt:", jwt)
+
+		// ID 토큰을 웹 링크로 리다이렉트
+		baseUrl := "https://localhost:64447/apple"
+		redirectURL := fmt.Sprintf("%s?jwt=%s&code=%s", baseUrl, jwt, code)
+
+		// 웹으로 리다이렉트 (302 리다이렉트)
+		return c.Redirect(redirectURL, fiber.StatusFound)
+	}
+}
+
+func GoogleCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// ✅ GET 요청에서 code를 직접 가져옴 (BodyParser 제거)
+		code := c.Query("code")
+		state := c.Query("state")
+		log.Println("code:", code, "state:", state)
+
+		if code == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "authorization code is missing",
+			})
+		}
+
+		// ✅ `code`를 요청 구조체에 담아 전달
+		req := CallbackRequest{Code: code, State: state}
+
+		// 엔드포인트 호출
+		response, err := endpoint(context.Background(), req)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		// 응답에서 JWT 추출
+		resp := response.(LoginResponse)
+		jwtToken := resp.Jwt
+		log.Println("JWT:", jwtToken)
+
+		// ✅ 클라이언트로 리다이렉트
+		baseUrl := "https://localhost:64447/google"
+		redirectURL := fmt.Sprintf("%s?jwt=%s&code=%s", baseUrl, jwtToken, code)
+		return c.Redirect(redirectURL, fiber.StatusFound)
+	}
+}
+
+func KakaoCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		code := c.Query("code") // 카카오에서 받은 Authorization Code
+		log.Println("Kakao Code:", code)
+
+		if code == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "authorization code is missing",
+			})
+		}
+
+		// 엔드포인트 호출
+		response, err := endpoint(context.Background(), CallbackRequest{Code: code})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		// 응답에서 JWT 추출
+		resp := response.(LoginResponse)
+		jwtToken := resp.Jwt
+		log.Println("JWT:", jwtToken)
+
+		// 클라이언트로 리다이렉트
+		redirectURL := fmt.Sprintf("https://localhost:64447/kakao?jwt=%s&code=%s", jwtToken, code)
+		return c.Redirect(redirectURL, fiber.StatusFound)
+	}
+}
+
+func FacebookCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		code := c.Query("code") // 페이스북에서 받은 Authorization Code
+		log.Println("Facebook Code:", code)
+
+		if code == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "authorization code is missing",
+			})
+		}
+
+		// 엔드포인트 호출
+		response, err := endpoint(context.Background(), CallbackRequest{Code: code})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		// 응답에서 JWT 추출
+		resp := response.(LoginResponse)
+		jwtToken := resp.Jwt
+		log.Println("JWT:", jwtToken)
+
+		// 클라이언트로 리다이렉트
+		redirectURL := fmt.Sprintf("https://localhost:64447/facebook?jwt=%s&code=%s", jwtToken, code)
+		return c.Redirect(redirectURL, fiber.StatusFound)
 	}
 }
