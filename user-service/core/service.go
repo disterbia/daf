@@ -325,12 +325,12 @@ func (s *userService) facebookLogin(code string) (string, error) {
 func (s *userService) naverLogin(code string) (string, error) {
 	var user model.User
 	var err error
+	var email string
 
 	clientID := os.Getenv("NAVER_CLIENT_ID")
 	clientSecret := os.Getenv("NAVER_CLIENT_SECRET")
 	redirectURI := "http://localhost:44403/naver/callback"
 
-	// 액세스 토큰 요청
 	data := url.Values{}
 	data.Set("client_id", clientID)
 	data.Set("client_secret", clientSecret)
@@ -356,27 +356,33 @@ func (s *userService) naverLogin(code string) (string, error) {
 		return "", fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
+	// ✅ 응답에서 ID 토큰 포함
 	var tokenResponse NaverTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
 		return "", err
 	}
 
-	// 사용자 정보 가져오기
-	email, err := getNaverUserInfo(tokenResponse.AccessToken)
+	// ✅ ID 토큰이 없으면 에러 반환 (설정 확인 필요)
+	if tokenResponse.IDToken == "" {
+		return "", fmt.Errorf("ID Token is missing. Make sure OIDC is enabled in Naver Developer Console")
+	}
+
+	// ✅ ID 토큰 검증 및 이메일 추출
+	email, err = verifyNaverIDToken(tokenResponse.IDToken)
 	if err != nil {
 		return "", err
 	}
 
-	// 사용자 데이터 설정
+	// ✅ 유저 데이터 설정
 	user.Email = &email
-	user.SnsType = uint(Naver) // Naver 상수는 별도로 정의 필요 (예: const Naver = 5)
+	user.SnsType = uint(Naver)
 	user.UserType = uint(ADAPFIT)
 	u, err := findOrCreateUser(user, s)
 	if err != nil {
 		return "", err
 	}
 
-	// JWT 생성
+	// ✅ JWT 생성
 	tokenString, err := generateJWT(u)
 	if err != nil {
 		return "", err

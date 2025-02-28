@@ -28,12 +28,75 @@ var jwtSecretKey = []byte("haruharu_mark_user")
 
 type PublicKey struct {
 	Kid string `json:"kid"`
+	Kty string `json:"kty"`
+	Alg string `json:"alg"`
 	N   string `json:"n"`
 	E   string `json:"e"`
 }
 
 type JWKS struct {
 	Keys []PublicKey `json:"keys"`
+}
+
+func getNaverPublicKeys() (JWKS, error) {
+	resp, err := http.Get("https://nid.naver.com/oauth2.0/jwks")
+	if err != nil {
+		return JWKS{}, err
+	}
+	defer resp.Body.Close()
+
+	var jwks JWKS
+	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		return JWKS{}, err
+	}
+	return jwks, nil
+}
+func verifyNaverIDToken(idToken string) (string, error) {
+	// 네이버의 OIDC 공개 키 가져오기
+	jwks, err := getNaverPublicKeys()
+	if err != nil {
+		return "", err
+	}
+
+	// ID 토큰에서 `kid` 추출
+	kid, err := extractKidFromToken(idToken)
+	if err != nil {
+		return "", err
+	}
+
+	var key *rsa.PublicKey
+	for _, jwk := range jwks.Keys {
+		if jwk.Kid == kid {
+			nBytes, _ := base64.RawURLEncoding.DecodeString(jwk.N)
+			eBytes, _ := base64.RawURLEncoding.DecodeString(jwk.E)
+			n := new(big.Int).SetBytes(nBytes)
+			e := new(big.Int).SetBytes(eBytes).Int64()
+			key = &rsa.PublicKey{N: n, E: int(e)}
+			break
+		}
+	}
+
+	if key == nil {
+		return "", errors.New("public key not found")
+	}
+
+	// ID 토큰 검증
+	parsedToken, err := jwt.Parse(idToken, func(token *jwt.Token) (interface{}, error) {
+		return key, nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// 이메일 추출
+	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
+		email, ok := claims["email"].(string)
+		if !ok {
+			return "", errors.New("email not found in token")
+		}
+		return email, nil
+	}
+	return "", errors.New("invalid token")
 }
 
 func verifyJWT(c *fiber.Ctx) (uint, string, error) {
