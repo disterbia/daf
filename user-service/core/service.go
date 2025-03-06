@@ -39,6 +39,9 @@ type UserService interface {
 	sendAuthCode(phone string) (string, error)
 	verifyAuthCode(phone string, code string) (string, error)
 	getUser(id uint) (UserResponse, error) //유저조회
+	findUsername(request FindUsernameRequest) (string, error)
+	findPassword(request FindPasswordRequest) (string, error)
+	setUser(request SetUserRequest) (string, error)
 
 	// snsLogin(request LoginRequest) (string, error)
 
@@ -132,14 +135,23 @@ func (service *userService) verifyAuthCode(phone string, code string) (string, e
 func (s *userService) signIn(request SignInRequest) (string, error) {
 	var gender uint
 	var snsType uint
+	var isAgree uint
+
 	var snsId *string
 	var password *string
 	var username *string
+
 	if request.Gender {
 		gender = 1
 	} else {
 		gender = 2
 	}
+	if request.IsAgree {
+		isAgree = 1
+	} else {
+		isAgree = 2
+	}
+
 	birthday, err := time.Parse("2006-01-02", request.Birth)
 	if err != nil {
 		return "", errors.New("date err")
@@ -196,6 +208,7 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 		Birthday:   birthday,
 		Phone:      request.Phone,
 		Gender:     gender,
+		IsAgree:    isAgree,
 		Addr:       request.Addr,
 		AddrDetail: request.AddrDetail,
 		UserType:   uint(ADAPFIT),
@@ -275,6 +288,149 @@ func (s *userService) basicLogin(request LoginRequest) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func (s *userService) findUsername(request FindUsernameRequest) (string, error) {
+	// 단일 컨텍스트 생성 (타임아웃 5초 설정)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+
+	phoneStatusKey := request.Phone + ":status"
+	// Redis에서 인증 상태 확인
+	if status, err := s.redisClient.Get(ctx, phoneStatusKey).Result(); err == redis.Nil || status != "verified" {
+		return "-1", nil
+	} else if err != nil {
+		log.Printf("Failed to check verification status: %v", err)
+		return "", errors.New("internal error")
+	}
+
+	var user model.User
+	if err := s.db.Where("name = ? AND phone = ?", request.Name, request.Phone).First(&user).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return "-2", nil
+	} else if err != nil {
+		return "", errors.New("db error")
+	}
+
+	if err := s.redisClient.Del(ctx, phoneStatusKey).Err(); err != nil {
+		log.Println(err)
+		return "", errors.New("internal error2")
+	}
+
+	if user.Username == nil {
+		return "-2", nil
+	}
+
+	return *user.Username, nil
+}
+
+func (s *userService) findPassword(request FindPasswordRequest) (string, error) {
+	// 단일 컨텍스트 생성 (타임아웃 5초 설정)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+
+	phoneStatusKey := request.Phone + ":status"
+	// Redis에서 인증 상태 확인
+	if status, err := s.redisClient.Get(ctx, phoneStatusKey).Result(); err == redis.Nil || status != "verified" {
+		return "-1", nil
+	} else if err != nil {
+		log.Printf("Failed to check verification status: %v", err)
+		return "", errors.New("internal error")
+	}
+
+	var user model.User
+	if err := s.db.Where("username = ? AND phone = ?", request.Username, request.Phone).First(&user).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return "-2", nil
+	} else if err != nil {
+		return "", errors.New("db error")
+	}
+
+	if err := s.redisClient.Del(ctx, phoneStatusKey).Err(); err != nil {
+		log.Println(err)
+		return "", errors.New("internal error2")
+	}
+
+	// 새로운 JWT 토큰 생성
+	tokenString, err := generateJWT(user)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func (s *userService) setUser(request SetUserRequest) (string, error) {
+	var password *string
+	if request.Password != "" {
+		if !checkPassword(request.Password) {
+			return "", errors.New("invalid password format (must include at least two of: letters, numbers, special characters, and be at least 8 characters long)")
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return "", err
+		}
+		temp := string(hashedPassword)
+		password = &temp
+
+		if err := s.db.Where("id = ? ", request.Uid).Update("password", password).Error; err != nil {
+			return "", errors.New("db error")
+		}
+		return "1", nil
+	}
+
+	var user model.User
+	if err := s.db.Where("id = ?", request.Uid).First(&user).Error; err != nil {
+		return "", errors.New("db error1")
+	}
+	if user.Phone == request.Phone {
+		var newUser = model.User{Name: request.Name, Addr: request.Addr, AddrDetail: request.AddrDetail}
+		if err := s.db.Model(&user).
+			Select("Name", "Addr", "AddrDetail").
+			Updates(newUser).Error; err != nil {
+			return "", errors.New("db error2")
+		}
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel() // 함수 종료 시 컨텍스트 해제
+		phoneStatusKey := request.Phone + ":status"
+		// Redis에서 인증 상태 확인
+		if status, err := s.redisClient.Get(ctx, phoneStatusKey).Result(); err == redis.Nil || status != "verified" {
+			return "-1", nil
+		} else if err != nil {
+			log.Printf("Failed to check verification status: %v", err)
+			return "", errors.New("internal error")
+		}
+		var newUser = model.User{Name: request.Name, Phone: request.Phone, Addr: request.Addr, AddrDetail: request.AddrDetail}
+		if err := s.db.Model(&user).
+			Select("Name", "Addr", "Phone", "AddrDetail").
+			Updates(newUser).Error; err != nil {
+			return "", errors.New("db error3")
+		}
+
+		if err := s.redisClient.Del(ctx, phoneStatusKey).Err(); err != nil {
+			log.Println(err)
+			return "", errors.New("internal error2")
+		}
+	}
+	return "1", nil
+
+}
+
+func (s *userService) getUser(id uint) (UserResponse, error) {
+	var user model.User
+	if err := s.db.Where("id = ? ", id).Preload("UserDisables").Preload("UserVisits").First(&user).Error; err != nil {
+		return UserResponse{}, err
+	}
+	gender := true
+	if user.Gender == 2 {
+		gender = false
+	}
+	isAgree := true
+	if user.IsAgree == 2 {
+		isAgree = false
+	}
+	response := UserResponse{Username: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"), IsAgree: isAgree,
+		Phone: user.Phone, Addr: user.Addr, AddrDetail: user.AddrDetail, DisableType: user.UserDisables[0].DisableTypeID, VisitPurpose: user.UserVisits[0].VisitPurposeID}
+	return response, nil
 }
 
 func (s *userService) appleLogin(code string) (LoginResponse, error) {
@@ -562,19 +718,5 @@ func (s *userService) naverLogin(code string) (LoginResponse, error) {
 		return LoginResponse{}, err
 	}
 
-	return response, nil
-}
-
-func (s *userService) getUser(id uint) (UserResponse, error) {
-	var user model.User
-	if err := s.db.Where("id = ? ", id).Preload("UserDisables").Preload("UserVisits").First(&user).Error; err != nil {
-		return UserResponse{}, err
-	}
-	gender := true
-	if user.Gender == 2 {
-		gender = false
-	}
-	response := UserResponse{Username: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"),
-		Phone: user.Phone, Addr: user.Addr, AddrDetail: user.AddrDetail, DisableType: user.UserDisables[0].DisableTypeID, VisitPurpose: user.UserVisits[0].VisitPurposeID}
 	return response, nil
 }

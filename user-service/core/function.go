@@ -39,7 +39,7 @@ func appleLogin(idToken string) (string, error) {
 	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
 		sub, ok := claims["sub"].(string)
 		if !ok {
-			return "", errors.New("email not found in token claims")
+			return "", errors.New("sub not found in token claims")
 		}
 
 		return sub, nil
@@ -62,7 +62,7 @@ func kakaoLogin(idToken string) (string, error) {
 	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
 		sub, ok := claims["sub"].(string)
 		if !ok {
-			return "", errors.New("email not found in token claims")
+			return "", errors.New("sub not found in token claims")
 		}
 
 		return sub, nil
@@ -300,7 +300,7 @@ func validateGoogleIDToken(idToken, clientID string) (string, error) {
 	// sub 추출
 	sub, ok := payload.Claims["sub"].(string)
 	if !ok {
-		return "", errors.New("email claim not found in token")
+		return "", errors.New("sub claim not found in token")
 	}
 
 	return sub, nil
@@ -330,7 +330,7 @@ func getNaverUserInfo(accessToken string) (string, error) {
 		return "", err
 	}
 	if userInfo.Response.ID == "" {
-		return "", fmt.Errorf("email not found in Naver user info")
+		return "", fmt.Errorf("id not found in Naver user info")
 	}
 	return userInfo.Response.ID, nil
 }
@@ -361,7 +361,7 @@ func getFacebookUserInfo(accessToken string) (string, error) {
 	}
 
 	if userResponse.ID == "" {
-		return "", errors.New("email not found in Facebook account")
+		return "", errors.New("id not found in Facebook account")
 	}
 
 	return userResponse.ID, nil

@@ -71,6 +71,16 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type FindUsernameRequest struct {
+	Name  string `json:"name"`
+	Phone string `json:"phone" example:"01000000000"`
+}
+
+type FindPasswordRequest struct {
+	Username string `json:"username"`
+	Phone    string `json:"phone" example:"01000000000"`
+}
+
 type SignInRequest struct {
 	SnsId        string `json:"sns_id"`
 	Username     string `json:"username"`
@@ -81,6 +91,19 @@ type SignInRequest struct {
 	Phone        string `json:"phone"`
 	Addr         string `json:"addr"`
 	AddrDetail   string `json:"addr_detail"`
+	IsAgree      bool   `json:"is_agree"`
+	DisableType  uint   `json:"disable_type"`
+	VisitPurpose uint   `json:"visit_purpose"`
+}
+
+type SetUserRequest struct {
+	Uid          uint   `json:"-"`
+	Password     string `json:"password"`
+	Name         string `json:"name"`
+	Phone        string `json:"phone"`
+	Addr         string `json:"addr"`
+	AddrDetail   string `json:"addr_detail"`
+	IsAgree      bool   `json:"is_agree"`
 	DisableType  uint   `json:"disable_type"`
 	VisitPurpose uint   `json:"visit_purpose"`
 }
@@ -99,6 +122,7 @@ type UserResponse struct {
 	Phone        string `json:"phone"`
 	Addr         string `json:"addr"`
 	AddrDetail   string `json:"addr_detail"`
+	IsAgree      bool   `json:"is_agree"`
 	DisableType  uint   `json:"disable_type"`
 	VisitPurpose uint   `json:"visit_purpose"`
 }

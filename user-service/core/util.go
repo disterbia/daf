@@ -68,7 +68,7 @@ func generateJWT(user model.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":    user.ID,
 		"email": user.Email,
-		"exp":   time.Now().Add(time.Hour * 24 * 30).Unix(), // 한달 유효 기간
+		"exp":   time.Now().Add(time.Hour * 24 * 1).Unix(), // 하루 유효 기간
 	})
 
 	tokenString, err := token.SignedString(jwtSecretKey)
@@ -146,8 +146,7 @@ func validateSignIn(request SignInRequest, snsId *string) error {
 		}
 
 		// 비밀번호 검증 (최소 8~20자, 영문 대소문자/숫자/특수문자 중 2종류 이상 포함)
-		password := strings.TrimSpace(request.Password)
-		if !checkPassword(password) {
+		if !checkPassword(request.Password) {
 			return errors.New("invalid password format (must include at least two of: letters, numbers, special characters, and be at least 8 characters long)")
 		}
 	}
@@ -162,7 +161,8 @@ func validateSignIn(request SignInRequest, snsId *string) error {
 	return nil
 }
 
-func checkPassword(password string) bool {
+func checkPassword(value string) bool {
+	password := strings.TrimSpace(value)
 	// 길이 검사: 8~20자
 	if len(password) < 8 || len(password) > 20 {
 		return false

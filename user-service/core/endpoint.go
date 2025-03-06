@@ -8,7 +8,6 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
-
 func BaiscLoginEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(LoginRequest)
@@ -68,6 +67,39 @@ func SignInEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		dto := request.(SignInRequest)
 		code, err := s.signIn(dto)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func SetUserEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		dto := request.(SetUserRequest)
+		code, err := s.setUser(dto)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func FinUsernameEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		dto := request.(FindUsernameRequest)
+		code, err := s.findUsername(dto)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func FindPasswordEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		dto := request.(FindPasswordRequest)
+		code, err := s.findPassword(dto)
 		if err != nil {
 			return nil, err
 		}

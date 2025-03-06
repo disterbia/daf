@@ -34,6 +34,7 @@ type User struct {
 	FCMToken     string
 	SnsType      uint
 	UserType     uint
+	IsAgree      uint
 	Images       []Image       `gorm:"foreignKey:Uid"`
 	UserAfcs     []UserAfc     `gorm:"foreignKey:Uid"`
 	UserDisables []UserDisable `gorm:"foreignKey:UID"`

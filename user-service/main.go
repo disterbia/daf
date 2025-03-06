@@ -52,25 +52,7 @@ func main() {
 		DB:       0,  // Redis DB 번호
 	})
 
-	// lis, err := net.Listen("tcp", ":50052")
-	// if err != nil {
-	// 	log.Fatalf("failed to listen: %v", err)
-	// }
-
-	// grpcServer := grpc.NewServer()
-	// pb.RegisterUserServiceServer(grpcServer, &core.UserServer{DB: database, S3svc: s3svc, Bucket: bucket, BucketUrl: bucketUrl})
-
-	// if err := grpcServer.Serve(lis); err != nil {
-	// 	log.Fatalf("failed to serve: %v", err)
-	// }
-
 	svc := core.NewUserService(database, s3svc, bucket, bucketUrl, redisClient)
-
-	// snsLoginEndpoint := core.SnsLoginEndpoint(svc)
-	// getUserEndpoint := core.GetUserEndpoint(svc)
-	// setUserEndpoint := core.SetUserEndpoint(svc)
-	// removeEndpoint := core.RemoveEndpoint(svc)
-	// removeProfileEndpoint := core.RemoveProfileEndpoint(svc)
 
 	appleCallbackEndpoint := core.AppleCallbackEndpoint(svc)
 	googleCallbackEndpoint := core.GoogleCallbackEndpoint(svc)
@@ -84,6 +66,9 @@ func main() {
 	sendCodeEndpoint := core.SendCodeEndpoint(svc)
 	verifyEndpoint := core.VerifyEndpoint(svc)
 	getUserEndpoint := core.GetUserEndpoint(svc)
+	findUsernameEndpoint := core.FinUsernameEndpoint(svc)
+	findPasswordEndpoint := core.FindPasswordEndpoint(svc)
+	setUserEndpoint := core.SetUserEndpoint(svc)
 	app := fiber.New()
 	app.Use(logger.New())
 
@@ -115,6 +100,9 @@ func main() {
 	app.Post("/sign-in", core.SignInHandler(signInEndpoint))
 	app.Post("/send-code", core.SendCodeHandler(sendCodeEndpoint))
 	app.Post("/verify-code", core.VerifyHandler(verifyEndpoint))
+	app.Post("/find-username", core.FindUsernameHandler(findUsernameEndpoint))
+	app.Post("/find-password", core.FindPasswordHandler(findPasswordEndpoint))
+	app.Post("/set-user", core.SetUserHandler(setUserEndpoint))
 
 	log.Fatal(app.Listen(":44403"))
 }
