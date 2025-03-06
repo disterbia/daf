@@ -1,13 +1,4 @@
 definitions:
-  core.AppVersionResponse:
-    properties:
-      android_link:
-        type: string
-      ios_link:
-        type: string
-      latest_version:
-        type: string
-    type: object
   core.AutoLoginRequest:
     properties:
       device_id:
@@ -22,24 +13,43 @@ definitions:
     type: object
   core.ErrorResponse:
     properties:
-      err:
-        type: string
-    type: object
-  core.ImageResponse:
-    properties:
-      thumbnail_url:
-        type: string
-      url:
+      error:
         type: string
     type: object
   core.LoginRequest:
     properties:
-      device_id:
+      password:
         type: string
-      fcm_token:
+      username:
         type: string
-      id_token:
+    type: object
+  core.SignInRequest:
+    properties:
+      addr:
         type: string
+      addr_detail:
+        type: string
+      birth:
+        example: yyyy-mm-dd
+        type: string
+      disable_type:
+        type: integer
+      email:
+        type: string
+      gender:
+        type: boolean
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      sns_id:
+        type: string
+      username:
+        type: string
+      visit_purpose:
+        type: integer
     type: object
   core.SuccessResponse:
     properties:
@@ -56,26 +66,34 @@ definitions:
     type: object
   core.UserResponse:
     properties:
-      birthday:
+      addr:
         type: string
-      created_at:
+      addr_detail:
         type: string
+      birth:
+        type: string
+      disable_type:
+        type: integer
       email:
         type: string
       gender:
-        description: 'true:남 false: 여'
         type: boolean
       name:
         type: string
-      nickname:
-        type: string
       phone:
         type: string
-      profile_image:
-        $ref: '#/definitions/core.ImageResponse'
-      sns_type:
+      username:
+        type: string
+      visit_purpose:
         type: integer
-      updated_at:
+    type: object
+  core.VerifyRequest:
+    properties:
+      code:
+        example: 인증번호 6자리
+        type: string
+      phone_number:
+        example: "01000000000"
         type: string
     type: object
 info:
@@ -114,6 +132,35 @@ paths:
       summary: 자동로그인
       tags:
       - 로그인 /user
+  /check-username:
+    get:
+      consumes:
+      - application/json
+      description: 아이디 중복확인 시 호출
+      parameters:
+      - description: 중복체크 할 아이디
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 1,이미 있는 아이디 -1
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 중복확인
+      tags:
+      - 회원가입 /user
   /get-user:
     post:
       consumes:
@@ -143,29 +190,36 @@ paths:
       summary: 유저 조회
       tags:
       - 회원조회(본인)  /user
-  /get-version:
-    get:
+  /login:
+    post:
       consumes:
       - application/json
-      description: 최신버전 조회시 호출
+      description: 아이디/비밀번호 로그인 시 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: 최신 버전 정보
+          description: 성공시 JWT 토큰 반환
           schema:
-            $ref: '#/definitions/core.AppVersionResponse'
+            $ref: '#/definitions/core.SuccessResponse'
         "400":
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
         "500":
-          description: 요청 처리 실패시 오류 메시지 반환
+          description: -1 아이디 또는 비밀번호 불일치
           schema:
             $ref: '#/definitions/core.ErrorResponse'
-      summary: 최신버전 조회
+      summary: 일반로그인
       tags:
-      - 공통 /user
+      - 로그인 /user
   /remove-profile:
     post:
       consumes:
@@ -222,6 +276,31 @@ paths:
       summary: 회원탈퇴
       tags:
       - 회원탈퇴 /user
+  /send-code/{number}:
+    post:
+      consumes:
+      - application/json
+      description: 휴대번호 로그인 인증번호 발송시 호출
+      parameters:
+      - description: 휴대번호
+        in: path
+        name: number
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 1 반환
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 인증번호
+      tags:
+      - 회원가입 /user
   /set-user:
     post:
       consumes:
@@ -257,6 +336,36 @@ paths:
       summary: 유저 데이터 변경
       tags:
       - 회원상태 변경(본인)  /user
+  /sign-in:
+    post:
+      consumes:
+      - application/json
+      description: 회원가입 정보 입력 완료 후 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 1, 휴대폰 인증 안함 -1
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: '요청 처리 실패시 오류 메시지 반환 '
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 회원가입
+      tags:
+      - 회원가입 /user
   /sns-login:
     post:
       consumes:
@@ -287,4 +396,34 @@ paths:
       summary: sns 로그인
       tags:
       - 로그인 /user
+  /verify-code:
+    post:
+      consumes:
+      - application/json
+      description: 인증번호 인증시 호출
+      parameters:
+      - description: 요청 DTO
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.VerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 성공시 1 반환 코드불일치 -1
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 인증번호
+      tags:
+      - 회원가입 /user
 swagger: "2.0"

@@ -68,6 +68,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/check-username": {
+            "get": {
+                "description": "아이디 중복확인 시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원가입 /user"
+                ],
+                "summary": "중복확인",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "중복체크 할 아이디",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 1,이미 있는 아이디 -1",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/get-user": {
             "post": {
                 "description": "내 정보 조회시 호출",
@@ -112,9 +156,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/get-version": {
-            "get": {
-                "description": "최신버전 조회시 호출",
+        "/login": {
+            "post": {
+                "description": "아이디/비밀번호 로그인 시 호출",
                 "consumes": [
                     "application/json"
                 ],
@@ -122,14 +166,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "공통 /user"
+                    "로그인 /user"
                 ],
-                "summary": "최신버전 조회",
+                "summary": "일반로그인",
+                "parameters": [
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.LoginRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "최신 버전 정보",
+                        "description": "성공시 JWT 토큰 반환",
                         "schema": {
-                            "$ref": "#/definitions/core.AppVersionResponse"
+                            "$ref": "#/definitions/core.SuccessResponse"
                         }
                     },
                     "400": {
@@ -139,7 +194,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "description": "-1 아이디 또는 비밀번호 불일치",
                         "schema": {
                             "$ref": "#/definitions/core.ErrorResponse"
                         }
@@ -234,6 +289,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/send-code/{number}": {
+            "post": {
+                "description": "휴대번호 로그인 인증번호 발송시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원가입 /user"
+                ],
+                "summary": "인증번호",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "휴대번호",
+                        "name": "number",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 1 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/set-user": {
             "post": {
                 "description": "유저 상태영구변경시 호출",
@@ -287,6 +380,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/sign-in": {
+            "post": {
+                "description": "회원가입 정보 입력 완료 후 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원가입 /user"
+                ],
+                "summary": "회원가입",
+                "parameters": [
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.SignInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 1, 휴대폰 인증 안함 -1",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환 ",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/sns-login": {
             "post": {
                 "description": "sns 로그인 성공시 호출",
@@ -332,23 +471,55 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/verify-code": {
+            "post": {
+                "description": "인증번호 인증시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "회원가입 /user"
+                ],
+                "summary": "인증번호",
+                "parameters": [
+                    {
+                        "description": "요청 DTO",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.VerifyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 1 반환 코드불일치 -1",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "core.AppVersionResponse": {
-            "type": "object",
-            "properties": {
-                "android_link": {
-                    "type": "string"
-                },
-                "ios_link": {
-                    "type": "string"
-                },
-                "latest_version": {
-                    "type": "string"
-                }
-            }
-        },
         "core.AutoLoginRequest": {
             "type": "object",
             "properties": {
@@ -371,18 +542,7 @@ const docTemplate = `{
         "core.ErrorResponse": {
             "type": "object",
             "properties": {
-                "err": {
-                    "type": "string"
-                }
-            }
-        },
-        "core.ImageResponse": {
-            "type": "object",
-            "properties": {
-                "thumbnail_url": {
-                    "type": "string"
-                },
-                "url": {
+                "error": {
                     "type": "string"
                 }
             }
@@ -390,14 +550,53 @@ const docTemplate = `{
         "core.LoginRequest": {
             "type": "object",
             "properties": {
-                "device_id": {
+                "password": {
                     "type": "string"
                 },
-                "fcm_token": {
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.SignInRequest": {
+            "type": "object",
+            "properties": {
+                "addr": {
                     "type": "string"
                 },
-                "id_token": {
+                "addr_detail": {
                     "type": "string"
+                },
+                "birth": {
+                    "type": "string",
+                    "example": "yyyy-mm-dd"
+                },
+                "disable_type": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "sns_id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "visit_purpose": {
+                    "type": "integer"
                 }
             }
         },
@@ -424,36 +623,48 @@ const docTemplate = `{
         "core.UserResponse": {
             "type": "object",
             "properties": {
-                "birthday": {
+                "addr": {
                     "type": "string"
                 },
-                "created_at": {
+                "addr_detail": {
                     "type": "string"
+                },
+                "birth": {
+                    "type": "string"
+                },
+                "disable_type": {
+                    "type": "integer"
                 },
                 "email": {
                     "type": "string"
                 },
                 "gender": {
-                    "description": "true:남 false: 여",
                     "type": "boolean"
                 },
                 "name": {
                     "type": "string"
                 },
-                "nickname": {
-                    "type": "string"
-                },
                 "phone": {
                     "type": "string"
                 },
-                "profile_image": {
-                    "$ref": "#/definitions/core.ImageResponse"
-                },
-                "sns_type": {
-                    "type": "integer"
-                },
-                "updated_at": {
+                "username": {
                     "type": "string"
+                },
+                "visit_purpose": {
+                    "type": "integer"
+                }
+            }
+        },
+        "core.VerifyRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "인증번호 6자리"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "01000000000"
                 }
             }
         }

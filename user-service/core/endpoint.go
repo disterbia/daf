@@ -8,60 +8,73 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
-// func SnsLoginEndpoint(s UserService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		req := request.(LoginRequest)
-// 		token, err := s.snsLogin(req)
-// 		if err != nil {
-// 			return LoginResponse{Err: err.Error()}, err
-// 		}
-// 		return LoginResponse{Jwt: token}, nil
-// 	}
-// }
 
-// func GetUserEndpoint(s UserService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		id := request.(uint)
-// 		result, err := s.getUser(id)
-// 		if err != nil {
-// 			return BasicResponse{Code: err.Error()}, err
-// 		}
-// 		return result, nil
-// 	}
-// }
+func BaiscLoginEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(LoginRequest)
+		token, err := s.basicLogin(req)
+		if err != nil {
+			return nil, err
+		}
+		return LoginResponse{Jwt: token}, nil
+	}
+}
 
-// func SetUserEndpoint(s UserService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		user := request.(UserRequest)
-// 		code, err := s.setUser(user)
-// 		if err != nil {
-// 			return BasicResponse{Code: err.Error()}, err
-// 		}
-// 		return BasicResponse{Code: code}, nil
-// 	}
-// }
+func CheckUsernameEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(string)
+		code, err := s.checkUsername(req)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
 
-// func RemoveEndpoint(s UserService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		uid := request.(uint)
-// 		code, err := s.removeUser(uid)
-// 		if err != nil {
-// 			return BasicResponse{Code: err.Error()}, err
-// 		}
-// 		return BasicResponse{Code: code}, nil
-// 	}
-// }
+func GetUserEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		id := request.(uint)
+		result, err := s.getUser(id)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+}
 
-//	func RemoveProfileEndpoint(s UserService) endpoint.Endpoint {
-//		return func(ctx context.Context, request interface{}) (interface{}, error) {
-//			id := request.(uint)
-//			code, err := s.removeProfile(id)
-//			if err != nil {
-//				return BasicResponse{Code: err.Error()}, err
-//			}
-//			return BasicResponse{Code: code}, nil
-//		}
-//	}
+func VerifyEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		veri := request.(VerifyRequest)
+		code, err := s.verifyAuthCode(veri.PhoneNumber, veri.Code)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func SendCodeEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		number := request.(string)
+		code, err := s.sendAuthCode(number)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func SignInEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		dto := request.(SignInRequest)
+		code, err := s.signIn(dto)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
 func AppleCallbackEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(CallbackRequest)
@@ -72,11 +85,11 @@ func AppleCallbackEndpoint(s UserService) endpoint.Endpoint {
 		}
 
 		// Authorization Code로 애플과 통신해 토큰을 교환합니다.
-		token, err := s.appleLogin(req.Code)
+		response, err := s.appleLogin(req.Code)
 		if err != nil {
 			return nil, err
 		}
-		return LoginResponse{Jwt: token}, nil
+		return response, nil
 
 	}
 }
@@ -90,11 +103,11 @@ func GoogleCallbackEndpoint(s UserService) endpoint.Endpoint {
 			return nil, errors.New("authorization code is missing")
 		}
 
-		token, err := s.googleLogin(req.Code)
+		response, err := s.googleLogin(req.Code)
 		if err != nil {
 			return nil, err
 		}
-		return LoginResponse{Jwt: token}, nil
+		return response, nil
 	}
 }
 func KakaoCallbackEndpoint(s UserService) endpoint.Endpoint {
@@ -106,11 +119,11 @@ func KakaoCallbackEndpoint(s UserService) endpoint.Endpoint {
 			return nil, errors.New("authorization code is missing")
 		}
 
-		token, err := s.kakaoLogin(req.Code)
+		response, err := s.kakaoLogin(req.Code)
 		if err != nil {
 			return nil, err
 		}
-		return LoginResponse{Jwt: token}, nil
+		return response, nil
 	}
 }
 
@@ -123,11 +136,11 @@ func FacebookCallbackEndpoint(s UserService) endpoint.Endpoint {
 		}
 
 		// Authorization Code로 Access Token 요청
-		token, err := s.facebookLogin(req.Code)
+		response, err := s.facebookLogin(req.Code)
 		if err != nil {
 			return nil, err
 		}
-		return LoginResponse{Jwt: token}, nil
+		return response, nil
 	}
 }
 func NaverCallbackEndpoint(s UserService) endpoint.Endpoint {
@@ -138,10 +151,10 @@ func NaverCallbackEndpoint(s UserService) endpoint.Endpoint {
 			return nil, errors.New("authorization code is missing")
 		}
 
-		token, err := s.naverLogin(req.Code)
+		response, err := s.naverLogin(req.Code)
 		if err != nil {
 			return nil, err
 		}
-		return LoginResponse{Jwt: token}, nil
+		return response, nil
 	}
 }

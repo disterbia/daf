@@ -7,7 +7,11 @@ import (
 )
 
 type User struct {
-	gorm.Model    // ID, CreatedAt, UpdatedAt, DeletedAt 필드를 자동으로 추가
+	gorm.Model            // ID, CreatedAt, UpdatedAt, DeletedAt 필드를 자동으로 추가
+	Email         *string `gorm:"unique"`
+	Username      *string `gorm:"unique"`
+	SnsId         *string `gorm:"unique"`
+	Password      *string
 	Name          string
 	Birthday      time.Time `gorm:"type:date"`
 	Phone         string    `gorm:"unique"`
@@ -16,21 +20,22 @@ type User struct {
 	AddrDetail    string    `json:"addr_detail"`
 	Memo          string    `json:"memo"`
 	Agency        Agency    `gorm:"foreignKey:AgencyID"`
-	AgencyID      uint      `gorm:"index"`
+	AgencyID      *uint     `gorm:"index"`
 	Admin         Admin     `gorm:"foreignKey:AdminID"`
-	AdminID       uint      `gorm:"index"`
+	AdminID       *uint     `gorm:"index"`
 	RegistDay     time.Time `gorm:"type:date"`
 	UseStatus     UseStatus `gorm:"foreignKey:UseStatusID"`
-	UseStatusID   uint      `gorm:"index"`
+	UseStatusID   *uint     `gorm:"index"`
 	CreateAdmin   Admin     `gorm:"foreignKey:CreateAdminID"`
-	CreateAdminID uint      `gorm:"index"`
+	CreateAdminID *uint     `gorm:"index"`
 
-	Email    *string `gorm:"unique"`
-	Nickname string
-	DeviceID string
-	FCMToken string
-	SnsType  uint
-	UserType uint
-	Images   []Image   `gorm:"foreignKey:Uid"`
-	UserAfcs []UserAfc `gorm:"foreignKey:Uid"`
+	Nickname     string
+	DeviceID     string
+	FCMToken     string
+	SnsType      uint
+	UserType     uint
+	Images       []Image       `gorm:"foreignKey:Uid"`
+	UserAfcs     []UserAfc     `gorm:"foreignKey:Uid"`
+	UserDisables []UserDisable `gorm:"foreignKey:UID"`
+	UserVisits   []UserVisit   `gorm:"foreignKey:UID"`
 }

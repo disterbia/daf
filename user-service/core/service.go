@@ -4,29 +4,43 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"user-service/model"
 	pb "user-service/proto"
 
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/go-redis/redis/v8"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserService interface {
-	appleLogin(code string) (string, error)
-	googleLogin(code string) (string, error)
-	kakaoLogin(code string) (string, error)
-	facebookLogin(code string) (string, error)
-	naverLogin(code string) (string, error)
+	checkUsername(username string) (string, error)
+	basicLogin(request LoginRequest) (string, error)
+	signIn(request SignInRequest) (string, error)
+	appleLogin(code string) (LoginResponse, error)
+	googleLogin(code string) (LoginResponse, error)
+	kakaoLogin(code string) (LoginResponse, error)
+	facebookLogin(code string) (LoginResponse, error)
+	naverLogin(code string) (LoginResponse, error)
+	sendAuthCode(phone string) (string, error)
+	verifyAuthCode(phone string, code string) (string, error)
+	getUser(id uint) (UserResponse, error) //유저조회
 
 	// snsLogin(request LoginRequest) (string, error)
-	// getUser(id uint) (UserResponse, error) //유저조회
+
 	// setUser(userRequest UserRequest) (string, error)
 	// removeUser(id uint) (string, error)
 	// getVersion() (AppVersionResponse, error)
@@ -34,14 +48,15 @@ type UserService interface {
 }
 
 type userService struct {
-	db        *gorm.DB
-	s3svc     *s3.S3
-	bucket    string
-	bucketUrl string
+	db          *gorm.DB
+	s3svc       *s3.S3
+	bucket      string
+	bucketUrl   string
+	redisClient *redis.Client
 }
 
-func NewUserService(db *gorm.DB, s3svc *s3.S3, bucket string, bucketUrl string) UserService {
-	return &userService{db: db, s3svc: s3svc, bucket: bucket, bucketUrl: bucketUrl}
+func NewUserService(db *gorm.DB, s3svc *s3.S3, bucket string, bucketUrl string, redisClient *redis.Client) UserService {
+	return &userService{db: db, s3svc: s3svc, bucket: bucket, bucketUrl: bucketUrl, redisClient: redisClient}
 }
 
 type UserServer struct {
@@ -52,10 +67,216 @@ type UserServer struct {
 	BucketUrl string
 }
 
-func (s *userService) appleLogin(code string) (string, error) {
+func (s *userService) checkUsername(username string) (string, error) {
 	var user model.User
+	if err := validateUsername(username); err != nil {
+		return "", err
+	}
+	if err := s.db.Where("username = ?", username).First(&user).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return "-1", nil
+	} else if err != nil {
+		return "", errors.New("db error")
+	}
+	return "1", nil
+
+}
+func (service *userService) sendAuthCode(phone string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+	// 6자리 랜덤 인증번호 생성
+	authCode := fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+	// Redis에 인증번호 저장 (유효시간: 5분)
+	err := service.redisClient.Set(ctx, phone, authCode, time.Minute*5).Err()
+	if err != nil {
+		log.Printf("Failed to save auth code in Redis: %v", err)
+		return "", errors.New("failed to send auth code")
+	}
+
+	if err := sendCode(phone, authCode); err != nil {
+		return "", err
+	}
+
+	log.Printf("Auth code for %s is %s", phone, authCode)
+
+	return "1", nil
+}
+
+func (service *userService) verifyAuthCode(phone string, code string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+
+	// Redis에서 인증번호 조회
+	storedCode, err := service.redisClient.Get(ctx, phone).Result()
+	if err == redis.Nil {
+		return "-1", nil
+	} else if err != nil {
+		log.Printf("Failed to get auth code: %v", err)
+		return "", errors.New("internal error")
+	}
+
+	// 입력된 코드와 비교
+	if storedCode == code {
+		// 인증 성공 시 Redis에 "인증 완료" 상태 플래그 설정
+		err := service.redisClient.Set(ctx, phone+":status", "verified", time.Minute*10).Err()
+		if err != nil {
+			return "", errors.New("failed to set verified status")
+		}
+		// 기존 인증번호는 삭제하지 않고 그대로 둠
+		return "1", nil
+	}
+
+	return "-1", nil
+}
+
+func (s *userService) signIn(request SignInRequest) (string, error) {
+	var gender uint
+	var snsId *string
+	var snsType uint
+	if request.Gender {
+		gender = 1
+	} else {
+		gender = 2
+	}
+	birthday, err := time.Parse("2006-01-02", request.Birth)
+	if err != nil {
+		return "", errors.New("date err")
+	}
+	if err := validateSignIn(request); err != nil {
+		return "", err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	password := string(hashedPassword)
+
+	// 단일 컨텍스트 생성 (타임아웃 5초 설정)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+
+	// Redis에서 키 검색
+	snsTypeValue, err := s.redisClient.Get(ctx, request.SnsId).Result()
+	if err == redis.Nil {
+		snsType = uint(Password)
+	} else if err != nil {
+		return "", errors.New("internal error")
+	} else {
+		value, err := strconv.ParseUint(snsTypeValue, 10, 32)
+		if err != nil {
+			return "", errors.New("invalid value")
+		}
+		snsId = &request.SnsId
+		snsType = uint(value)
+	}
+
+	phoneStatusKey := request.Phone + ":status"
+	// Redis에서 인증 상태 확인
+	if status, err := s.redisClient.Get(ctx, phoneStatusKey).Result(); err == redis.Nil || status != "verified" {
+		return "-1", nil
+	} else if err != nil {
+		log.Printf("Failed to check verification status: %v", err)
+		return "", errors.New("internal error2")
+	}
+
+	// Redis에 존재하면 user 테이블에 추가
+	var user = model.User{
+		SnsId:      snsId,
+		Username:   &request.Username,
+		Password:   &password,
+		Email:      &request.Email,
+		Name:       request.Name,
+		Birthday:   birthday,
+		Phone:      request.Phone,
+		Gender:     gender,
+		Addr:       request.Addr,
+		AddrDetail: request.AddrDetail,
+		UserType:   uint(ADAPFIT),
+		SnsType:    uint(snsType), // redis value
+	}
+
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Recovered from panic: %v", r)
+		} else if tx.Error != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Create(&user).Error; err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "phone") {
+			var existUser model.User
+			if err := tx.Where("phone = ?", user.Phone).First(&existUser).Error; err != nil {
+				return "", errors.New("db error")
+			}
+			user.ID = existUser.ID
+			if err := tx.Model(&existUser).
+				Select("SnsId", "Username", "Password", "Email", "Name", "Birthday", "Gender", "Addr", "AddrDetail", "UserType", "SnsType").
+				Updates(user).Error; err != nil {
+				return "", errors.New("db error2")
+			}
+		} else if strings.Contains(errMsg, "email") {
+			tx.Rollback()
+			return "", errors.New("이미 존재하는 이메일입니다")
+		} else {
+			tx.Rollback()
+			return "", errors.New("db error3")
+		}
+	}
+
+	if err := tx.Create(&model.UserVisit{UID: user.ID, VisitPurposeID: request.VisitPurpose}).Error; err != nil {
+		return "", errors.New("db error4")
+	}
+	if err := tx.Create(&model.UserDisable{UID: user.ID, DisableTypeID: request.DisableType}).Error; err != nil {
+		return "", errors.New("db error5")
+	}
+
+	if err = s.redisClient.Del(ctx, request.SnsId, phoneStatusKey).Err(); err != nil {
+		tx.Rollback()
+		log.Println(err)
+		return "", errors.New("internal error3")
+	}
+
+	tx.Commit()
+	return "1", nil
+}
+
+func (s *userService) basicLogin(request LoginRequest) (string, error) {
+	var u model.User
+	password := strings.TrimSpace(request.Password)
+
+	if password == "" {
+		return "", errors.New("empty")
+	}
+
+	// 이메일로 사용자 조회
+	if err := s.db.Where("username = ?", request.Username).First(&u).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return "-1", nil
+	} else if err != nil {
+		return "", errors.New("db error")
+	}
+
+	// 비밀번호 비교
+	if err := bcrypt.CompareHashAndPassword([]byte(*u.Password), []byte(request.Password)); err != nil {
+		return "-1", nil
+	}
+
+	// 새로운 JWT 토큰 생성
+	tokenString, err := generateJWT(u)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func (s *userService) appleLogin(code string) (LoginResponse, error) {
 	var err error
-	var email string
+	var snsId string
 
 	clientID := os.Getenv("APPLE_CLIENT_ID")
 	keyID := os.Getenv("APPLE_KEY_ID")
@@ -65,7 +286,7 @@ func (s *userService) appleLogin(code string) (string, error) {
 	// client_secret 생성
 	clientSecret, err := GenerateClientSecret(keyID, teamID, clientID, privateKey)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
 	// 요청 데이터 생성
@@ -74,12 +295,12 @@ func (s *userService) appleLogin(code string) (string, error) {
 	data.Set("client_secret", clientSecret)
 	data.Set("code", code)
 	data.Set("grant_type", "authorization_code")
-	data.Set("redirect_uri", "https://haruharu-daf.com/user/apple/callback")
+	data.Set("redirect_uri", "https://localhost:44403/apple/callback")
 
 	// POST 요청 생성
 	req, err := http.NewRequest("POST", "https://appleid.apple.com/auth/token", bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -87,49 +308,40 @@ func (s *userService) appleLogin(code string) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	// 응답 확인
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return LoginResponse{}, fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// 응답 파싱
 	var tokenResponse AppleTokenResponse
 	tokenResponse.Code = code
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
-	if email, err = appleLogin(tokenResponse.IDToken); err != nil {
-		return "", err
+	if snsId, err = appleLogin(tokenResponse.IDToken); err != nil {
+		return LoginResponse{}, err
 	}
 
-	user.Email = &email
-	user.SnsType = uint(Apple)
-	user.UserType = uint(ADAPFIT)
-	u, err := findOrCreateUser(user, s)
+	response, err := snsLogin(snsId, uint(Apple), s)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
-	// JWT 토큰 생성
-	tokenString, err := generateJWT(u)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
+	return response, nil
 }
 
-func (s *userService) googleLogin(code string) (string, error) {
-	var user model.User
+func (s *userService) googleLogin(code string) (LoginResponse, error) {
 	var err error
-	var email string
+	var snsId string
 
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-	redirectURI := "http://haruharu-daf.com/user/google/callback"
+	redirectURI := "http://localserver.com:44403/google/callback"
 
 	// 요청 데이터 생성
 	data := url.Values{}
@@ -142,7 +354,7 @@ func (s *userService) googleLogin(code string) (string, error) {
 	// POST 요청 생성
 	req, err := http.NewRequest("POST", "https://oauth2.googleapis.com/token", bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -150,52 +362,42 @@ func (s *userService) googleLogin(code string) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	// 응답 확인
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return LoginResponse{}, fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// 응답 파싱
 	var tokenResponse GoogleTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// ID 토큰 검증 및 이메일 추출
-	if email, err = googleLogin(tokenResponse.IDToken, clientID); err != nil {
-		return "", err
+	// ID 토큰 검증 및 sub 추출
+	if snsId, err = googleLogin(tokenResponse.IDToken, clientID); err != nil {
+		return LoginResponse{}, err
 	}
 
-	// 유저 데이터 처리
-	user.Email = &email
-	user.SnsType = uint(Google)
-	user.UserType = uint(ADAPFIT)
-	u, err := findOrCreateUser(user, s)
+	response, err := snsLogin(snsId, uint(Apple), s)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// JWT 토큰 생성
-	tokenString, err := generateJWT(u)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
+	return response, nil
 }
 
-func (s *userService) kakaoLogin(code string) (string, error) {
-	var user model.User
+func (s *userService) kakaoLogin(code string) (LoginResponse, error) {
 	var err error
-	var email string
+	var snsId string
 
 	clientID := os.Getenv("KAKAO_CLIENT_ID")
 	clientSecret := os.Getenv("KAKAO_CLIENT_SECRET")
-	redirectURI := "https://localhost:44403/kakao/callback"
+	redirectURI := "http://192.168.0.18:44403/kakao/callback"
 
 	// 요청 데이터 생성
 	data := url.Values{}
@@ -208,7 +410,7 @@ func (s *userService) kakaoLogin(code string) (string, error) {
 	// POST 요청 생성
 	req, err := http.NewRequest("POST", "https://kauth.kakao.com/oauth/token", bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -216,52 +418,42 @@ func (s *userService) kakaoLogin(code string) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	// 응답 확인
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return LoginResponse{}, fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// 응답 파싱
 	var tokenResponse KakaoTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
 	// ID 토큰 검증 및 이메일 추출
-	if email, err = kakaoLogin(tokenResponse.IDToken); err != nil {
-		return "", err
+	if snsId, err = kakaoLogin(tokenResponse.IDToken); err != nil {
+		return LoginResponse{}, err
 	}
 
-	// 유저 데이터 처리
-	user.Email = &email
-	user.SnsType = uint(Kakao) // Kakao 상수는 별도로 정의 필요 (예: const Kakao = 3)
-	user.UserType = uint(ADAPFIT)
-	u, err := findOrCreateUser(user, s)
+	response, err := snsLogin(snsId, uint(Apple), s)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// JWT 토큰 생성
-	tokenString, err := generateJWT(u)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
+	return response, nil
 }
 
-func (s *userService) facebookLogin(code string) (string, error) {
-	var user model.User
+func (s *userService) facebookLogin(code string) (LoginResponse, error) {
 	var err error
-	var email string
+	var snsId string
 
 	clientID := os.Getenv("FACEBOOK_CLIENT_ID")
 	clientSecret := os.Getenv("FACEBOOK_CLIENT_SECRET")
-	redirectURI := "http://localhost:44403/facebook/callback"
+	redirectURI := "http://192.168.0.18:44403/facebook/callback"
 
 	// Access Token 요청
 	data := url.Values{}
@@ -272,64 +464,55 @@ func (s *userService) facebookLogin(code string) (string, error) {
 
 	req, err := http.NewRequest("POST", "https://graph.facebook.com/v18.0/oauth/access_token", bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return LoginResponse{}, fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// 응답 JSON을 구조체로 변환
 	var tokenResponse FacebookTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
 	// 액세스 토큰이 없으면 에러 반환
 	if tokenResponse.AccessToken == "" {
-		return "", fmt.Errorf("failed to retrieve access token from Facebook")
+		return LoginResponse{}, fmt.Errorf("failed to retrieve access token from Facebook")
 	}
 
 	// 페이스북 사용자 정보 요청
-	email, err = getFacebookUserInfo(tokenResponse.AccessToken)
+	snsId, err = getFacebookUserInfo(tokenResponse.AccessToken)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
 	// 유저 데이터 처리
-	user.Email = &email
-	user.SnsType = uint(Facebook)
-	user.UserType = uint(ADAPFIT)
-	u, err := findOrCreateUser(user, s)
+	response, err := snsLogin(snsId, uint(Apple), s)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// JWT 토큰 생성
-	tokenString, err := generateJWT(u)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
+	return response, nil
 }
 
-func (s *userService) naverLogin(code string) (string, error) {
-	var user model.User
+func (s *userService) naverLogin(code string) (LoginResponse, error) {
 	var err error
-	var email string
+	var snsId string
 
 	clientID := os.Getenv("NAVER_CLIENT_ID")
 	clientSecret := os.Getenv("NAVER_CLIENT_SECRET")
-	redirectURI := "http://localhost:44403/naver/callback"
+	redirectURI := "http://192.168.0.18:44403/naver/callback"
 
 	data := url.Values{}
 	data.Set("client_id", clientID)
@@ -340,138 +523,58 @@ func (s *userService) naverLogin(code string) (string, error) {
 
 	req, err := http.NewRequest("POST", "https://nid.naver.com/oauth2.0/token", bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return LoginResponse{}, fmt.Errorf("failed to exchange token, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// ✅ 응답에서 ID 토큰 포함
 	var tokenResponse NaverTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// ✅ ID 토큰이 없으면 에러 반환 (설정 확인 필요)
-	if tokenResponse.IDToken == "" {
-		return "", fmt.Errorf("ID Token is missing. Make sure OIDC is enabled in Naver Developer Console")
+	if tokenResponse.AccessToken == "" {
+		return LoginResponse{}, fmt.Errorf("AccessToken miss")
 	}
-
-	// ✅ ID 토큰 검증 및 이메일 추출
-	email, err = verifyNaverIDToken(tokenResponse.IDToken)
+	snsId, err = getNaverUserInfo(tokenResponse.AccessToken)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// ✅ 유저 데이터 설정
-	user.Email = &email
-	user.SnsType = uint(Naver)
-	user.UserType = uint(ADAPFIT)
-	u, err := findOrCreateUser(user, s)
+	// 유저 데이터 처리
+	response, err := snsLogin(snsId, uint(Apple), s)
 	if err != nil {
-		return "", err
+		return LoginResponse{}, err
 	}
 
-	// ✅ JWT 생성
-	tokenString, err := generateJWT(u)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
+	return response, nil
 }
 
-// func (service *userService) snsLogin(request LoginRequest) (string, error) {
-// 	iss := decodeJwt(request.IdToken)
-// 	var user model.User
-// 	var err error
-// 	var email string
-// 	var snsType uint
-
-// 	if strings.Contains(iss, "kakao") { // 카카오
-// 		snsType = uint(Kakao)
-// 		if email, err = kakaoLogin(request); err != nil {
-// 			return "", err
-// 		}
-// 	} else if strings.Contains(iss, "google") { // 구글
-// 		snsType = uint(Google)
-// 		if email, err = googleLogin(request); err != nil {
-// 			return "", err
-// 		}
-// 	} else if strings.Contains(iss, "apple") { // 애플
-// 		snsType = uint(Apple)
-// 		if email, err = appleLogin(request); err != nil {
-// 			return "", err
-// 		}
-// 	}
-
-// 	if err := copyStruct(request, &user); err != nil {
-// 		return "", err
-// 	}
-
-// 	user.Email = &email
-// 	user.SnsType = snsType
-// 	u, err := findOrCreateUser(user, service)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	// JWT 토큰 생성
-// 	tokenString, err := generateJWT(u)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return tokenString, nil
-// }
-
-// func (service *userService) getUser(id uint) (UserResponse, error) {
-// 	var user model.User
-// 	result := service.db.Preload("Images", "type = ?", profileImageType).First(&user, id)
-// 	if result.Error != nil {
-// 		return UserResponse{}, errors.New("db error")
-// 	}
-// 	log.Println(user.CreatedAt)
-// 	var userResponse UserResponse
-// 	if err := copyStruct(user, &userResponse); err != nil {
-// 		return UserResponse{}, err
-// 	}
-
-// 	if len(user.Images) != 0 {
-// 		urlkey := extractKeyFromUrl(user.Images[0].Url, service.bucket, service.bucketUrl)
-// 		thumbnailUrlkey := extractKeyFromUrl(user.Images[0].ThumbnailUrl, service.bucket, service.bucketUrl)
-// 		// 사전 서명된 URL을 생성
-// 		url, _ := service.s3svc.GetObjectRequest(&s3.GetObjectInput{
-// 			Bucket: aws.String(service.bucket),
-// 			Key:    aws.String(urlkey),
-// 		})
-// 		thumbnailUrl, _ := service.s3svc.GetObjectRequest(&s3.GetObjectInput{
-// 			Bucket: aws.String(service.bucket),
-// 			Key:    aws.String(thumbnailUrlkey),
-// 		})
-// 		urlStr, err := url.Presign(5 * time.Second) // URL은 5초 동안 유효
-// 		if err != nil {
-// 			return UserResponse{}, err
-// 		}
-// 		thumbnailUrlStr, err := thumbnailUrl.Presign(5 * time.Second) // URL은 5초 동안 유효 CachedNetworkImage 에서 캐싱해서 쓰면됨
-// 		if err != nil {
-// 			return UserResponse{}, err
-// 		}
-// 		userResponse.ProfileImage.Url = urlStr // 사전 서명된 URL로 업데이트
-// 		userResponse.ProfileImage.ThumbnailUrl = thumbnailUrlStr
-
-// 	}
-
-// 	return userResponse, nil
-// }
+func (s *userService) getUser(id uint) (UserResponse, error) {
+	var user model.User
+	if err := s.db.Where("id = ? ", id).Preload("UserDisables").Preload("UserVisits").First(&user).Error; err != nil {
+		return UserResponse{}, err
+	}
+	gender := true
+	if user.Gender == 2 {
+		gender = false
+	}
+	response := UserResponse{Username: *user.Username, Email: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"),
+		Phone: user.Phone, Addr: user.Addr, AddrDetail: user.AddrDetail, DisableType: user.UserDisables[0].DisableTypeID, VisitPurpose: user.UserVisits[0].VisitPurposeID}
+	return response, nil
+}
 
 // func (service *userService) setUser(userRequest UserRequest) (string, error) {
 

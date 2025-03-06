@@ -1,22 +1,27 @@
 package core
 
 import (
-	"bytes"
+	"context"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
-	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
+	"io"
 	"log"
+	"math/big"
+	"net/http"
+	"net/url"
+	"os"
 	"strings"
+	"time"
 	"user-service/model"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
-	"github.com/nfnt/resize"
+	"google.golang.org/api/idtoken"
 	"gorm.io/gorm"
 )
 
@@ -32,12 +37,12 @@ func appleLogin(idToken string) (string, error) {
 	}
 
 	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
-		email, ok := claims["email"].(string)
+		sub, ok := claims["sub"].(string)
 		if !ok {
 			return "", errors.New("email not found in token claims")
 		}
 
-		return email, nil
+		return sub, nil
 
 	}
 	return "", errors.New("invalid token")
@@ -55,224 +60,334 @@ func kakaoLogin(idToken string) (string, error) {
 	}
 
 	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
-		email, ok := claims["email"].(string)
+		sub, ok := claims["sub"].(string)
 		if !ok {
 			return "", errors.New("email not found in token claims")
 		}
 
-		return email, nil
+		return sub, nil
 	}
 	return "", errors.New("invalid token")
 
 }
 
 func googleLogin(idToken, clientID string) (string, error) {
-	email, err := validateGoogleIDToken(idToken, clientID)
+	sub, err := validateGoogleIDToken(idToken, clientID)
 	if err != nil {
 		return "", err
 	}
-	return email, nil
+	return sub, nil
 }
 
-func findOrCreateUser(user model.User, service *userService) (model.User, error) {
+// login 함수: 사용자가 없으면 이메일을 키로 Redis에 저장 (10분 후 삭제)
+func snsLogin(snsId string, snsType uint, service *userService) (LoginResponse, error) {
+	var user model.User
+	if err := service.db.Where("sns_id = ?", snsId).First(&user).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		// 사용자가 없으면 Redis에 저장 (10분 후 자동 삭제)
+		ctx := context.Background()
+		key := snsId                        // 이메일 자체를 키로 사용
+		value := fmt.Sprintf("%d", snsType) // snsType을 값으로 저장
 
-	fcmToken := user.FCMToken
-	deviceId := user.DeviceID
-
-	result := service.db.Where("email = ? ", user.Email).First(&user)
-
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		var err error
-		if user, err = verifyUser(user); err != nil {
-			return model.User{}, err
+		if err := service.redisClient.Set(ctx, key, value, 10*time.Minute).Err(); err != nil {
+			log.Println(err)
+			return LoginResponse{}, errors.New("fail to login")
 		}
-		if err = service.db.Create(&user).Error; err != nil {
-			return model.User{}, errors.New("-1")
-		}
-	} else if result.Error != nil {
-		return model.User{}, errors.New("db error2")
+		return LoginResponse{SnsId: snsId}, nil
+	} else if err != nil {
+		return LoginResponse{}, errors.New("db error")
 	}
-
-	if err := service.db.Model(&user).Updates(model.User{FCMToken: fcmToken, DeviceID: deviceId}).Error; err != nil {
-		return model.User{}, errors.New("db error")
-	}
-
-	return user, nil
-}
-
-func verifyUser(user model.User) (model.User, error) {
-
-	////// 본인인증 api ///////
-
-	//완료후 결과값
-	//user에 대입
-	//같은번호존재시 return 에러코드 snstype
-	/////////////////////////
-	return user, nil
-}
-
-func deleteFromS3(fileKey string, s3Client *s3.S3, bucket string, bucketUrl string) error {
-
-	// URL에서 객체 키 추출
-	key := extractKeyFromUrl(fileKey, bucket, bucketUrl)
-	log.Println("key", fileKey)
-
-	_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-
-	// 에러 발생 시 처리 로직
+	// JWT 토큰 생성
+	tokenString, err := generateJWT(user)
 	if err != nil {
-		fmt.Printf("Failed to delete object from S3: %s, error: %v\n", fileKey, err)
+		return LoginResponse{}, err
+	}
+	return LoginResponse{Jwt: tokenString}, nil
+}
+
+// Apple의 client_secret을 생성하는 함수
+func GenerateClientSecret(keyID, teamID, clientID, privateKey string) (string, error) {
+	// JWT 클레임 설정
+	claims := jwt.MapClaims{
+		"iss": teamID,                               // Team ID
+		"iat": time.Now().Unix(),                    // 현재 시간
+		"exp": time.Now().Add(6 * time.Hour).Unix(), // 만료 시간 (최대 6개월)
+		"aud": "https://appleid.apple.com",          // Audience
+		"sub": clientID,                             // Service ID
 	}
 
-	return err
-}
+	// JWT 생성 및 헤더에 키 ID 추가
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token.Header["kid"] = keyID
 
-// URL에서 S3 객체 키를 추출하는 함수
-func extractKeyFromUrl(url, bucket string, bucketUrl string) string {
-	prefix := fmt.Sprintf("https://%s.%s/", bucket, bucketUrl)
-	return strings.TrimPrefix(url, prefix)
-}
-
-func uploadImagesToS3(imgData []byte, thumbnailData []byte, contentType string, ext string, s3Client *s3.S3, bucket string, bucketUrl string, uid string) (string, string, error) {
-	// 이미지 파일 이름과 썸네일 파일 이름 생성
-	imgFileName := "images/profile/" + uid + "/images/" + uuid.New().String() + ext
-	thumbnailFileName := "images/profile/" + uid + "/thumbnails/" + uuid.New().String() + ext
-
-	// S3에 이미지 업로드
-	_, err := s3Client.PutObject(&s3.PutObjectInput{
-		Bucket:      aws.String(bucket),
-		Key:         aws.String(imgFileName),
-		Body:        bytes.NewReader(imgData),
-		ContentType: aws.String(contentType),
-	})
-
+	// PEM 포맷의 비공개 키 파싱
+	parsedKey, err := parsePrivateKey(privateKey)
 	if err != nil {
-		return "", "", err
+		log.Println("parse")
+		return "", fmt.Errorf("failed to parse private key: %v", err)
 	}
 
-	// S3에 썸네일 업로드
-	_, err = s3Client.PutObject(&s3.PutObjectInput{
-		Bucket:      aws.String(bucket),
-		Key:         aws.String(thumbnailFileName),
-		Body:        bytes.NewReader(thumbnailData),
-		ContentType: aws.String(contentType),
-	})
-	if err != nil {
-		return "", "", err
-	}
-
-	// 업로드된 이미지와 썸네일의 URL 생성 및 반환
-	imgURL := "https://" + bucket + "." + bucketUrl + "/" + imgFileName
-	thumbnailURL := "https://" + bucket + "." + bucketUrl + "/" + thumbnailFileName
-
-	return imgURL, thumbnailURL, nil
+	// JWT 서명 생성
+	return token.SignedString(parsedKey)
 }
 
-func reduceImageSize(data []byte) ([]byte, error) {
-	img, format, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	log.Println("image size: ", len(data))
-	// 원본 이미지의 크기를 절반씩 줄이면서 10MB 이하로 만듦
-	for len(data) > 10*1024*1024 {
-		newWidth := img.Bounds().Dx() / 2
-		newHeight := img.Bounds().Dy() / 2
-
-		resizedImg := resize.Resize(uint(newWidth), uint(newHeight), img, resize.Lanczos3)
-
-		var buf bytes.Buffer
-		switch format {
-		case "jpeg":
-			err = jpeg.Encode(&buf, resizedImg, nil)
-		case "png":
-			err = png.Encode(&buf, resizedImg)
-		case "gif":
-			err = gif.Encode(&buf, resizedImg, nil)
-		case "webp":
-			// WebP 인코딩은 지원하지 않으므로 PNG 형식으로 인코딩
-			err = png.Encode(&buf, resizedImg)
-		// 여기에 필요한 다른 형식을 추가할 수 있습니다.
-		default:
-			log.Printf("Unsupported format: %s\n", format)
-			return nil, err
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		data = buf.Bytes()
-		img = resizedImg
+// PEM 형식의 개인 키를 파싱하는 함수 (PKCS8 지원)
+func parsePrivateKey(privateKey string) (*ecdsa.PrivateKey, error) {
+	// PEM 블록 추출
+	block, _ := pem.Decode([]byte(privateKey))
+	if block == nil || block.Type != "PRIVATE KEY" {
+		log.Println("pem")
+		return nil, errors.New("invalid private key: not a valid PEM block")
 	}
 
-	return data, nil
-}
-
-func createThumbnail(data []byte) ([]byte, error) {
-	img, format, err := image.Decode(bytes.NewReader(data))
+	// PKCS8 형식의 키 파싱
+	parsedKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	// 썸네일의 크기를 절반씩 줄이면서 1MB 이하로 만듦
-	for {
-		newWidth := img.Bounds().Dx() / 2
-		newHeight := img.Bounds().Dy() / 2
-
-		thumbnail := resize.Resize(uint(newWidth), uint(newHeight), img, resize.Lanczos3)
-
-		var buf bytes.Buffer
-		switch format {
-		case "jpeg":
-			err = jpeg.Encode(&buf, thumbnail, nil)
-		case "png":
-			err = png.Encode(&buf, thumbnail)
-		case "gif":
-			err = gif.Encode(&buf, thumbnail, nil)
-		case "webp":
-			err = png.Encode(&buf, thumbnail)
-		default:
-			log.Printf("Unsupported format: %s\n", format)
-			return nil, err
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		thumbnailData := buf.Bytes()
-		log.Println("thumbnailData size: ", len(thumbnailData))
-		if len(thumbnailData) < 1024*1024 {
-			return thumbnailData, nil
-		}
-
-		img = thumbnail
+	// 키 타입 확인 및 변환
+	ecPrivateKey, ok := parsedKey.(*ecdsa.PrivateKey)
+	if !ok {
+		log.Println("ecdsa")
+		return nil, errors.New("private key is not of type ECDSA")
 	}
+
+	return ecPrivateKey, nil
 }
 
-func getImageFormat(imgData []byte) (contentType, extension string, err error) {
-	_, format, err := image.DecodeConfig(bytes.NewReader(imgData))
+// Apple 공개키 가져오기
+func getApplePublicKeys() (JWKS, error) {
+	resp, err := http.Get("https://appleid.apple.com/auth/keys")
 	if err != nil {
-		return "", "", err
+		return JWKS{}, err
 	}
-	switch format {
-	case "jpeg":
-		contentType = "image/jpeg"
-		extension = ".jpg"
-	case "png":
-		contentType = "image/png"
-		extension = ".png"
-	case "gif":
-		contentType = "image/gif"
-		extension = ".gif"
-	case "wepb":
-		contentType = "image/wepb"
-		extension = ".wepb"
-	default:
-		return "", "", fmt.Errorf("unsupported image format: %s", format)
+	defer resp.Body.Close()
+
+	var jwks JWKS
+	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		return JWKS{}, err
+	}
+	return jwks, nil
+}
+
+// Apple 공개키로 서명 검증
+func verifyAppleIDToken(token string, jwks JWKS) (*jwt.Token, error) {
+	kid, err := extractKidFromToken(token)
+	if err != nil {
+		return nil, err
 	}
 
-	return contentType, extension, nil
+	var key *rsa.PublicKey
+	for _, jwk := range jwks.Keys {
+		if jwk.Kid == kid {
+			nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
+			if err != nil {
+				return nil, err
+			}
+			eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
+			if err != nil {
+				return nil, err
+			}
+
+			n := big.NewInt(0).SetBytes(nBytes)
+			e := big.NewInt(0).SetBytes(eBytes).Int64()
+			key = &rsa.PublicKey{N: n, E: int(e)}
+			break
+		}
+	}
+
+	if key == nil {
+		return nil, errors.New("appropriate public key not found")
+	}
+
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return key, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return parsedToken, nil
+}
+
+// 카카오 공개키 가져오기
+func getKakaoPublicKeys() (JWKS, error) {
+	resp, err := http.Get("https://kauth.kakao.com/.well-known/jwks.json")
+	if err != nil {
+		return JWKS{}, err
+	}
+	defer resp.Body.Close()
+
+	var jwks JWKS
+	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		return JWKS{}, err
+	}
+	return jwks, nil
+}
+
+// 카카오 공개키로 서명 검증
+func verifyKakaoTokenSignature(token string, jwks JWKS) (*jwt.Token, error) {
+	kid, err := extractKidFromToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	var key *rsa.PublicKey
+	for _, jwk := range jwks.Keys {
+		if jwk.Kid == kid {
+			nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
+			if err != nil {
+				return nil, err
+			}
+			eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
+			if err != nil {
+				return nil, err
+			}
+
+			n := big.NewInt(0).SetBytes(nBytes)
+			e := big.NewInt(0).SetBytes(eBytes).Int64()
+			key = &rsa.PublicKey{N: n, E: int(e)}
+			break
+		}
+	}
+
+	if key == nil {
+		return nil, errors.New("appropriate public key not found")
+	}
+
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return key, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return parsedToken, nil
+}
+
+// ID 토큰에서 kid 추출
+func extractKidFromToken(token string) (string, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return "", errors.New("invalid token format")
+	}
+	headerPart := parts[0]
+	headerJson, err := base64.RawURLEncoding.DecodeString(headerPart)
+	if err != nil {
+		return "", err
+	}
+
+	var header map[string]interface{}
+	if err := json.Unmarshal(headerJson, &header); err != nil {
+		return "", err
+	}
+
+	kid, ok := header["kid"].(string)
+	if !ok {
+		return "", errors.New("kid not found in token header")
+	}
+	return kid, nil
+}
+
+// Google ID 토큰을 검증하고 이메일을 반환
+func validateGoogleIDToken(idToken, clientID string) (string, error) {
+	log.Print("idToken: ", idToken)
+	// idtoken 패키지를 사용하여 토큰 검증
+	payload, err := idtoken.Validate(context.Background(), idToken, clientID)
+	if err != nil {
+		log.Printf("Token validation error: %v", err)
+		return "", err
+	}
+
+	// sub 추출
+	sub, ok := payload.Claims["sub"].(string)
+	if !ok {
+		return "", errors.New("email claim not found in token")
+	}
+
+	return sub, nil
+}
+
+func getNaverUserInfo(accessToken string) (string, error) {
+	req, err := http.NewRequest("GET", "https://openapi.naver.com/v1/nid/me", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("failed to get user info, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var userInfo NaverResponse
+	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
+		return "", err
+	}
+	if userInfo.Response.ID == "" {
+		return "", fmt.Errorf("email not found in Naver user info")
+	}
+	return userInfo.Response.ID, nil
+}
+
+func getFacebookUserInfo(accessToken string) (string, error) {
+	url := fmt.Sprintf("https://graph.facebook.com/me?fields=id,name,email&access_token=%s", accessToken)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("failed to get user info, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var userResponse FacebookUserResponse
+	if err := json.NewDecoder(resp.Body).Decode(&userResponse); err != nil {
+		return "", err
+	}
+
+	if userResponse.ID == "" {
+		return "", errors.New("email not found in Facebook account")
+	}
+
+	return userResponse.ID, nil
+}
+
+func sendCode(number, code string) error {
+
+	apiURL := "https://apis.aligo.in/send/"
+	data := url.Values{}
+	data.Set("key", os.Getenv("API_KEY"))
+	data.Set("user_id", os.Getenv("USER_ID"))
+	data.Set("sender", os.Getenv("SENDER"))
+	data.Set("receiver", number)
+	data.Set("msg", "인증번호는 ["+code+"]"+" 입니다.")
+
+	// HTTP POST 요청 실행
+	resp, err := http.PostForm(apiURL, data)
+	if err != nil {
+		fmt.Printf("HTTP Request Failed: %s\n", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	log.Println(fmt.Errorf("server returned non-200 status: %d, body: %s", resp.StatusCode, string(body)))
+
+	return nil
+
 }

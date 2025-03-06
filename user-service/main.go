@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -44,6 +45,13 @@ func main() {
 	}
 	s3svc := s3.New(s3sess)
 
+	// Redis 클라이언트 설정
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // 비밀번호가 없으면 비워둠
+		DB:       0,  // Redis DB 번호
+	})
+
 	// lis, err := net.Listen("tcp", ":50052")
 	// if err != nil {
 	// 	log.Fatalf("failed to listen: %v", err)
@@ -56,7 +64,7 @@ func main() {
 	// 	log.Fatalf("failed to serve: %v", err)
 	// }
 
-	svc := core.NewUserService(database, s3svc, bucket, bucketUrl)
+	svc := core.NewUserService(database, s3svc, bucket, bucketUrl, redisClient)
 
 	// snsLoginEndpoint := core.SnsLoginEndpoint(svc)
 	// getUserEndpoint := core.GetUserEndpoint(svc)
@@ -69,6 +77,13 @@ func main() {
 	kakaoCallbackEndpoint := core.KakaoCallbackEndpoint(svc)
 	facebookCallbackEndpoint := core.FacebookCallbackEndpoint(svc)
 	naverCallbackEndpoint := core.NaverCallbackEndpoint(svc)
+
+	checkUsernameEndpoint := core.CheckUsernameEndpoint(svc)
+	basicLogionEndpoint := core.BaiscLoginEndpoint(svc)
+	signInEndpoint := core.SignInEndpoint(svc)
+	sendCodeEndpoint := core.SendCodeEndpoint(svc)
+	verifyEndpoint := core.VerifyEndpoint(svc)
+	getUserEndpoint := core.GetUserEndpoint(svc)
 	app := fiber.New()
 	app.Use(logger.New())
 
@@ -88,11 +103,18 @@ func main() {
 	// app.Post("/remove-user", core.RemoveHandler(removeEndpoint))
 	// app.Post("/remove-profile", core.RemoveProfileHandler(removeProfileEndpoint))
 
-	app.Post("/apple/callback", core.AppleCallbackHandler(appleCallbackEndpoint))
+	app.Get("/get-user", core.GetUserHandler(getUserEndpoint))
 	app.Get("/google/callback", core.GoogleCallbackHandler(googleCallbackEndpoint))
 	app.Get("/kakao/callback", core.KakaoCallbackHandler(kakaoCallbackEndpoint))
 	app.Get("/facebook/callback", core.FacebookCallbackHandler(facebookCallbackEndpoint))
 	app.Get("/naver/callback", core.NaverCallbackHandler(naverCallbackEndpoint))
+
+	app.Post("/apple/callback", core.AppleCallbackHandler(appleCallbackEndpoint))
+	app.Post("/check-username", core.CheckUsernameHandler(checkUsernameEndpoint))
+	app.Post("/login", core.BasicLoginHandler(basicLogionEndpoint))
+	app.Post("/sign-in", core.SignInHandler(signInEndpoint))
+	app.Post("/send-code", core.SendCodeHandler(sendCodeEndpoint))
+	app.Post("/verify-code", core.VerifyHandler(verifyEndpoint))
 
 	log.Fatal(app.Listen(":44403"))
 }

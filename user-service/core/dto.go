@@ -1,6 +1,14 @@
 package core
 
-import "time"
+type LoginResponse struct {
+	Jwt   string `json:"jwt,omitempty"`
+	SnsId string `json:"sns_id,omitempty"`
+}
+
+type VerifyRequest struct {
+	PhoneNumber string `json:"phone_number" example:"01000000000"`
+	Code        string `json:"code" example:"인증번호 6자리"`
+}
 
 // Authorization Code를 담는 요청 구조체
 type CallbackRequest struct {
@@ -47,11 +55,7 @@ type FacebookUserResponse struct {
 }
 
 type NaverTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	IDToken      string `json:"id_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken string `json:"access_token"`
 }
 
 type NaverResponse struct {
@@ -63,9 +67,23 @@ type NaverResponse struct {
 }
 
 type LoginRequest struct {
-	IdToken  string `json:"id_token"`
-	DeviceID string `json:"device_id"`
-	FCMToken string `json:"fcm_token"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type SignInRequest struct {
+	SnsId        string `json:"sns_id"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Email        string `json:"email"`
+	Name         string `json:"name"`
+	Gender       bool   `json:"gender"`
+	Birth        string `json:"birth" example:"yyyy-mm-dd"`
+	Phone        string `json:"phone"`
+	Addr         string `json:"addr"`
+	AddrDetail   string `json:"addr_detail"`
+	DisableType  uint   `json:"disable_type"`
+	VisitPurpose uint   `json:"visit_purpose"`
 }
 
 type AutoLoginRequest struct {
@@ -74,22 +92,17 @@ type AutoLoginRequest struct {
 	DeviceId string `json:"device_id"`
 }
 
-type LoginResponse struct {
-	Jwt string `json:"jwt,omitempty"`
-	Err string `json:"err,omitempty"`
-}
-
 type UserResponse struct {
-	Name         string        `json:"name"`
-	Nickname     string        `json:"nickname"`
-	Email        string        `json:"email"`
-	Birthday     time.Time     `json:"birthday"`
-	CreatedAt    time.Time     `json:"created_at"`
-	UpdatedAt    time.Time     `json:"updated_at"`
-	Phone        string        `json:"phone"`
-	Gender       uint          `json:"gender"` // true:남 false: 여
-	SnsType      uint          `json:"sns_type"`
-	ProfileImage ImageResponse `json:"profile_image"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	Name         string `json:"name"`
+	Gender       bool   `json:"gender"`
+	Birth        string `json:"birth"`
+	Phone        string `json:"phone"`
+	Addr         string `json:"addr"`
+	AddrDetail   string `json:"addr_detail"`
+	DisableType  uint   `json:"disable_type"`
+	VisitPurpose uint   `json:"visit_purpose"`
 }
 
 type UserRequest struct {
@@ -118,5 +131,5 @@ type SuccessResponse struct {
 	Jwt string `json:"jwt"`
 }
 type ErrorResponse struct {
-	Err string `json:"err"`
+	Err string `json:"error"`
 }

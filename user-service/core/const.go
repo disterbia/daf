@@ -1,11 +1,16 @@
 package core
 
-var Email = 0
-var Kakao = 1
-var Google = 2
-var Apple = 3
-var Facebook = 4
-var Naver = 5
+type snsType uint
+
+// 0은 daf에서 가입
+const (
+	Password snsType = iota + 1
+	Kakao
+	Google
+	Apple
+	Facebook
+	Naver
+)
 
 var profileImageType = 1
 
