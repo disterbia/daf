@@ -1,11 +1,4 @@
 definitions:
-  core.AutoLoginRequest:
-    properties:
-      device_id:
-        type: string
-      fcm_token:
-        type: string
-    type: object
   core.BasicResponse:
     properties:
       code:
@@ -16,12 +9,47 @@ definitions:
       error:
         type: string
     type: object
+  core.FindPasswordRequest:
+    properties:
+      phone:
+        example: "01000000000"
+        type: string
+      username:
+        type: string
+    type: object
+  core.FindUsernameRequest:
+    properties:
+      name:
+        type: string
+      phone:
+        example: "01000000000"
+        type: string
+    type: object
   core.LoginRequest:
     properties:
       password:
         type: string
       username:
         type: string
+    type: object
+  core.SetUserRequest:
+    properties:
+      addr:
+        type: string
+      addr_detail:
+        type: string
+      disable_type:
+        type: integer
+      is_agree:
+        type: boolean
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      visit_purpose:
+        type: integer
     type: object
   core.SignInRequest:
     properties:
@@ -34,9 +62,9 @@ definitions:
         type: string
       disable_type:
         type: integer
-      email:
-        type: string
       gender:
+        type: boolean
+      is_agree:
         type: boolean
       name:
         type: string
@@ -51,19 +79,6 @@ definitions:
       visit_purpose:
         type: integer
     type: object
-  core.SuccessResponse:
-    properties:
-      jwt:
-        type: string
-    type: object
-  core.UserRequest:
-    properties:
-      nickname:
-        type: string
-      profile_image:
-        example: base64string
-        type: string
-    type: object
   core.UserResponse:
     properties:
       addr:
@@ -74,9 +89,9 @@ definitions:
         type: string
       disable_type:
         type: integer
-      email:
-        type: string
       gender:
+        type: boolean
+      is_agree:
         type: boolean
       name:
         type: string
@@ -99,39 +114,6 @@ definitions:
 info:
   contact: {}
 paths:
-  /auto-login:
-    post:
-      consumes:
-      - application/json
-      description: 최초 로그인 이후 앱 실행시 호출
-      parameters:
-      - description: Bearer {jwt_token}
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 요청 DTO
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/core.AutoLoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공시 JWT 토큰 반환
-          schema:
-            $ref: '#/definitions/core.SuccessResponse'
-        "500":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-      security:
-      - jwt: []
-      summary: 자동로그인
-      tags:
-      - 로그인 /user
   /check-username:
     get:
       consumes:
@@ -161,6 +143,66 @@ paths:
       summary: 중복확인
       tags:
       - 회원가입 /user
+  /find-password:
+    post:
+      consumes:
+      - application/json
+      description: 비밀번호 찾기 시 호출
+      parameters:
+      - description: 정보 dto
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.FindPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '성공시 JWT 토큰 반환/ -1: 번호 인증안됨 / -2: 일치하는 회원 없음'
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 비밀번호 찾기
+      tags:
+      - 비밀번호 찾기 /user
+  /find-username:
+    post:
+      consumes:
+      - application/json
+      description: 아이디찾기 시 호출
+      parameters:
+      - description: 정보 dto
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/core.FindUsernameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '성공시 아이디 반환/ -1: 번호 인증안됨 / -2: 일치하는 회원 없음'
+          schema:
+            $ref: '#/definitions/core.BasicResponse'
+        "400":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+        "500":
+          description: 요청 처리 실패시 오류 메시지 반환
+          schema:
+            $ref: '#/definitions/core.ErrorResponse'
+      summary: 아이디 찾기
+      tags:
+      - 아이디 찾기 /user
   /get-user:
     post:
       consumes:
@@ -189,7 +231,7 @@ paths:
             $ref: '#/definitions/core.ErrorResponse'
       summary: 유저 조회
       tags:
-      - 회원조회(본인)  /user
+      - 회원조회 /user
   /login:
     post:
       consumes:
@@ -206,81 +248,25 @@ paths:
       - application/json
       responses:
         "200":
-          description: 성공시 JWT 토큰 반환
+          description: 성공시 JWT 토큰 반환/-1 :아이디 또는 비밀번호 불일치
           schema:
-            $ref: '#/definitions/core.SuccessResponse'
+            $ref: '#/definitions/core.BasicResponse'
         "400":
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
         "500":
-          description: -1 아이디 또는 비밀번호 불일치
+          description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
       summary: 일반로그인
       tags:
       - 로그인 /user
-  /remove-profile:
-    post:
-      consumes:
-      - application/json
-      description: 기본이미지로 변경시 호출
-      parameters:
-      - description: Bearer {jwt_token}
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공시 200 반환
-          schema:
-            $ref: '#/definitions/core.BasicResponse'
-        "500":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-      security:
-      - jwt: []
-      summary: 프로필 사진 삭제
-      tags:
-      - 회원상태 변경(본인)  /user
-  /remvoe-user:
-    post:
-      consumes:
-      - application/json
-      description: 회원탈퇴시 호출
-      parameters:
-      - description: Bearer {jwt_token}
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공시 200 반환
-          schema:
-            $ref: '#/definitions/core.BasicResponse'
-        "400":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-        "500":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-      summary: 회원탈퇴
-      tags:
-      - 회원탈퇴 /user
   /send-code/{number}:
     post:
       consumes:
       - application/json
-      description: 휴대번호 로그인 인증번호 발송시 호출
+      description: 휴대전화 인증번호 발송시 호출
       parameters:
       - description: 휴대번호
         in: path
@@ -298,14 +284,14 @@ paths:
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
-      summary: 인증번호
+      summary: 인증번호 발송
       tags:
-      - 회원가입 /user
+      - 인증번호 /user
   /set-user:
     post:
       consumes:
       - application/json
-      description: 유저 상태영구변경시 호출
+      description: 회원 정보 변경 시 호출
       parameters:
       - description: Bearer {jwt_token}
         in: header
@@ -317,7 +303,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/core.UserRequest'
+          $ref: '#/definitions/core.SetUserRequest'
       produces:
       - application/json
       responses:
@@ -333,9 +319,9 @@ paths:
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
-      summary: 유저 데이터 변경
+      summary: 회원 데이터 변경
       tags:
-      - 회원상태 변경(본인)  /user
+      - 회원수정 /user
   /sign-in:
     post:
       consumes:
@@ -366,36 +352,6 @@ paths:
       summary: 회원가입
       tags:
       - 회원가입 /user
-  /sns-login:
-    post:
-      consumes:
-      - application/json
-      description: sns 로그인 성공시 호출
-      parameters:
-      - description: 요청 DTO
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/core.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공시 JWT 토큰 반환
-          schema:
-            $ref: '#/definitions/core.SuccessResponse'
-        "400":
-          description: 요청 처리 실패시 오류 메시지 반환
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-        "500":
-          description: '요청 처리 실패시 오류 메시지 반환: 오류메시지 "-1" = 인증필요 , "-2" = 이미 가입한 번호'
-          schema:
-            $ref: '#/definitions/core.ErrorResponse'
-      summary: sns 로그인
-      tags:
-      - 로그인 /user
   /verify-code:
     post:
       consumes:
@@ -423,7 +379,7 @@ paths:
           description: 요청 처리 실패시 오류 메시지 반환
           schema:
             $ref: '#/definitions/core.ErrorResponse'
-      summary: 인증번호
+      summary: 인증번호 인증
       tags:
-      - 회원가입 /user
+      - 인증번호 /user
 swagger: "2.0"

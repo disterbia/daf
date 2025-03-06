@@ -16,58 +16,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auto-login": {
-            "post": {
-                "security": [
-                    {
-                        "jwt": []
-                    }
-                ],
-                "description": "최초 로그인 이후 앱 실행시 호출",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "로그인 /user"
-                ],
-                "summary": "자동로그인",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer {jwt_token}",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "요청 DTO",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/core.AutoLoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "성공시 JWT 토큰 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.SuccessResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/check-username": {
             "get": {
                 "description": "아이디 중복확인 시 호출",
@@ -112,6 +60,98 @@ const docTemplate = `{
                 }
             }
         },
+        "/find-password": {
+            "post": {
+                "description": "비밀번호 찾기 시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "비밀번호 찾기 /user"
+                ],
+                "summary": "비밀번호 찾기",
+                "parameters": [
+                    {
+                        "description": "정보 dto",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.FindPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 JWT 토큰 반환/ -1: 번호 인증안됨 / -2: 일치하는 회원 없음",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/find-username": {
+            "post": {
+                "description": "아이디찾기 시 호출",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "아이디 찾기 /user"
+                ],
+                "summary": "아이디 찾기",
+                "parameters": [
+                    {
+                        "description": "정보 dto",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/core.FindUsernameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공시 아이디 반환/ -1: 번호 인증안됨 / -2: 일치하는 회원 없음",
+                        "schema": {
+                            "$ref": "#/definitions/core.BasicResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "요청 처리 실패시 오류 메시지 반환",
+                        "schema": {
+                            "$ref": "#/definitions/core.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/get-user": {
             "post": {
                 "description": "내 정보 조회시 호출",
@@ -122,7 +162,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원조회(본인)  /user"
+                    "회원조회 /user"
                 ],
                 "summary": "유저 조회",
                 "parameters": [
@@ -182,94 +222,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "성공시 JWT 토큰 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "-1 아이디 또는 비밀번호 불일치",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/remove-profile": {
-            "post": {
-                "security": [
-                    {
-                        "jwt": []
-                    }
-                ],
-                "description": "기본이미지로 변경시 호출",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "회원상태 변경(본인)  /user"
-                ],
-                "summary": "프로필 사진 삭제",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer {jwt_token}",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "성공시 200 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.BasicResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/remvoe-user": {
-            "post": {
-                "description": "회원탈퇴시 호출",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "회원탈퇴 /user"
-                ],
-                "summary": "회원탈퇴",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer {jwt_token}",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "성공시 200 반환",
+                        "description": "성공시 JWT 토큰 반환/-1 :아이디 또는 비밀번호 불일치",
                         "schema": {
                             "$ref": "#/definitions/core.BasicResponse"
                         }
@@ -291,7 +244,7 @@ const docTemplate = `{
         },
         "/send-code/{number}": {
             "post": {
-                "description": "휴대번호 로그인 인증번호 발송시 호출",
+                "description": "휴대전화 인증번호 발송시 호출",
                 "consumes": [
                     "application/json"
                 ],
@@ -299,9 +252,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원가입 /user"
+                    "인증번호 /user"
                 ],
-                "summary": "인증번호",
+                "summary": "인증번호 발송",
                 "parameters": [
                     {
                         "type": "string",
@@ -329,7 +282,7 @@ const docTemplate = `{
         },
         "/set-user": {
             "post": {
-                "description": "유저 상태영구변경시 호출",
+                "description": "회원 정보 변경 시 호출",
                 "consumes": [
                     "application/json"
                 ],
@@ -337,9 +290,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원상태 변경(본인)  /user"
+                    "회원수정 /user"
                 ],
-                "summary": "유저 데이터 변경",
+                "summary": "회원 데이터 변경",
                 "parameters": [
                     {
                         "type": "string",
@@ -354,7 +307,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/core.UserRequest"
+                            "$ref": "#/definitions/core.SetUserRequest"
                         }
                     }
                 ],
@@ -426,52 +379,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/sns-login": {
-            "post": {
-                "description": "sns 로그인 성공시 호출",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "로그인 /user"
-                ],
-                "summary": "sns 로그인",
-                "parameters": [
-                    {
-                        "description": "요청 DTO",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/core.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "성공시 JWT 토큰 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "요청 처리 실패시 오류 메시지 반환",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "요청 처리 실패시 오류 메시지 반환: 오류메시지 \"-1\" = 인증필요 , \"-2\" = 이미 가입한 번호",
-                        "schema": {
-                            "$ref": "#/definitions/core.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/verify-code": {
             "post": {
                 "description": "인증번호 인증시 호출",
@@ -482,9 +389,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "회원가입 /user"
+                    "인증번호 /user"
                 ],
-                "summary": "인증번호",
+                "summary": "인증번호 인증",
                 "parameters": [
                     {
                         "description": "요청 DTO",
@@ -520,17 +427,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "core.AutoLoginRequest": {
-            "type": "object",
-            "properties": {
-                "device_id": {
-                    "type": "string"
-                },
-                "fcm_token": {
-                    "type": "string"
-                }
-            }
-        },
         "core.BasicResponse": {
             "type": "object",
             "properties": {
@@ -547,6 +443,30 @@ const docTemplate = `{
                 }
             }
         },
+        "core.FindPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "phone": {
+                    "type": "string",
+                    "example": "01000000000"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "core.FindUsernameRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "01000000000"
+                }
+            }
+        },
         "core.LoginRequest": {
             "type": "object",
             "properties": {
@@ -555,6 +475,35 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "core.SetUserRequest": {
+            "type": "object",
+            "properties": {
+                "addr": {
+                    "type": "string"
+                },
+                "addr_detail": {
+                    "type": "string"
+                },
+                "disable_type": {
+                    "type": "integer"
+                },
+                "is_agree": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "visit_purpose": {
+                    "type": "integer"
                 }
             }
         },
@@ -574,10 +523,10 @@ const docTemplate = `{
                 "disable_type": {
                     "type": "integer"
                 },
-                "email": {
-                    "type": "string"
-                },
                 "gender": {
+                    "type": "boolean"
+                },
+                "is_agree": {
                     "type": "boolean"
                 },
                 "name": {
@@ -600,26 +549,6 @@ const docTemplate = `{
                 }
             }
         },
-        "core.SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "jwt": {
-                    "type": "string"
-                }
-            }
-        },
-        "core.UserRequest": {
-            "type": "object",
-            "properties": {
-                "nickname": {
-                    "type": "string"
-                },
-                "profile_image": {
-                    "type": "string",
-                    "example": "base64string"
-                }
-            }
-        },
         "core.UserResponse": {
             "type": "object",
             "properties": {
@@ -635,10 +564,10 @@ const docTemplate = `{
                 "disable_type": {
                     "type": "integer"
                 },
-                "email": {
-                    "type": "string"
-                },
                 "gender": {
+                    "type": "boolean"
+                },
+                "is_agree": {
                     "type": "boolean"
                 },
                 "name": {

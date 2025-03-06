@@ -96,7 +96,7 @@ func FindUsernameHandler(endpoint endpoint.Endpoint) fiber.Handler {
 // @Description 비밀번호 찾기 시 호출
 // @Accept  json
 // @Produce  json
-// @Param request body FindPasswordRequest true "정보 dto
+// @Param request body FindPasswordRequest true "정보 dto"
 // @Success 200 {object} BasicResponse "성공시 JWT 토큰 반환/ -1: 번호 인증안됨 / -2: 일치하는 회원 없음"
 // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
 // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
