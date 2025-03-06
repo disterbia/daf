@@ -115,7 +115,16 @@ func main() {
 	setupSwaggerUIProxy(router, "/coach-service/swagger/*proxyPath", "http://coach:44401/swagger/")
 	setupSwaggerUIProxy(router, "/daf-service/swagger/*proxyPath", "http://daf:44402/swagger/")
 	setupSwaggerUIProxy(router, "/user-service/swagger/*proxyPath", "http://user:44403/swagger/")
-
+	// Swagger JSON 파일 리다이렉트 (user-service만 Fiber 방식 적용)
+	router.GET("/swagger/doc.json", func(c *gin.Context) {
+		referer := c.GetHeader("Referer")
+		if strings.Contains(referer, "/user-service/") {
+			c.Redirect(http.StatusFound, "/user-service/swagger/doc.json")
+			return
+		}
+		// 다른 서비스는 기존 방식 유지
+		c.Status(http.StatusNotFound)
+	})
 	// API 게이트웨이 서버 시작
 	router.Run(":40000")
 }

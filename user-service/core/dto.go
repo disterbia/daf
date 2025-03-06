@@ -75,7 +75,6 @@ type SignInRequest struct {
 	SnsId        string `json:"sns_id"`
 	Username     string `json:"username"`
 	Password     string `json:"password"`
-	Email        string `json:"email"`
 	Name         string `json:"name"`
 	Gender       bool   `json:"gender"`
 	Birth        string `json:"birth" example:"yyyy-mm-dd"`
@@ -94,7 +93,6 @@ type AutoLoginRequest struct {
 
 type UserResponse struct {
 	Username     string `json:"username"`
-	Email        string `json:"email"`
 	Name         string `json:"name"`
 	Gender       bool   `json:"gender"`
 	Birth        string `json:"birth"`

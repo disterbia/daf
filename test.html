@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 테스트</title>
+</head>
+<body>
+    <h1>테스트</h1>
+    
+    <button onclick="redirectToGoogle()">Google 로그인</button>
+
+    <script>
+        function redirectToGoogle() {
+            const clientId = "347245300745-18gk8v76t5mhc8hojg877k8u61sj563s.apps.googleusercontent.com"; // ⚠️ 실제 Google 클라이언트 ID로 변경하세요
+            const redirectUri = "http://localtest.com:44403/google/callback"; // ⚠️ 서버 콜백 URL로 변경하세요
+            const scope = "openid email profile"; // 사용자 정보 요청
+            const responseType = "code"; // Authorization Code Flow 사용
+            const state = "test_state"; // CSRF 방지를 위한 state 값 (랜덤 값 가능)
+            
+            // Google OAuth 2.0 URL 생성
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}` +
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                `&response_type=${responseType}` +
+                `&scope=${encodeURIComponent(scope)}` +
+                `&state=${state}`;
+
+            // 로그인 창으로 이동
+            window.location.href = authUrl;
+        }
+    </script>
+</body>
+</html>
+
+
+<!-- <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테스트</title>
+</head>
+<body>
+    <h1>테스트</h1>
+
+    <button onclick="redirectToApple()">Apple 로그인</button>
+
+    <script>
+function redirectToApple() {
+    const clientId = "com.adapfitweb.applelogin"; // ⚠️ 실제 Apple Client ID로 변경하세요
+    const redirectUri = "https://haruharu-daf.com/user/apple/callback"; // ⚠️ 서버 콜백 URL로 변경하세요
+    const scope = "name email"; // 사용자 정보 요청
+    const responseType = "code id_token"; // Authorization Code + ID Token
+    const state = "test_state"; // CSRF 방지를 위한 state 값
+    const nonce = "random_nonce"; // ID Token 검증을 위한 nonce
+
+    // ✅ Apple OAuth 2.0 URL 생성 (response_mode=form_post 추가됨)
+    const authUrl = `https://appleid.apple.com/auth/authorize?` +
+        `client_id=${clientId}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=${responseType}` +
+        `&scope=${encodeURIComponent(scope)}` +
+        `&state=${state}` +
+        `&nonce=${nonce}` +
+        `&response_mode=form_post`; // ✅ 추가
+
+    // Apple 로그인 창으로 이동
+    window.location.href = authUrl;
+}
+
+    </script>
+</body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카카오 로그인 테스트</title>
+</head>
+<body>
+    <h1>카카오 로그인 테스트</h1>
+
+    <button onclick="redirectToKakao()">카카오 로그인</button>
+
+    <script>
+        function redirectToKakao() {
+            const clientId = "362abb29d0290798e73e05351b027a38"; // ⚠️ 카카오 REST API 키 (클라이언트 ID)
+            const redirectUri = "http://localhost:44403/kakao/callback"; // ⚠️ 서버 콜백 URL
+
+            const authUrl = `https://kauth.kakao.com/oauth/authorize?` +
+                `client_id=${clientId}` +
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                `&response_type=code`;
+
+            // 카카오 로그인 창으로 이동
+            window.location.href = authUrl;
+        }
+    </script>
+</body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>페이스북 로그인 테스트</title>
+</head>
+<body>
+    <h1>페이스북 로그인 테스트</h1>
+
+    <button onclick="redirectToFacebook()">페이스북 로그인</button>
+
+    <script>
+        function redirectToFacebook() {
+            const clientId = "YOUR_FACEBOOK_APP_ID"; // ⚠️ 페이스북 앱 ID
+            const redirectUri = "http://localhost:44403/facebook/callback"; // ⚠️ 서버 콜백 URL
+            const scope = "email public_profile"; // 사용자 정보 요청
+
+            const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+                `client_id=${clientId}` +
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                `&scope=${encodeURIComponent(scope)}` +
+                `&response_type=code`;
+
+            // 페이스북 로그인 창으로 이동
+            window.location.href = authUrl;
+        }
+    </script>
+</body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 로그인 테스트</title>
+</head>
+<body>
+    <h2>네이버 로그인 테스트</h2>
+
+    <a href="#" onclick="loginWithNaver(); return false;">
+        <img src="https://static.nid.naver.com/oauth/small_g_in.PNG" alt="네이버 로그인">
+    </a>
+
+    <script>
+        function loginWithNaver() {
+            const clientId = "GpaCZATWsZ8EwwGmwPRK"; // 네이버 앱의 CLIENT_ID
+            const redirectUri = "http://localhost:44403/naver/callback"; // 네이버에 등록한 콜백 URL
+            const state = Math.random().toString(36).substring(2, 15); // CSRF 방지를 위한 state 값
+
+            const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+
+            window.location.href = authUrl; // 네이버 로그인 페이지로 이동
+        }
+    </script>
+</body>
+</html> -->

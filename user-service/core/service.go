@@ -27,14 +27,15 @@ import (
 )
 
 type UserService interface {
-	checkUsername(username string) (string, error)
-	basicLogin(request LoginRequest) (string, error)
-	signIn(request SignInRequest) (string, error)
 	appleLogin(code string) (LoginResponse, error)
 	googleLogin(code string) (LoginResponse, error)
 	kakaoLogin(code string) (LoginResponse, error)
 	facebookLogin(code string) (LoginResponse, error)
 	naverLogin(code string) (LoginResponse, error)
+
+	checkUsername(username string) (string, error)
+	basicLogin(request LoginRequest) (string, error)
+	signIn(request SignInRequest) (string, error)
 	sendAuthCode(phone string) (string, error)
 	verifyAuthCode(phone string, code string) (string, error)
 	getUser(id uint) (UserResponse, error) //유저조회
@@ -130,8 +131,10 @@ func (service *userService) verifyAuthCode(phone string, code string) (string, e
 
 func (s *userService) signIn(request SignInRequest) (string, error) {
 	var gender uint
-	var snsId *string
 	var snsType uint
+	var snsId *string
+	var password *string
+	var username *string
 	if request.Gender {
 		gender = 1
 	} else {
@@ -141,16 +144,6 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 	if err != nil {
 		return "", errors.New("date err")
 	}
-	if err := validateSignIn(request); err != nil {
-		return "", err
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-
-	password := string(hashedPassword)
 
 	// 단일 컨텍스트 생성 (타임아웃 5초 설정)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -171,6 +164,20 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 		snsType = uint(value)
 	}
 
+	if err := validateSignIn(request, snsId); err != nil {
+		return "", err
+	}
+
+	if snsId != nil {
+		username = &request.Username
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return "", err
+		}
+		temp := string(hashedPassword)
+		password = &temp
+	}
+
 	phoneStatusKey := request.Phone + ":status"
 	// Redis에서 인증 상태 확인
 	if status, err := s.redisClient.Get(ctx, phoneStatusKey).Result(); err == redis.Nil || status != "verified" {
@@ -183,9 +190,8 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 	// Redis에 존재하면 user 테이블에 추가
 	var user = model.User{
 		SnsId:      snsId,
-		Username:   &request.Username,
-		Password:   &password,
-		Email:      &request.Email,
+		Username:   username,
+		Password:   password,
 		Name:       request.Name,
 		Birthday:   birthday,
 		Phone:      request.Phone,
@@ -215,13 +221,10 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 			}
 			user.ID = existUser.ID
 			if err := tx.Model(&existUser).
-				Select("SnsId", "Username", "Password", "Email", "Name", "Birthday", "Gender", "Addr", "AddrDetail", "UserType", "SnsType").
+				Select("SnsId", "Username", "Password", "Name", "Birthday", "Gender", "Addr", "AddrDetail", "UserType", "SnsType").
 				Updates(user).Error; err != nil {
 				return "", errors.New("db error2")
 			}
-		} else if strings.Contains(errMsg, "email") {
-			tx.Rollback()
-			return "", errors.New("이미 존재하는 이메일입니다")
 		} else {
 			tx.Rollback()
 			return "", errors.New("db error3")
@@ -571,151 +574,7 @@ func (s *userService) getUser(id uint) (UserResponse, error) {
 	if user.Gender == 2 {
 		gender = false
 	}
-	response := UserResponse{Username: *user.Username, Email: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"),
+	response := UserResponse{Username: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"),
 		Phone: user.Phone, Addr: user.Addr, AddrDetail: user.AddrDetail, DisableType: user.UserDisables[0].DisableTypeID, VisitPurpose: user.UserVisits[0].VisitPurposeID}
 	return response, nil
 }
-
-// func (service *userService) setUser(userRequest UserRequest) (string, error) {
-
-// 	var fileName, thumbnailFileName string
-// 	var image model.Image
-// 	var user model.User
-
-// 	user.ID = userRequest.ID
-// 	user.Nickname = userRequest.Nickname
-
-// 	if userRequest.ProfileImage != "" {
-
-// 		//base64 string decode
-// 		imgData, err := base64.StdEncoding.DecodeString(userRequest.ProfileImage)
-// 		if err != nil {
-// 			return "", err
-// 		}
-
-// 		//이미지 포맷 체크
-// 		contentType, ext, err := getImageFormat(imgData)
-// 		if err != nil {
-// 			return "", err
-// 		}
-
-// 		// 이미지 크기 조정 (10MB 제한)
-// 		if len(imgData) > 10*1024*1024 {
-// 			imgData, err = reduceImageSize(imgData)
-// 			if err != nil {
-// 				return "", err
-// 			}
-// 		}
-
-// 		// 썸네일 이미지 생성
-// 		thumbnailData, err := createThumbnail(imgData)
-// 		if err != nil {
-// 			return "", err
-// 		}
-
-// 		// S3에 이미지 및 썸네일 업로드
-// 		fileName, thumbnailFileName, err = uploadImagesToS3(imgData, thumbnailData, contentType, ext, service.s3svc, service.bucket, service.bucketUrl, strconv.FormatUint(uint64(user.ID), 10))
-// 		if err != nil {
-
-// 			return "", err
-// 		}
-// 		image = model.Image{
-// 			Uid:          user.ID,
-// 			Url:          fileName,
-// 			ThumbnailUrl: thumbnailFileName,
-// 			ParentId:     user.ID,
-// 			Type:         uint(profileImageType),
-// 		}
-// 	}
-
-// 	// 트랜잭션 시작
-// 	tx := service.db.Begin()
-
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 			tx.Rollback()
-// 			log.Printf("Recovered from panic: %v", r)
-// 		}
-// 	}()
-
-// 	//유저 정보 업데이트
-// 	result := tx.Model(&user).Where("id=?", user.ID).Update("nickname", user.Nickname)
-// 	if result.Error != nil {
-// 		log.Println(result.Error.Error())
-// 		tx.Rollback()
-
-// 		// 이미 업로드된 파일들을 S3에서 삭제
-
-// 		if userRequest.ProfileImage != "" {
-// 			go func() {
-// 				deleteFromS3(fileName, service.s3svc, service.bucket, service.bucketUrl)
-// 				deleteFromS3(thumbnailFileName, service.s3svc, service.bucket, service.bucketUrl)
-// 			}()
-// 		}
-
-// 		return "", errors.New("db error")
-// 	}
-// 	if userRequest.ProfileImage != "" {
-// 		// 기존 이미지 레코드 논리삭제
-// 		result = tx.Where("parent_id = ? AND type =?", user.ID, profileImageType).Delete(&model.Image{})
-// 		if result.Error != nil {
-// 			log.Println(result.Error.Error())
-// 			tx.Rollback()
-// 			if userRequest.ProfileImage != "" {
-// 				go func() {
-// 					deleteFromS3(fileName, service.s3svc, service.bucket, service.bucketUrl)
-// 					deleteFromS3(thumbnailFileName, service.s3svc, service.bucket, service.bucketUrl)
-// 				}()
-// 			}
-// 			return "", errors.New("db error4")
-// 		}
-// 		// 이미지 레코드 재 생성
-
-// 		if err := tx.Create(&image).Error; err != nil {
-// 			log.Println(err)
-// 			tx.Rollback()
-// 			if userRequest.ProfileImage != "" {
-// 				go func() {
-// 					deleteFromS3(fileName, service.s3svc, service.bucket, service.bucketUrl)
-// 					deleteFromS3(thumbnailFileName, service.s3svc, service.bucket, service.bucketUrl)
-// 				}()
-// 			}
-// 			return "", errors.New("db error5")
-// 		}
-// 	}
-
-// 	tx.Commit()
-// 	return "200", nil
-// }
-
-// func (service *userService) removeUser(id uint) (string, error) {
-// 	var user model.User
-// 	user.ID = id
-// 	if err := service.db.Delete(&user).Error; err != nil {
-// 		return "", errors.New("db error")
-// 	}
-// 	return "200", nil
-// }
-
-// func (service *userService) getVersion() (AppVersionResponse, error) {
-// 	var version model.AppVersion
-// 	result := service.db.Last(&version)
-// 	if result.Error != nil {
-// 		return AppVersionResponse{}, errors.New("db error")
-// 	}
-// 	var versionResponse AppVersionResponse
-// 	if err := copyStruct(version, &versionResponse); err != nil {
-// 		return AppVersionResponse{}, err
-// 	}
-// 	return versionResponse, nil
-// }
-
-// func (service *userService) removeProfile(uid uint) (string, error) {
-
-// 	// 기존 이미지 레코드 논리삭제
-// 	result := service.db.Where("parent_id = ? AND type =?", uid, profileImageType).Delete(&model.Image{})
-// 	if result.Error != nil {
-// 		return "", errors.New("db error2")
-// 	}
-// 	return "200", nil
-// }

@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"unicode/utf8"
+	"unicode"
 	"user-service/model"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -130,44 +130,75 @@ func validateTime(timeStr string) error {
 	return nil
 }
 
-func validateSignIn(request SignInRequest) error {
-	// 이메일 검증
-	if len(request.Email) == 0 || len(request.Email) > 50 || strings.Contains(request.Email, " ") {
-		return errors.New("invalid email format")
-	}
-
-	emailRegex := regexp.MustCompile(`^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$`)
-	if !emailRegex.MatchString(request.Email) {
-		return errors.New("invalid email format")
-	}
+func validateSignIn(request SignInRequest, snsId *string) error {
 
 	// 전화번호 검증 (010으로 시작하는 11자리 숫자)
 	phoneRegex := regexp.MustCompile(`^010\d{8}$`)
 	if !phoneRegex.MatchString(request.Phone) {
 		return errors.New("invalid phone format, should be 010xxxxxxxx")
 	}
+	if snsId != nil {
+		// 아이디 검증 (4~20자, 특수문자 포함 불가)
+		username := strings.TrimSpace(request.Username)
+		usernameRegex := regexp.MustCompile(`^[a-zA-Z0-9]{4,20}$`)
+		if !usernameRegex.MatchString(username) {
+			return errors.New("invalid username format (4~20 characters, no special characters)")
+		}
+
+		// 비밀번호 검증 (최소 8~20자, 영문 대소문자/숫자/특수문자 중 2종류 이상 포함)
+		password := strings.TrimSpace(request.Password)
+		if !checkPassword(password) {
+			return errors.New("invalid password format (must include at least two of: letters, numbers, special characters, and be at least 8 characters long)")
+		}
+	}
 
 	// 사용자명 검증 (4~20자, 특수문자 포함 불가)
-	username := strings.TrimSpace(request.Username)
-	usernameRegex := regexp.MustCompile(`^[a-zA-Z0-9]{4,20}$`)
-	if !usernameRegex.MatchString(username) {
-		return errors.New("invalid username format (4~20 characters, no special characters)")
-	}
-
-	// 비밀번호 검증 (최소 8자리, 영문 대소문자/숫자/특수문자 중 2종류 이상 포함)
-	password := strings.TrimSpace(request.Password)
-	passwordRegex := regexp.MustCompile(`^(?=.*[A-Za-z])(?=.*\d|.*[\W_]).{8,}$`)
-	if !passwordRegex.MatchString(password) {
-		return errors.New("invalid password format (must include at least two of: letters, numbers, special characters, and be at least 8 characters long)")
-	}
-
-	// 이름 검증 (1~20자)
 	name := strings.TrimSpace(request.Name)
-	if utf8.RuneCountInString(name) > 20 || len(name) == 0 {
-		return errors.New("invalid name")
+	nameRegex := regexp.MustCompile(`^[a-zA-Z0-9]{4,20}$`)
+	if !nameRegex.MatchString(name) {
+		return errors.New("invalid name format (4~20 characters, no special characters)")
 	}
 
 	return nil
+}
+
+func checkPassword(password string) bool {
+	// 길이 검사: 8~20자
+	if len(password) < 8 || len(password) > 20 {
+		return false
+	}
+
+	// 각 카테고리 포함 여부 확인
+	var hasLower, hasUpper, hasDigit, hasSpecial bool
+	for _, char := range password {
+		switch {
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsDigit(char):
+			hasDigit = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+
+	// 카테고리 중 2개 이상 포함 여부 확인
+	count := 0
+	if hasLower {
+		count++
+	}
+	if hasUpper {
+		count++
+	}
+	if hasDigit {
+		count++
+	}
+	if hasSpecial {
+		count++
+	}
+
+	return count >= 2
 }
 
 func deleteFromS3(fileKey string, s3Client *s3.S3, bucket string, bucketUrl string) error {

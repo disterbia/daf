@@ -24,7 +24,7 @@ import (
 	"github.com/nfnt/resize"
 )
 
-var jwtSecretKey = []byte("adapfit_mark")
+var jwtSecretKey = []byte("haruharu_mark_admin")
 
 func verifyJWT(c *gin.Context) (uint, string, error) {
 	// 헤더에서 JWT 토큰 추출
