@@ -29,6 +29,7 @@ type User struct {
 	UseStatusID   *uint     `gorm:"index"`
 	CreateAdmin   Admin     `gorm:"foreignKey:CreateAdminID"`
 	CreateAdminID *uint     `gorm:"index"`
+	UserCode      string    `gorm:"unique"`
 
 	Nickname     string
 	DeviceID     string

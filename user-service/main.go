@@ -67,8 +67,7 @@ func main() {
 	getUserEndpoint := core.GetUserEndpoint(svc)
 	findUsernameEndpoint := core.FinUsernameEndpoint(svc)
 	findPasswordEndpoint := core.FindPasswordEndpoint(svc)
-	refundEndpoint := core.RefundEndpoint(svc)
-	paymentCallbackEndpoint := core.PaymentCallbackEndpoint(svc)
+	setUserEndpoint := core.SetUserEndpoint(svc)
 	app := fiber.New()
 	app.Use(logger.New())
 
@@ -88,17 +87,16 @@ func main() {
 	app.Get("/kakao/callback", core.KakaoCallbackHandler(kakaoCallbackEndpoint))
 	app.Get("/facebook/callback", core.FacebookCallbackHandler(facebookCallbackEndpoint))
 	app.Get("/naver/callback", core.NaverCallbackHandler(naverCallbackEndpoint))
+	app.Get("/check-username", core.CheckUsernameHandler(checkUsernameEndpoint))
 
 	app.Post("/apple/callback", core.AppleCallbackHandler(appleCallbackEndpoint))
-	app.Get("/check-username", core.CheckUsernameHandler(checkUsernameEndpoint))
 	app.Post("/login", core.BasicLoginHandler(basicLogionEndpoint))
 	app.Post("/sign-in", core.SignInHandler(signInEndpoint))
 	app.Post("/send-code", core.SendCodeHandler(sendCodeEndpoint))
 	app.Post("/verify-code", core.VerifyHandler(verifyEndpoint))
 	app.Post("/find-username", core.FindUsernameHandler(findUsernameEndpoint))
 	app.Post("/find-password", core.FindPasswordHandler(findPasswordEndpoint))
-	app.Post("/payment/callback", core.PaymentCallbackHandler(paymentCallbackEndpoint))
-	app.Post("/refund", core.RefundHandler(refundEndpoint))
+	app.Post("/set-user", core.SetUserHandler(setUserEndpoint))
 
 	log.Fatal(app.Listen(":44403"))
 }

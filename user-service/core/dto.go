@@ -83,19 +83,20 @@ type FindPasswordRequest struct {
 }
 
 type SignInRequest struct {
-	SnsId        string `json:"sns_id"`
-	SnsEmail     string `json:"sns_email"`
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	Name         string `json:"name"`
-	Gender       bool   `json:"gender"`
-	Birth        string `json:"birth" example:"yyyy-mm-dd"`
-	Phone        string `json:"phone"`
-	Addr         string `json:"addr"`
-	AddrDetail   string `json:"addr_detail"`
-	IsAgree      bool   `json:"is_agree"`
-	DisableType  uint   `json:"disable_type"`
-	VisitPurpose uint   `json:"visit_purpose"`
+	SnsId         string `json:"sns_id"`
+	SnsEmail      string `json:"sns_email"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	Name          string `json:"name"`
+	Gender        bool   `json:"gender"`
+	Birth         string `json:"birth" example:"yyyy-mm-dd"`
+	Phone         string `json:"phone"`
+	Addr          string `json:"addr"`
+	AddrDetail    string `json:"addr_detail"`
+	IsAgree       bool   `json:"is_agree"`
+	DisableType   uint   `json:"disable_type"`
+	VisitPurpose  uint   `json:"visit_purpose"`
+	RecommendCode string `json:"recommend_code"`
 }
 
 type SetUserRequest struct {
@@ -127,6 +128,7 @@ type UserResponse struct {
 	IsAgree      bool   `json:"is_agree"`
 	DisableType  uint   `json:"disable_type"`
 	VisitPurpose uint   `json:"visit_purpose"`
+	UserCode     string `json:"user_code"`
 }
 
 type UserRequest struct {

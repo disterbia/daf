@@ -42,15 +42,6 @@ type UserService interface {
 	findUsername(request FindUsernameRequest) (string, error)
 	findPassword(request FindPasswordRequest) (string, error)
 	setUser(request SetUserRequest) (string, error)
-	paymentCallback(request PaymentCallbackResponse) (string, error)
-	refund() (string, error)
-
-	// snsLogin(request LoginRequest) (string, error)
-
-	// setUser(userRequest UserRequest) (string, error)
-	// removeUser(id uint) (string, error)
-	// getVersion() (AppVersionResponse, error)
-	// removeProfile(uid uint) (string, error)
 }
 
 type userService struct {
@@ -133,109 +124,9 @@ func (service *userService) verifyAuthCode(phone string, code string) (string, e
 
 	return "-1", nil
 }
-func (s *userService) paymentCallback(request PaymentCallbackResponse) (string, error) {
-	log.Printf("✅ 결제 콜백 데이터: %+v\n", request)
-
-	// ✅ 결제 성공 여부 확인
-	if request.ResultCode != "0000" {
-		return "", fmt.Errorf("결제 실패: %s", request.ResultMsg)
-	}
-
-	// ✅ 승인 요청 보내기
-	signKey := "SU5JTElURV9UUklQTEVERVNfS0VZU1RS" // ⚠️ 실제 SIGN KEY 입력
-	approvalResponse, err := sendApprovalRequest(request, signKey)
-	if err != nil {
-		return "", fmt.Errorf("승인 요청 실패: %v", err)
-	}
-
-	log.Printf("✅ 승인 응답 데이터: %+v\n", approvalResponse)
-
-	// ✅ 승인 성공 여부 확인
-	if approvalResponse.ResultCode != "0000" {
-		return "", fmt.Errorf("승인 실패: %s", approvalResponse.ResultMsg)
-	}
-
-	return approvalResponse.Tid, nil
-}
-
-func (s *userService) refund() (string, error) {
-	// ✅ 환경 변수에서 설정값 가져오기
-	mid := "INIpayTest"                               // ⚠️ 실제 상점 아이디 입력
-	iniApiKey := "ItEQKi3rY7uvDS8l"                   // ⚠️ 이니시스에서 제공하는 API Key
-	clientIp := "192.168.1.1"                         // ⚠️ 실제 서버 IP 입력
-	tid := "StdpayCARDINIpayTest20250312150916921936" // ⚠️ 취소할 승인 TID (AuthToken 사용)
-	reason := "고객 요청에 의한 결제 취소"                       // ⚠️ 취소 사유
-
-	// ✅ 현재 타임스탬프 생성 (YYYYMMDDhhmmss)
-	timestamp := time.Now().Format("20060102150405")
-
-	// ✅ `data` JSON 문자열 생성
-	dataMap := map[string]string{
-		"tid": tid,
-		"msg": reason,
-	}
-	dataJSON, _ := json.Marshal(dataMap) // JSON 직렬화
-	// ✅ ⚠️ **hashData 형식 맞추기**
-	plainText := fmt.Sprintf("%s%s%s%s%s", iniApiKey, mid, "refund", timestamp, string(dataJSON))
-	hashData := generateSHA512Hash(plainText)
-
-	// ✅ 최종 요청 데이터 구성
-	refundReq := map[string]interface{}{
-		"mid":       mid,
-		"type":      "refund",
-		"timestamp": timestamp,
-		"clientIp":  clientIp,
-		"hashData":  hashData,
-		"data":      dataMap, // ⚠️ `data`를 JSON이 아닌 Object로 전달 (문서 기준)
-	}
-
-	// ✅ JSON 변환
-	requestBody, _ := json.Marshal(refundReq)
-
-	// ✅ HTTP POST 요청
-	url := "https://iniapi.inicis.com/v2/pg/refund"
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
-	if err != nil {
-		return "", fmt.Errorf("❌ 취소 요청 생성 실패: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("❌ 취소 요청 실패: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// ✅ 응답 데이터 읽기
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("❌ 응답 데이터 읽기 실패: %v", err)
-	}
-
-	// ✅ JSON 응답 데이터 파싱
-	refundResp := &RefundResponse{}
-	err = json.Unmarshal(body, refundResp)
-	if err != nil {
-		return "", fmt.Errorf("❌ 응답 JSON 파싱 실패: %v", err)
-	}
-
-	// ✅ 취소 결과 출력
-	log.Printf("✅ 취소 응답 데이터: %+v\n", refundResp)
-
-	// ✅ 취소 성공 여부 확인
-	if refundResp.ResultCode == "00" {
-		return fmt.Sprintf("✅ 결제 취소 성공! 취소일자: %s, 취소시간: %s", refundResp.CancelDate, refundResp.CancelTime), nil
-	}
-
-	return "", fmt.Errorf("❌ 취소 실패: %s (코드: %s)", refundResp.ResultMsg, refundResp.DetailResultCode)
-}
 
 func (s *userService) signIn(request SignInRequest) (string, error) {
-	var gender uint
-	var snsType uint
-	var isAgree uint
-
+	var gender, snsType, isAgree, recommendUserId uint
 	var snsId, snsEmail, password, username *string
 
 	if request.Gender {
@@ -273,7 +164,7 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 		snsType = uint(value)
 	}
 
-	email, err := s.redisClient.Get(ctx, "snsEmail").Result()
+	email, err := s.redisClient.Get(ctx, request.SnsEmail).Result()
 	if err != nil {
 		if err != redis.Nil {
 			return "", errors.New("internal error")
@@ -284,6 +175,18 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 
 	if err := validateSignIn(request, snsId); err != nil {
 		return "", err
+	}
+
+	var recommendUser model.User
+	if request.RecommendCode != "" {
+		if err := s.db.Where("user_code = ?", request.RecommendCode).First(&recommendUser).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "-2", nil
+			} else {
+				return "", errors.New("db error0")
+			}
+		}
+		recommendUserId = recommendUser.ID
 	}
 
 	if snsId != nil {
@@ -320,6 +223,7 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 		AddrDetail: request.AddrDetail,
 		UserType:   uint(ADAPFIT),
 		SnsType:    uint(snsType), // redis value
+		UserCode:   generateMemberCode(request.Phone),
 	}
 
 	tx := s.db.Begin()
@@ -339,9 +243,8 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 			if err := tx.Where("phone = ?", user.Phone).First(&existUser).Error; err != nil {
 				return "", errors.New("db error")
 			}
-			user.ID = existUser.ID
 			if err := tx.Model(&existUser).
-				Select("SnsId", "Username", "Password", "Name", "Birthday", "Gender", "Addr", "AddrDetail", "UserType", "SnsType").
+				Select("SnsId", "SnsEmail", "Username", "Password", "Name", "Birthday", "IsAgree", "Gender", "Addr", "AddrDetail", "UserType", "SnsType", "UserCode").
 				Updates(user).Error; err != nil {
 				return "", errors.New("db error2")
 			}
@@ -351,6 +254,11 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 		}
 	}
 
+	if recommendUserId != 0 {
+		if err := tx.Create(&model.UserRecommend{ToUserID: recommendUserId, FromUserID: user.ID}).Error; err != nil {
+			return "", errors.New("db error4")
+		}
+	}
 	if err := tx.Create(&model.UserVisit{UID: user.ID, VisitPurposeID: request.VisitPurpose}).Error; err != nil {
 		return "", errors.New("db error4")
 	}
@@ -484,13 +392,23 @@ func (s *userService) setUser(request SetUserRequest) (string, error) {
 		return "1", nil
 	}
 
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Recovered from panic: %v", r)
+		} else if tx.Error != nil {
+			tx.Rollback()
+		}
+	}()
+
 	var user model.User
-	if err := s.db.Where("id = ?", request.Uid).First(&user).Error; err != nil {
+	if err := tx.Where("id = ?", request.Uid).First(&user).Error; err != nil {
 		return "", errors.New("db error1")
 	}
 	if user.Phone == request.Phone {
 		var newUser = model.User{Name: request.Name, Addr: request.Addr, AddrDetail: request.AddrDetail}
-		if err := s.db.Model(&user).
+		if err := tx.Model(&user).
 			Select("Name", "Addr", "AddrDetail").
 			Updates(newUser).Error; err != nil {
 			return "", errors.New("db error2")
@@ -501,23 +419,45 @@ func (s *userService) setUser(request SetUserRequest) (string, error) {
 		phoneStatusKey := request.Phone + ":status"
 		// Redis에서 인증 상태 확인
 		if status, err := s.redisClient.Get(ctx, phoneStatusKey).Result(); err == redis.Nil || status != "verified" {
+			tx.Rollback()
 			return "-1", nil
 		} else if err != nil {
+			tx.Rollback()
 			log.Printf("Failed to check verification status: %v", err)
 			return "", errors.New("internal error")
 		}
+		// 유저 정보 업데이트
 		var newUser = model.User{Name: request.Name, Phone: request.Phone, Addr: request.Addr, AddrDetail: request.AddrDetail}
-		if err := s.db.Model(&user).
+		if err := tx.Model(&user).
 			Select("Name", "Addr", "Phone", "AddrDetail").
 			Updates(newUser).Error; err != nil {
 			return "", errors.New("db error3")
 		}
 
+		//방문목적 저장
+		visit := model.UserVisit{UID: user.ID, VisitPurposeID: request.VisitPurpose}
+		if err := tx.Unscoped().Where("uid = ?", user.ID).Delete(&model.UserVisit{}).Error; err != nil {
+			return "", errors.New("db error2")
+		}
+		if err := tx.Create(&visit).Error; err != nil {
+			return "", errors.New("db error3")
+		}
+		//장애유형 저장
+		disable := model.UserDisable{UID: user.ID, DisableTypeID: request.DisableType}
+		if err := tx.Unscoped().Where("uid = ?", user.ID).Delete(&model.UserDisable{}).Error; err != nil {
+			return "", errors.New("db error4")
+		}
+		if err := tx.Create(&disable).Error; err != nil {
+			return "", errors.New("db error5")
+		}
+
 		if err := s.redisClient.Del(ctx, phoneStatusKey).Err(); err != nil {
+			tx.Rollback()
 			log.Println(err)
 			return "", errors.New("internal error2")
 		}
 	}
+	tx.Commit()
 	return "1", nil
 
 }
@@ -535,7 +475,7 @@ func (s *userService) getUser(id uint) (UserResponse, error) {
 	if user.IsAgree == 2 {
 		isAgree = false
 	}
-	response := UserResponse{Username: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"), IsAgree: isAgree,
+	response := UserResponse{Username: *user.Username, Name: user.Name, Gender: gender, Birth: user.Birthday.Format("2006-01-02"), IsAgree: isAgree, UserCode: user.UserCode,
 		Phone: user.Phone, Addr: user.Addr, AddrDetail: user.AddrDetail, DisableType: user.UserDisables[0].DisableTypeID, VisitPurpose: user.UserVisits[0].VisitPurposeID}
 	return response, nil
 }
