@@ -42,6 +42,8 @@ type UserService interface {
 	findUsername(request FindUsernameRequest) (string, error)
 	findPassword(request FindPasswordRequest) (string, error)
 	setUser(request SetUserRequest) (string, error)
+	paymentCallback(request PaymentCallbackResponse) (string, error)
+	refund() (string, error)
 
 	// snsLogin(request LoginRequest) (string, error)
 
@@ -131,15 +133,110 @@ func (service *userService) verifyAuthCode(phone string, code string) (string, e
 
 	return "-1", nil
 }
+func (s *userService) paymentCallback(request PaymentCallbackResponse) (string, error) {
+	log.Printf("✅ 결제 콜백 데이터: %+v\n", request)
+
+	// ✅ 결제 성공 여부 확인
+	if request.ResultCode != "0000" {
+		return "", fmt.Errorf("결제 실패: %s", request.ResultMsg)
+	}
+
+	// ✅ 승인 요청 보내기
+	signKey := "SU5JTElURV9UUklQTEVERVNfS0VZU1RS" // ⚠️ 실제 SIGN KEY 입력
+	approvalResponse, err := sendApprovalRequest(request, signKey)
+	if err != nil {
+		return "", fmt.Errorf("승인 요청 실패: %v", err)
+	}
+
+	log.Printf("✅ 승인 응답 데이터: %+v\n", approvalResponse)
+
+	// ✅ 승인 성공 여부 확인
+	if approvalResponse.ResultCode != "0000" {
+		return "", fmt.Errorf("승인 실패: %s", approvalResponse.ResultMsg)
+	}
+
+	return approvalResponse.Tid, nil
+}
+
+func (s *userService) refund() (string, error) {
+	// ✅ 환경 변수에서 설정값 가져오기
+	mid := "INIpayTest"                               // ⚠️ 실제 상점 아이디 입력
+	iniApiKey := "ItEQKi3rY7uvDS8l"                   // ⚠️ 이니시스에서 제공하는 API Key
+	clientIp := "192.168.1.1"                         // ⚠️ 실제 서버 IP 입력
+	tid := "StdpayCARDINIpayTest20250312150916921936" // ⚠️ 취소할 승인 TID (AuthToken 사용)
+	reason := "고객 요청에 의한 결제 취소"                       // ⚠️ 취소 사유
+
+	// ✅ 현재 타임스탬프 생성 (YYYYMMDDhhmmss)
+	timestamp := time.Now().Format("20060102150405")
+
+	// ✅ `data` JSON 문자열 생성
+	dataMap := map[string]string{
+		"tid": tid,
+		"msg": reason,
+	}
+	dataJSON, _ := json.Marshal(dataMap) // JSON 직렬화
+	// ✅ ⚠️ **hashData 형식 맞추기**
+	plainText := fmt.Sprintf("%s%s%s%s%s", iniApiKey, mid, "refund", timestamp, string(dataJSON))
+	hashData := generateSHA512Hash(plainText)
+
+	// ✅ 최종 요청 데이터 구성
+	refundReq := map[string]interface{}{
+		"mid":       mid,
+		"type":      "refund",
+		"timestamp": timestamp,
+		"clientIp":  clientIp,
+		"hashData":  hashData,
+		"data":      dataMap, // ⚠️ `data`를 JSON이 아닌 Object로 전달 (문서 기준)
+	}
+
+	// ✅ JSON 변환
+	requestBody, _ := json.Marshal(refundReq)
+
+	// ✅ HTTP POST 요청
+	url := "https://iniapi.inicis.com/v2/pg/refund"
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return "", fmt.Errorf("❌ 취소 요청 생성 실패: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("❌ 취소 요청 실패: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// ✅ 응답 데이터 읽기
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("❌ 응답 데이터 읽기 실패: %v", err)
+	}
+
+	// ✅ JSON 응답 데이터 파싱
+	refundResp := &RefundResponse{}
+	err = json.Unmarshal(body, refundResp)
+	if err != nil {
+		return "", fmt.Errorf("❌ 응답 JSON 파싱 실패: %v", err)
+	}
+
+	// ✅ 취소 결과 출력
+	log.Printf("✅ 취소 응답 데이터: %+v\n", refundResp)
+
+	// ✅ 취소 성공 여부 확인
+	if refundResp.ResultCode == "00" {
+		return fmt.Sprintf("✅ 결제 취소 성공! 취소일자: %s, 취소시간: %s", refundResp.CancelDate, refundResp.CancelTime), nil
+	}
+
+	return "", fmt.Errorf("❌ 취소 실패: %s (코드: %s)", refundResp.ResultMsg, refundResp.DetailResultCode)
+}
 
 func (s *userService) signIn(request SignInRequest) (string, error) {
 	var gender uint
 	var snsType uint
 	var isAgree uint
 
-	var snsId *string
-	var password *string
-	var username *string
+	var snsId, snsEmail, password, username *string
 
 	if request.Gender {
 		gender = 1
@@ -176,6 +273,15 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 		snsType = uint(value)
 	}
 
+	email, err := s.redisClient.Get(ctx, "snsEmail").Result()
+	if err != nil {
+		if err != redis.Nil {
+			return "", errors.New("internal error")
+		}
+	} else {
+		snsEmail = &email
+	}
+
 	if err := validateSignIn(request, snsId); err != nil {
 		return "", err
 	}
@@ -202,6 +308,7 @@ func (s *userService) signIn(request SignInRequest) (string, error) {
 	// Redis에 존재하면 user 테이블에 추가
 	var user = model.User{
 		SnsId:      snsId,
+		SnsEmail:   snsEmail,
 		Username:   username,
 		Password:   password,
 		Name:       request.Name,
@@ -435,7 +542,7 @@ func (s *userService) getUser(id uint) (UserResponse, error) {
 
 func (s *userService) appleLogin(code string) (LoginResponse, error) {
 	var err error
-	var snsId string
+	var snsId, snsEmail string
 
 	clientID := os.Getenv("APPLE_CLIENT_ID")
 	keyID := os.Getenv("APPLE_KEY_ID")
@@ -483,11 +590,11 @@ func (s *userService) appleLogin(code string) (LoginResponse, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
 		return LoginResponse{}, err
 	}
-	if snsId, err = appleLogin(tokenResponse.IDToken); err != nil {
+	if snsId, snsEmail, err = appleLogin(tokenResponse.IDToken); err != nil {
 		return LoginResponse{}, err
 	}
 
-	response, err := snsLogin(snsId, uint(Apple), s)
+	response, err := snsLogin(snsId, snsEmail, uint(Apple), s)
 	if err != nil {
 		return LoginResponse{}, err
 	}
@@ -496,7 +603,7 @@ func (s *userService) appleLogin(code string) (LoginResponse, error) {
 
 func (s *userService) googleLogin(code string) (LoginResponse, error) {
 	var err error
-	var snsId string
+	var snsId, snsEmail string
 
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
@@ -538,11 +645,11 @@ func (s *userService) googleLogin(code string) (LoginResponse, error) {
 	}
 
 	// ID 토큰 검증 및 sub 추출
-	if snsId, err = googleLogin(tokenResponse.IDToken, clientID); err != nil {
+	if snsId, snsEmail, err = googleLogin(tokenResponse.IDToken, clientID); err != nil {
 		return LoginResponse{}, err
 	}
 
-	response, err := snsLogin(snsId, uint(Apple), s)
+	response, err := snsLogin(snsId, snsEmail, uint(Apple), s)
 	if err != nil {
 		return LoginResponse{}, err
 	}
@@ -552,7 +659,7 @@ func (s *userService) googleLogin(code string) (LoginResponse, error) {
 
 func (s *userService) kakaoLogin(code string) (LoginResponse, error) {
 	var err error
-	var snsId string
+	var snsId, snsEmail string
 
 	clientID := os.Getenv("KAKAO_CLIENT_ID")
 	clientSecret := os.Getenv("KAKAO_CLIENT_SECRET")
@@ -594,11 +701,11 @@ func (s *userService) kakaoLogin(code string) (LoginResponse, error) {
 	}
 
 	// ID 토큰 검증 및 이메일 추출
-	if snsId, err = kakaoLogin(tokenResponse.IDToken); err != nil {
+	if snsId, snsEmail, err = kakaoLogin(tokenResponse.IDToken); err != nil {
 		return LoginResponse{}, err
 	}
 
-	response, err := snsLogin(snsId, uint(Apple), s)
+	response, err := snsLogin(snsId, snsEmail, uint(Apple), s)
 	if err != nil {
 		return LoginResponse{}, err
 	}
@@ -608,7 +715,7 @@ func (s *userService) kakaoLogin(code string) (LoginResponse, error) {
 
 func (s *userService) facebookLogin(code string) (LoginResponse, error) {
 	var err error
-	var snsId string
+	var snsId, snsEmail string
 
 	clientID := os.Getenv("FACEBOOK_CLIENT_ID")
 	clientSecret := os.Getenv("FACEBOOK_CLIENT_SECRET")
@@ -651,13 +758,13 @@ func (s *userService) facebookLogin(code string) (LoginResponse, error) {
 	}
 
 	// 페이스북 사용자 정보 요청
-	snsId, err = getFacebookUserInfo(tokenResponse.AccessToken)
+	snsId, snsEmail, err = getFacebookUserInfo(tokenResponse.AccessToken)
 	if err != nil {
 		return LoginResponse{}, err
 	}
 
 	// 유저 데이터 처리
-	response, err := snsLogin(snsId, uint(Apple), s)
+	response, err := snsLogin(snsId, snsEmail, uint(Apple), s)
 	if err != nil {
 		return LoginResponse{}, err
 	}
@@ -667,7 +774,7 @@ func (s *userService) facebookLogin(code string) (LoginResponse, error) {
 
 func (s *userService) naverLogin(code string) (LoginResponse, error) {
 	var err error
-	var snsId string
+	var snsId, snsEmail string
 
 	clientID := os.Getenv("NAVER_CLIENT_ID")
 	clientSecret := os.Getenv("NAVER_CLIENT_SECRET")
@@ -707,13 +814,13 @@ func (s *userService) naverLogin(code string) (LoginResponse, error) {
 	if tokenResponse.AccessToken == "" {
 		return LoginResponse{}, fmt.Errorf("AccessToken miss")
 	}
-	snsId, err = getNaverUserInfo(tokenResponse.AccessToken)
+	snsId, snsEmail, err = getNaverUserInfo(tokenResponse.AccessToken)
 	if err != nil {
 		return LoginResponse{}, err
 	}
 
 	// 유저 데이터 처리
-	response, err := snsLogin(snsId, uint(Apple), s)
+	response, err := snsLogin(snsId, snsEmail, uint(Apple), s)
 	if err != nil {
 		return LoginResponse{}, err
 	}

@@ -1,5 +1,7 @@
 version: '3.8'
 services:
+  redis:
+    image: redis:latest
   gateway:
     image: disterbia94/daf-gateway:latest
     environment:
@@ -12,6 +14,8 @@ services:
       - daf
       - email
       - user
+      - redis
+      
   admin:
     image: disterbia94/daf-admin-service:latest
     environment:

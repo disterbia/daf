@@ -3,6 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="origin"> <!-- Referer 헤더 설정 -->
+    <title>이니시스 결제 테스트c</title>
+
+    <!-- 이니시스 결제 스크립트 -->
+    <script src="https://stdpay.inicis.com/stdjs/INIStdPay.js"></script>
+
+    <script>
+        // SHA256 해시 생성 함수
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+            return Array.from(new Uint8Array(hashBuffer))
+                .map(byte => byte.toString(16).padStart(2, '0'))
+                .join('');
+        }
+
+        // 이니시스 결제 요청 함수
+        async function requestPayment() {
+            const mid = "INIpayTest";  
+            const signKey = "SU5JTElURV9UUklQTEVERVNfS0VZU1RS"; 
+            const oid = "INIpayTest_" + new Date().getTime();
+            const price = "100"; 
+            const timestamp = String(Date.now()); 
+
+            // SHA-256 해시 값 생성 (signature, verification, mKey)
+            const signaturePlainText = `oid=${oid}&price=${price}&timestamp=${timestamp}`;
+            const signature = await sha256(signaturePlainText);
+
+            const verificationPlainText = `oid=${oid}&price=${price}&signKey=${signKey}&timestamp=${timestamp}`;
+            const verification = await sha256(verificationPlainText);
+
+            const mKey = await sha256(signKey);
+
+            // 결제 요청 데이터 객체 생성
+            const paymentData = {
+                version: "1.0",
+                gopaymethod: "",
+                mid: mid,
+                oid: oid,
+                price: price,
+                timestamp: timestamp,
+                signature: signature,
+                verification: verification,
+                mKey: mKey,
+                currency: "WON",
+                goodname: "테스트상품",
+                buyername: "테스터",
+                buyertel: "01012345678",
+                buyeremail: "test@test.com",
+                returnUrl: "http://localhost:44403/payment/callback",
+                closeUrl: "http://localhost:44403/test.html",
+                acceptmethod: "HPP(1):below1000:va_receipt:centerCd(Y)",
+                requestByJs: "true"
+            };
+
+            // 동적으로 폼 생성
+            const form = document.createElement("form");
+            form.id = "paymentForm";
+            form.method = "post";
+            form.action = "https://stdpay.inicis.com/stdjs/INIStdPay.js";
+
+            // 폼에 hidden input 추가
+            for (const [name, value] of Object.entries(paymentData)) {
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            }
+
+            // 폼을 body에 추가
+            document.body.appendChild(form);
+
+            // 폼 ID를 전달하여 결제 요청
+            INIStdPay.pay("paymentForm");
+        }
+    </script>
+</head>
+<body>
+    <h2>이니시스 결제 테스트</h2>
+    <button onclick="requestPayment()">결제 요청</button>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title> 테스트</title>
 </head>
 <body>
@@ -31,7 +121,7 @@
         }
     </script>
 </body>
-</html>
+</html> -->
 
 
 <!-- <!DOCTYPE html>

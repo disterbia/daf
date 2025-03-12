@@ -27,41 +27,41 @@ func getClientIP(c *fiber.Ctx) string {
 	return c.IP()
 }
 
-// @Tags 회원수정 /user
-// @Summary 회원 데이터 변경
-// @Description 회원 정보 변경 시 호출
-// @Accept  json
-// @Produce  json
-// @Param Authorization header string true "Bearer {jwt_token}"
-// @Param request body SetUserRequest true "요청 DTO - 업데이트 할 데이터"
-// @Success 200 {object} BasicResponse "성공시 200 반환"
-// @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
-// @Router /set-user [post]
-func SetUserHandler(endpoint endpoint.Endpoint) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		// 토큰 검증 및 처리
-		id, _, err := verifyJWT(c)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-		}
+// // @Tags 회원수정 /user
+// // @Summary 회원 데이터 변경
+// // @Description 회원 정보 변경 시 호출
+// // @Accept  json
+// // @Produce  json
+// // @Param Authorization header string true "Bearer {jwt_token}"
+// // @Param request body SetUserRequest true "요청 DTO - 업데이트 할 데이터"
+// // @Success 200 {object} BasicResponse "성공시 200 반환"
+// // @Failure 400 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// // @Failure 500 {object} ErrorResponse "요청 처리 실패시 오류 메시지 반환"
+// // @Router /set-user [post]
+// func SetUserHandler(endpoint endpoint.Endpoint) fiber.Handler {
+// 	return func(c *fiber.Ctx) error {
+// 		// 토큰 검증 및 처리
+// 		id, _, err := verifyJWT(c)
+// 		if err != nil {
+// 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+// 		}
 
-		var req SetUserRequest
+// 		var req SetUserRequest
 
-		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-		}
-		req.Uid = id
+// 		if err := c.BodyParser(&req); err != nil {
+// 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+// 		}
+// 		req.Uid = id
 
-		response, err := endpoint(c.Context(), req)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+// 		response, err := endpoint(c.Context(), req)
+// 		if err != nil {
+// 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 
-		}
-		resp := response.(BasicResponse)
-		return c.Status(fiber.StatusOK).JSON(resp)
-	}
-}
+// 		}
+// 		resp := response.(BasicResponse)
+// 		return c.Status(fiber.StatusOK).JSON(resp)
+// 	}
+// }
 
 // @Tags 아이디 찾기 /user
 // @Summary 아이디 찾기
@@ -469,5 +469,36 @@ func NaverCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
 		// 클라이언트로 리다이렉트
 		redirectURL := fmt.Sprintf("http://192.168.0.24:59704/naver?jwt=%s&code=%s&sns_id=%s", jwt, code, snsId)
 		return c.Redirect(redirectURL, fiber.StatusFound)
+	}
+}
+
+func PaymentCallbackHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+
+		var req PaymentCallbackResponse
+
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		response, err := endpoint(c.Context(), req)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		resp := response.(BasicResponse)
+		return c.Status(fiber.StatusOK).JSON(resp)
+	}
+}
+func RefundHandler(endpoint endpoint.Endpoint) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+
+		response, err := endpoint(c.Context(), nil)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		resp := response.(BasicResponse)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 }

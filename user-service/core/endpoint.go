@@ -15,7 +15,7 @@ func BaiscLoginEndpoint(s UserService) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return LoginResponse{Jwt: token}, nil
+		return BasicResponse{Code: token}, nil
 	}
 }
 
@@ -45,6 +45,27 @@ func VerifyEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		veri := request.(VerifyRequest)
 		code, err := s.verifyAuthCode(veri.PhoneNumber, veri.Code)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func PaymentCallbackEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(PaymentCallbackResponse)
+		code, err := s.paymentCallback(req)
+		if err != nil {
+			return nil, err
+		}
+		return BasicResponse{Code: code}, nil
+	}
+}
+
+func RefundEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		code, err := s.refund()
 		if err != nil {
 			return nil, err
 		}

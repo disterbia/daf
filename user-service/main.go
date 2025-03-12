@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 
@@ -47,7 +46,7 @@ func main() {
 
 	// Redis 클라이언트 설정
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "", // 비밀번호가 없으면 비워둠
 		DB:       0,  // Redis DB 번호
 	})
@@ -68,7 +67,8 @@ func main() {
 	getUserEndpoint := core.GetUserEndpoint(svc)
 	findUsernameEndpoint := core.FinUsernameEndpoint(svc)
 	findPasswordEndpoint := core.FindPasswordEndpoint(svc)
-	setUserEndpoint := core.SetUserEndpoint(svc)
+	refundEndpoint := core.RefundEndpoint(svc)
+	paymentCallbackEndpoint := core.PaymentCallbackEndpoint(svc)
 	app := fiber.New()
 	app.Use(logger.New())
 
@@ -79,14 +79,9 @@ func main() {
 	})
 
 	// CORS 미들웨어 추가
-	app.Use(cors.New())
+	// app.Use(cors.New())
 
-	// app.Get("/get-user", core.GetUserHandler(getUserEndpoint))
-
-	// app.Post("/sns-login", core.SnsLoginHandler(snsLoginEndpoint))
-	// app.Post("/set-user", core.SetUserHandler(setUserEndpoint))
-	// app.Post("/remove-user", core.RemoveHandler(removeEndpoint))
-	// app.Post("/remove-profile", core.RemoveProfileHandler(removeProfileEndpoint))
+	app.Static("/", "./")
 
 	app.Get("/get-user", core.GetUserHandler(getUserEndpoint))
 	app.Get("/google/callback", core.GoogleCallbackHandler(googleCallbackEndpoint))
@@ -95,14 +90,15 @@ func main() {
 	app.Get("/naver/callback", core.NaverCallbackHandler(naverCallbackEndpoint))
 
 	app.Post("/apple/callback", core.AppleCallbackHandler(appleCallbackEndpoint))
-	app.Post("/check-username", core.CheckUsernameHandler(checkUsernameEndpoint))
+	app.Get("/check-username", core.CheckUsernameHandler(checkUsernameEndpoint))
 	app.Post("/login", core.BasicLoginHandler(basicLogionEndpoint))
 	app.Post("/sign-in", core.SignInHandler(signInEndpoint))
 	app.Post("/send-code", core.SendCodeHandler(sendCodeEndpoint))
 	app.Post("/verify-code", core.VerifyHandler(verifyEndpoint))
 	app.Post("/find-username", core.FindUsernameHandler(findUsernameEndpoint))
 	app.Post("/find-password", core.FindPasswordHandler(findPasswordEndpoint))
-	app.Post("/set-user", core.SetUserHandler(setUserEndpoint))
+	app.Post("/payment/callback", core.PaymentCallbackHandler(paymentCallbackEndpoint))
+	app.Post("/refund", core.RefundHandler(refundEndpoint))
 
 	log.Fatal(app.Listen(":44403"))
 }

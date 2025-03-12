@@ -9,6 +9,7 @@ import (
 type User struct {
 	gorm.Model            // ID, CreatedAt, UpdatedAt, DeletedAt 필드를 자동으로 추가
 	Email         *string `gorm:"unique"`
+	SnsEmail      *string `gorm:"unique"`
 	Username      *string `gorm:"unique"`
 	SnsId         *string `gorm:"unique"`
 	Password      *string

@@ -1,11 +1,15 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -16,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"user-service/model"
@@ -25,74 +30,80 @@ import (
 	"gorm.io/gorm"
 )
 
-func appleLogin(idToken string) (string, error) {
+func appleLogin(idToken string) (string, string, error) {
 	jwks, err := getApplePublicKeys()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	parsedToken, err := verifyAppleIDToken(idToken, jwks)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
 		sub, ok := claims["sub"].(string)
 		if !ok {
-			return "", errors.New("sub not found in token claims")
+			return "", "", errors.New("sub not found in token claims")
 		}
+		email, ok := claims["email"].(string)
 
-		return sub, nil
+		return sub, email, nil
 
 	}
-	return "", errors.New("invalid token")
+	return "", "", errors.New("invalid token")
 
 }
-func kakaoLogin(idToken string) (string, error) {
+func kakaoLogin(idToken string) (string, string, error) {
 	jwks, err := getKakaoPublicKeys()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	parsedToken, err := verifyKakaoTokenSignature(idToken, jwks)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
 		sub, ok := claims["sub"].(string)
 		if !ok {
-			return "", errors.New("sub not found in token claims")
+			return "", "", errors.New("sub not found in token claims")
 		}
+		email, ok := claims["email"].(string)
 
-		return sub, nil
+		return sub, email, nil
 	}
-	return "", errors.New("invalid token")
+	return "", "", errors.New("invalid token")
 
 }
 
-func googleLogin(idToken, clientID string) (string, error) {
-	sub, err := validateGoogleIDToken(idToken, clientID)
+func googleLogin(idToken, clientID string) (string, string, error) {
+	sub, email, err := validateGoogleIDToken(idToken, clientID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return sub, nil
+	return sub, email, nil
 }
 
 // login 함수: 사용자가 없으면 이메일을 키로 Redis에 저장 (10분 후 삭제)
-func snsLogin(snsId string, snsType uint, service *userService) (LoginResponse, error) {
+func snsLogin(snsId, snsEmail string, snsType uint, service *userService) (LoginResponse, error) {
 	var user model.User
 	if err := service.db.Where("sns_id = ?", snsId).First(&user).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		// 사용자가 없으면 Redis에 저장 (10분 후 자동 삭제)
 		ctx := context.Background()
-		key := snsId                        // 이메일 자체를 키로 사용
+		key := snsId                        // snsId 자체를 키로 사용
 		value := fmt.Sprintf("%d", snsType) // snsType을 값으로 저장
-
 		if err := service.redisClient.Set(ctx, key, value, 10*time.Minute).Err(); err != nil {
 			log.Println(err)
 			return LoginResponse{}, errors.New("fail to login")
 		}
-		return LoginResponse{SnsId: snsId}, nil
+		if err := service.redisClient.Set(ctx, "snsEmail", snsEmail, 10*time.Minute).Err(); err != nil {
+			log.Println(err)
+			return LoginResponse{}, errors.New("fail to login2")
+		}
+
+		return LoginResponse{SnsId: snsId, SnsEmail: snsEmail}, nil
 	} else if err != nil {
 		return LoginResponse{}, errors.New("db error")
 	}
@@ -288,83 +299,83 @@ func extractKidFromToken(token string) (string, error) {
 }
 
 // Google ID 토큰을 검증하고 이메일을 반환
-func validateGoogleIDToken(idToken, clientID string) (string, error) {
+func validateGoogleIDToken(idToken, clientID string) (string, string, error) {
 	log.Print("idToken: ", idToken)
 	// idtoken 패키지를 사용하여 토큰 검증
 	payload, err := idtoken.Validate(context.Background(), idToken, clientID)
 	if err != nil {
 		log.Printf("Token validation error: %v", err)
-		return "", err
+		return "", "", err
 	}
 
 	// sub 추출
 	sub, ok := payload.Claims["sub"].(string)
 	if !ok {
-		return "", errors.New("sub claim not found in token")
+		return "", "", errors.New("sub claim not found in token")
 	}
-
-	return sub, nil
+	email, ok := payload.Claims["email"].(string)
+	return sub, email, nil
 }
 
-func getNaverUserInfo(accessToken string) (string, error) {
+func getNaverUserInfo(accessToken string) (string, string, error) {
 	req, err := http.NewRequest("GET", "https://openapi.naver.com/v1/nid/me", nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to get user info, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return "", "", fmt.Errorf("failed to get user info, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var userInfo NaverResponse
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		return "", err
+		return "", "", err
 	}
 	if userInfo.Response.ID == "" {
-		return "", fmt.Errorf("id not found in Naver user info")
+		return "", "", fmt.Errorf("id not found in Naver user info")
 	}
-	return userInfo.Response.ID, nil
+	return userInfo.Response.ID, userInfo.Response.Email, nil
 }
 
-func getFacebookUserInfo(accessToken string) (string, error) {
+func getFacebookUserInfo(accessToken string) (string, string, error) {
 	url := fmt.Sprintf("https://graph.facebook.com/me?fields=id,name,email&access_token=%s", accessToken)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to get user info, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return "", "", fmt.Errorf("failed to get user info, status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var userResponse FacebookUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&userResponse); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if userResponse.ID == "" {
-		return "", errors.New("id not found in Facebook account")
+		return "", "", errors.New("id not found in Facebook account")
 	}
 
-	return userResponse.ID, nil
+	return userResponse.ID, userResponse.Email, nil
 }
 
 func sendCode(number, code string) error {
@@ -390,4 +401,95 @@ func sendCode(number, code string) error {
 
 	return nil
 
+}
+
+// 🔹 SHA256 해시 생성 함수
+func generateSHA256Hash(data string) string {
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:])
+}
+
+// 🔹 승인 요청 함수
+func sendApprovalRequest(request PaymentCallbackResponse, signKey string) (*PaymentApprovalResponse, error) {
+	log.Printf("✅ 결제 콜백 데이터: %+v\n", request)
+	log.Printf("✅ 받은 IDC센터 코드: %s\n", request.IdcName)
+	// ✅ IDC센터 코드에 따른 승인 URL 매핑
+	// ✅ IDC센터 코드에 따른 승인 URL 매핑
+	idcUrls := map[string]string{
+		"fc":  "https://fcstdpay.inicis.com/api/payAuth",
+		"ks":  "https://ksstdpay.inicis.com/api/payAuth",
+		"stg": "https://stgstdpay.inicis.com/api/payAuth",
+	}
+
+	// ✅ `idc_name`이 비어있다면 `authUrl` 기반으로 자동 설정
+	if request.IdcName == "" {
+		request.IdcName = detectIDCName(request.AuthUrl)
+		log.Printf("✅ 자동 감지된 IDC센터 코드: %s\n", request.IdcName)
+	}
+
+	// ✅ `idc_name`이 올바른지 검증
+	expectedAuthUrl, validIDC := idcUrls[request.IdcName]
+	if !validIDC {
+		return nil, fmt.Errorf("❌ 알 수 없는 IDC센터 코드: %s", request.IdcName)
+	}
+
+	// ✅ `authUrl`이 IDC센터의 승인 URL과 일치하는지 검증
+	if request.AuthUrl != expectedAuthUrl {
+		return nil, fmt.Errorf("❌ 승인 요청 URL이 IDC센터 코드와 일치하지 않음. 예상 URL: %s, 받은 URL: %s", expectedAuthUrl, request.AuthUrl)
+	}
+	// ✅ 현재 타임스탬프 생성
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+
+	// ✅ SHA256 해시값 생성
+	signature := generateSHA256Hash(fmt.Sprintf("authToken=%s&timestamp=%s", request.AuthToken, timestamp))
+	verification := generateSHA256Hash(fmt.Sprintf("authToken=%s&signKey=%s&timestamp=%s", request.AuthToken, signKey, timestamp))
+
+	// ✅ 승인 요청 데이터 설정 (application/x-www-form-urlencoded)
+	formData := url.Values{}
+	formData.Set("mid", request.Mid)
+	formData.Set("authToken", request.AuthToken)
+	formData.Set("timestamp", timestamp)
+	formData.Set("signature", signature)
+	formData.Set("verification", verification)
+	formData.Set("charset", "UTF-8")
+	formData.Set("format", "JSON") // JSON 응답을 요청
+
+	// ✅ 승인 요청 (HTTP POST)
+	resp, err := http.Post(request.AuthUrl, "application/x-www-form-urlencoded", bytes.NewBufferString(formData.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("승인 요청 실패: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// ✅ 응답 데이터 읽기
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("응답 데이터 읽기 실패: %v", err)
+	}
+
+	// ✅ JSON 응답 데이터 파싱
+	approvalResponse := &PaymentApprovalResponse{}
+	err = json.Unmarshal(body, approvalResponse)
+	if err != nil {
+		return nil, fmt.Errorf("응답 JSON 파싱 실패: %v", err)
+	}
+
+	return approvalResponse, nil
+}
+
+// 🔹 SHA512 해시 생성 함수 (취소 요청)
+func generateSHA512Hash(data string) string {
+	hash := sha512.Sum512([]byte(data))
+	return hex.EncodeToString(hash[:])
+}
+
+func detectIDCName(authUrl string) string {
+	if strings.Contains(authUrl, "fcstdpay.inicis.com") {
+		return "fc"
+	} else if strings.Contains(authUrl, "ksstdpay.inicis.com") {
+		return "ks"
+	} else if strings.Contains(authUrl, "stgstdpay.inicis.com") {
+		return "stg"
+	}
+	return "" // ❌ 알 수 없는 경우
 }
