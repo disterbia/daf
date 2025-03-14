@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,30 +12,128 @@ import (
 	"payment-service/model"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type PaymentService interface {
 	saveCart(uid, productOptionId uint) (string, error)
 	getCart(uid uint) ([]ProductResponse, error)
-	countCart(request CountRequest) (string, error)
-	deleteCarts(uid uint, productOptionIds []uint) (string, error)
+	countCart(req CountRequest) (string, error)
+	deleteCarts(req DeleteCartRequest) (string, error)
+	getSales(req GetSalesRequest) (SaleResponse, error)
 
-	paymentCallback(request PaymentCallbackResponse) (string, error)
+	payment(req PaymentRequest) (string, error)
+
+	paymentCallback(req PaymentCallbackResponse) (string, error)
 	refund() (string, error)
 }
 
 type paymentService struct {
-	db *gorm.DB
+	db          *gorm.DB
+	redisClient *redis.Client
 }
 
-func NewPaymentService(db *gorm.DB) PaymentService {
-	return &paymentService{db: db}
+func NewPaymentService(db *gorm.DB, redisClient *redis.Client) PaymentService {
+	return &paymentService{db: db, redisClient: redisClient}
 }
 
-func (s *paymentService) deleteCarts(uid uint, productOptionIds []uint) (string, error) {
+func (s *paymentService) getSales(req GetSalesRequest) (SaleResponse, error) {
+
+	var totalPoint uint
+	if err := s.db.Model(&model.UserPoint{}).
+		Where("uid = ?", req.Uid).
+		Select("COALESCE(SUM(point), 0)").
+		Scan(&totalPoint).Error; err != nil {
+		return SaleResponse{}, errors.New("db error")
+	}
+
+	var userCoupons []model.UserCoupon
+	// 해당 유저가 보유한 쿠폰 리스트 조회
+	if err := s.db.Where("uid = ?", req.Uid).Preload("Coupon").Find(&userCoupons).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return SaleResponse{Point: totalPoint}, nil
+		}
+		return SaleResponse{}, errors.New("db error 2")
+	}
+
+	currentDate := time.Now().Truncate(24 * time.Hour)
+
+	// 유효 기간 체크
+	var possibleCoupons []model.Coupon
+	for _, uc := range userCoupons {
+		coupon := uc.Coupon
+		if coupon.DueDate.Before(currentDate) {
+			continue // 만료된 쿠폰은 제외
+		}
+		possibleCoupons = append(possibleCoupons, coupon)
+	}
+
+	//  유효한 쿠폰 필터링
+	var validCoupons []CouponResponse
+	for _, coupon := range possibleCoupons {
+		// 특정 상품에만 적용 가능한 경우 필터링
+		if len(coupon.PossibleProductIds) > 0 {
+			isApplicable := false
+			for _, productId := range req.ProductIds { // 유저가 구매하려는 상품 ID 목록 반복
+				for _, possibleId := range coupon.PossibleProductIds { // 쿠폰이 적용 가능한 상품 ID 목록 반복
+					if productId == possibleId {
+						isApplicable = true
+						break //  현재 상품이 쿠폰 적용 가능 목록에 포함되면 내부 루프 종료
+					}
+				}
+				if isApplicable {
+					break //  하나의 상품이라도 적용 가능하면 외부 루프 종료
+				}
+			}
+			if !isApplicable {
+				continue // 유저의 상품 목록 중 어느 것도 해당 쿠폰을 사용할 수 없다면 제외
+			}
+		}
+
+		// 4️⃣ 쿠폰을 응답 리스트에 추가
+		validCoupons = append(validCoupons, CouponResponse{
+			Id:        coupon.ID,
+			Name:      coupon.Name,
+			Detail:    coupon.Detail,
+			Price:     coupon.Price,
+			Percent:   coupon.Percent,
+			DueDate:   coupon.DueDate,
+			CanDouble: coupon.CanDouble,
+		})
+	}
+
+	return SaleResponse{Point: totalPoint, Coupons: validCoupons}, nil
+}
+
+func (s *paymentService) payment(request PaymentRequest) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+
+	price, err := calculatePrice(s.db, request)
+	if err != nil {
+		return "", err
+	}
+	request.Price = price
+	// JSON으로 변환
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return "", fmt.Errorf("JSON 직렬화 실패: %v", err)
+	}
+
+	oid := uuid.New().String()
+	err = s.redisClient.Set(ctx, oid, jsonData, 10*time.Minute).Err()
+	if err != nil {
+		return "", errors.New("internal error")
+	}
+
+	return oid, nil
+}
+
+func (s *paymentService) deleteCarts(req DeleteCartRequest) (string, error) {
 	// 장바구니에서 해당 상품 옵션 삭제
-	if err := s.db.Where("uid = ? AND product_option_id IN ?", uid, productOptionIds).
+	if err := s.db.Where("uid = ? AND product_option_id IN ?", req.Uid, req.ProductOptionIds).
 		Delete(&model.Cart{}).Error; err != nil {
 		return "", errors.New("db error")
 	}
@@ -42,17 +141,17 @@ func (s *paymentService) deleteCarts(uid uint, productOptionIds []uint) (string,
 	return "1", nil
 }
 
-func (s *paymentService) countCart(request CountRequest) (string, error) {
+func (s *paymentService) countCart(req CountRequest) (string, error) {
 	var cart model.Cart
 
 	// 장바구니에서 해당 상품 옵션을 찾기
-	if err := s.db.Where("uid = ? AND product_option_id = ?", request.Uid, request.ProductOptionId).
+	if err := s.db.Where("uid = ? AND product_option_id = ?", req.Uid, req.ProductOptionId).
 		First(&cart).Error; err != nil {
 		return "", errors.New("cart item not found")
 	}
 
 	// 수량 증가 또는 감소
-	if request.IsUp {
+	if req.IsUp {
 		cart.Quantity += 1
 	} else {
 		if cart.Quantity > 1 {
@@ -97,7 +196,6 @@ func (s *paymentService) saveCart(uid, productOptionId uint) (string, error) {
 func (s *paymentService) getCart(uid uint) ([]ProductResponse, error) {
 	var carts []model.Cart
 
-	// 한 번의 쿼리로 모든 데이터 로드
 	if err := s.db.
 		Preload("ProductOption.Product").
 		Where("uid = ?", uid).
@@ -148,9 +246,37 @@ func (s *paymentService) paymentCallback(request PaymentCallbackResponse) (strin
 		return "", fmt.Errorf("결제 실패: %s", request.ResultMsg)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 함수 종료 시 컨텍스트 해제
+
+	jsonData, err := s.redisClient.Get(ctx, request.OrderNumber).Result()
+	if err == redis.Nil {
+		return "", fmt.Errorf("결제 요청이 유효하지 않음")
+	} else if err != nil {
+		return "", fmt.Errorf("internal error")
+	}
+
+	var data PaymentRequest
+	err = json.Unmarshal([]byte(jsonData), &data)
+	if err != nil {
+		return "", fmt.Errorf("JSON 파싱 실패: %v", err)
+	}
+
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Recovered from panic: %v", r)
+		} else if tx.Error != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// db 저장 CouponHistory
+
 	// 승인 요청 보내기
 	signKey := "SU5JTElURV9UUklQTEVERVNfS0VZU1RS" // ⚠️ 실제 SIGN KEY 입력
-	approvalResponse, err := sendApprovalRequest(request, signKey)
+	approvalResponse, err := sendApprovalRequest(request, signKey, data.Price)
 	if err != nil {
 		return "", fmt.Errorf("승인 요청 실패: %v", err)
 	}
@@ -161,6 +287,13 @@ func (s *paymentService) paymentCallback(request PaymentCallbackResponse) (strin
 	if approvalResponse.ResultCode != "0000" {
 		return "", fmt.Errorf("승인 실패: %s", approvalResponse.ResultMsg)
 	}
+
+	if err = s.redisClient.Del(ctx, request.OrderNumber).Err(); err != nil {
+		log.Println(err)
+		return "", errors.New("internal error2")
+	}
+
+	//tid 저장
 
 	return approvalResponse.Tid, nil
 }

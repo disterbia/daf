@@ -8,6 +8,7 @@ import (
 
 	_ "payment-service/docs"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
@@ -26,7 +27,14 @@ func main() {
 		log.Println("Database connection error:", err)
 	}
 
-	svc := core.NewPaymentService(database)
+	// Redis 클라이언트 설정
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "redis:6379",
+		Password: "", // 비밀번호가 없으면 비워둠
+		DB:       0,  // Redis DB 번호
+	})
+
+	svc := core.NewPaymentService(database, redisClient)
 
 	refundEndpoint := core.RefundEndpoint(svc)
 	paymentCallbackEndpoint := core.PaymentCallbackEndpoint(svc)

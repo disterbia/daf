@@ -1,5 +1,36 @@
 package core
 
+import "time"
+
+type GetSalesRequest struct {
+	Uid        uint   `json:"-"`
+	ProductIds []uint `json:"product_ids"`
+}
+type DeleteCartRequest struct {
+	Uid              uint   `json:"-"`
+	ProductOptionIds []uint `json:"product_option_ids"`
+}
+type SaleResponse struct {
+	Point   uint
+	Coupons []CouponResponse
+}
+type CouponResponse struct {
+	Id        uint      `json:"id"`
+	Name      string    `json:"name"`
+	Detail    string    `json:"detail"`
+	Price     uint      `json:"price"`
+	Percent   uint      `json:"percent"`
+	DueDate   time.Time `json:"due_date"`
+	CanDouble bool      `json:"can_double"`
+}
+type PaymentRequest struct {
+	Uid              uint   `json:"-"`
+	ProductOptionIds []uint `json:"product_option_ids"`
+	CouponIds        []uint `json:"coupon_ids"`
+	Point            uint   `json:"point"`
+	Price            uint   `json:"-"`
+}
+
 type ProductResponse struct {
 	ID        uint                    `json:"id"`
 	Name      string                  `json:"name"`
@@ -20,11 +51,7 @@ type CountRequest struct {
 	ProductOptionId uint `json:"product_option_id"`
 	IsUp            bool `json:"is_up"`
 }
-type DeleteCartRequest struct {
-	Uid             uint `json:"-"`
-	ProductId       uint `json:"product_id"`
-	ProductOptionId uint `json:"product_option_id"`
-}
+
 type PaymentCallbackResponse struct {
 	ResultCode   string `json:"resultCode"`
 	ResultMsg    string `json:"resultMsg"`

@@ -8,6 +8,6 @@ type UserPoint struct {
 	gorm.Model
 	User  User `gorm:"foreignKey:Uid"`
 	Uid   uint
-	Point uint
+	Point int
 	Memo  string
 }

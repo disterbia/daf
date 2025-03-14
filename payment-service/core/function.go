@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // SHA256 해시 생성 함수
@@ -23,7 +25,7 @@ func generateSHA256Hash(data string) string {
 }
 
 // 승인 요청 함수
-func sendApprovalRequest(request PaymentCallbackResponse, signKey string) (*PaymentApprovalResponse, error) {
+func sendApprovalRequest(request PaymentCallbackResponse, signKey string, price uint) (*PaymentApprovalResponse, error) {
 	log.Printf("결제 콜백 데이터: %+v\n", request)
 	log.Printf("받은 IDC센터 코드: %s\n", request.IdcName)
 	// IDC센터 코드에 따른 승인 URL 매핑
@@ -65,7 +67,7 @@ func sendApprovalRequest(request PaymentCallbackResponse, signKey string) (*Paym
 	formData.Set("verification", verification)
 	formData.Set("charset", "UTF-8")
 	formData.Set("format", "JSON") // JSON 응답을 요청
-
+	formData.Set("price", strconv.FormatUint(uint64(price), 10))
 	// 승인 요청 (HTTP POST)
 	resp, err := http.Post(request.AuthUrl, "application/x-www-form-urlencoded", bytes.NewBufferString(formData.Encode()))
 	if err != nil {
@@ -104,4 +106,8 @@ func detectIDCName(authUrl string) string {
 		return "stg"
 	}
 	return "" //  알 수 없는 경우
+}
+
+func calculatePrice(db *gorm.DB, request PaymentRequest) (uint, error) {
+	return 100, nil
 }

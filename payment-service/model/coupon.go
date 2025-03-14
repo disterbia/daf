@@ -8,9 +8,13 @@ import (
 
 type Coupon struct {
 	gorm.Model
-	Name         string
-	Price        uint // MaximumPrice 대용으로 사용가능
-	Percent      uint
-	DueDate      time.Time
-	MinimumPrice uint
+	Name               string
+	Detail             string
+	Price              uint // percent가 0일떄 적용
+	Percent            uint // price가 0 일때 적용
+	DueDate            time.Time
+	MinimumPrice       uint //사용 가능한 최소 금액
+	MaximumPrice       uint //percent로 할인시 최대 금액
+	CanDouble          bool //중복적용 가능 여부
+	PossibleProductIds []uint
 }
