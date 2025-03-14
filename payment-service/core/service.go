@@ -3,16 +3,23 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"payment-service/model"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 type PaymentService interface {
+	saveCart(uid, productOptionId uint) (string, error)
+	getCart(uid uint) ([]ProductResponse, error)
+	countCart(request CountRequest) (string, error)
+	deleteCarts(uid uint, productOptionIds []uint) (string, error)
+
 	paymentCallback(request PaymentCallbackResponse) (string, error)
 	refund() (string, error)
 }
@@ -25,6 +32,114 @@ func NewPaymentService(db *gorm.DB) PaymentService {
 	return &paymentService{db: db}
 }
 
+func (s *paymentService) deleteCarts(uid uint, productOptionIds []uint) (string, error) {
+	// 장바구니에서 해당 상품 옵션 삭제
+	if err := s.db.Where("uid = ? AND product_option_id IN ?", uid, productOptionIds).
+		Delete(&model.Cart{}).Error; err != nil {
+		return "", errors.New("db error")
+	}
+
+	return "1", nil
+}
+
+func (s *paymentService) countCart(request CountRequest) (string, error) {
+	var cart model.Cart
+
+	// 장바구니에서 해당 상품 옵션을 찾기
+	if err := s.db.Where("uid = ? AND product_option_id = ?", request.Uid, request.ProductOptionId).
+		First(&cart).Error; err != nil {
+		return "", errors.New("cart item not found")
+	}
+
+	// 수량 증가 또는 감소
+	if request.IsUp {
+		cart.Quantity += 1
+	} else {
+		if cart.Quantity > 1 {
+			cart.Quantity -= 1
+		}
+	}
+
+	// 변경 사항 저장
+	if err := s.db.Save(&cart).Error; err != nil {
+		return "", errors.New("failed to update cart item")
+	}
+
+	return "1", nil
+}
+
+func (s *paymentService) saveCart(uid, productOptionId uint) (string, error) {
+
+	// 같은 옵션이 장바구니에 있는지 확인
+	var cart model.Cart
+	if err := s.db.Where("uid = ? AND product_option_id = ?", uid, productOptionId).First(&cart).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			cart = model.Cart{
+				Uid:             uid,
+				ProductOptionID: productOptionId,
+				Quantity:        1,
+			}
+			if err := s.db.Create(&cart).Error; err != nil {
+				return "", errors.New("failed to add cart item")
+			}
+		} else {
+			return "", errors.New("db error")
+		}
+	} else {
+		cart.Quantity += 1
+		if err := s.db.Save(&cart).Error; err != nil {
+			return "", errors.New("failed to update cart item")
+		}
+	}
+
+	return "1", nil
+}
+func (s *paymentService) getCart(uid uint) ([]ProductResponse, error) {
+	var carts []model.Cart
+
+	// 한 번의 쿼리로 모든 데이터 로드
+	if err := s.db.
+		Preload("ProductOption.Product").
+		Where("uid = ?", uid).
+		Find(&carts).Error; err != nil {
+		return nil, errors.New("cart not found")
+	}
+
+	// 상품별로 그룹화
+	productMap := make(map[uint]*ProductResponse)
+
+	for _, item := range carts {
+		product := item.ProductOption.Product
+		option := item.ProductOption
+
+		// 상품이 없으면 추가
+		if _, exists := productMap[product.ID]; !exists {
+			productMap[product.ID] = &ProductResponse{
+				ID:        product.ID,
+				Name:      product.Name,
+				Price:     product.Price,
+				SellPrice: product.SellPrice,
+				Options:   []ProductOptionResponse{},
+			}
+		}
+
+		// 옵션 추가
+		productMap[product.ID].Options = append(productMap[product.ID].Options, ProductOptionResponse{
+			OptionID:   option.ID,
+			OptionName: option.Name,
+			Price:      option.Price,
+			Quantity:   item.Quantity,
+		})
+	}
+
+	// 리스트로 변환
+	var result []ProductResponse
+	for _, product := range productMap {
+		result = append(result, *product)
+	}
+
+	return result, nil
+}
 func (s *paymentService) paymentCallback(request PaymentCallbackResponse) (string, error) {
 	log.Printf("결제 콜백 데이터: %+v\n", request)
 

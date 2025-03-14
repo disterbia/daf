@@ -1,5 +1,30 @@
 package core
 
+type ProductResponse struct {
+	ID        uint                    `json:"id"`
+	Name      string                  `json:"name"`
+	Price     uint                    `json:"price"`
+	SellPrice uint                    `json:"sell_price"`
+	Options   []ProductOptionResponse `json:"options"`
+}
+
+type ProductOptionResponse struct {
+	OptionID   uint   `json:"optionId"`
+	OptionName string `json:"optionName"`
+	Price      uint   `json:"price"`
+	Quantity   uint   `json:"quantity"`
+}
+
+type CountRequest struct {
+	Uid             uint `json:"-"`
+	ProductOptionId uint `json:"product_option_id"`
+	IsUp            bool `json:"is_up"`
+}
+type DeleteCartRequest struct {
+	Uid             uint `json:"-"`
+	ProductId       uint `json:"product_id"`
+	ProductOptionId uint `json:"product_option_id"`
+}
 type PaymentCallbackResponse struct {
 	ResultCode   string `json:"resultCode"`
 	ResultMsg    string `json:"resultMsg"`
